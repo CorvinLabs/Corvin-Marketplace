@@ -49,15 +49,15 @@ users are expected to read the code. Specifically, we will reject PRs that:
 - Request network or filesystem access without a clear, stated reason.
 - Obfuscate their behavior.
 
-## Licensing & the CLA
+## Licensing
 
-- This repository is licensed under **[Apache-2.0](LICENSE)**.
-- By contributing, you agree your contribution is licensed under Apache-2.0 and that
-  you have the right to submit it.
-- The CorvinOS project uses a Contributor License Agreement (CLA). See the
-  **[CorvinOS CLA](https://github.com/CorvinLabs/CorvinOS/blob/main/CLA.md)** and
-  **[CONTRIBUTING](https://github.com/CorvinLabs/CorvinOS/blob/main/CONTRIBUTING.md)**
-  for details; the same terms apply to marketplace contributions.
+- This repository is licensed under the **[MIT License](LICENSE)** — simple and permissive.
+- By contributing, you agree your contribution is licensed under MIT and that you have
+  the right to submit it.
+
+> Note: the **CorvinOS core** project has its own license and Contributor License
+> Agreement — see the [CorvinOS repo](https://github.com/CorvinLabs/CorvinOS). Those
+> terms govern the platform; this marketplace of community extensions is MIT.
 
 ## Questions
 

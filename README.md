@@ -74,7 +74,7 @@ surface: what it is, how to build one, the security/scope model, and where the
 
 - **CorvinOS** — the platform: <https://github.com/CorvinLabs/CorvinOS>
 - **Website** — <https://corvin-labs.com>
-- **License** — [Apache-2.0](LICENSE)
+- **License** — [MIT](LICENSE)
 
 <div align="center">
 <sub>Built by the CorvinOS community · Extensions are community-maintained, not core.</sub>
