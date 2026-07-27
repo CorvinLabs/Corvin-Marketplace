@@ -17,7 +17,7 @@ This repository is a **community marketplace**: a curated, browsable collection 
 extensions the CorvinOS community builds and shares — personas, tools, skills,
 extension layers, messaging bridges, and full workflow bundles.
 
-Each top-level folder maps to one of the **seven extension surfaces** CorvinOS
+Each top-level folder maps to one of the **eight extension surfaces** CorvinOS
 officially supports. Every folder has its own `README.md` that explains, for that
 surface: what it is, how to build one, the security/scope model, and where the
 **canonical documentation** lives in the CorvinOS repo.
@@ -30,7 +30,7 @@ surface: what it is, how to build one, the security/scope model, and where the
 
 ---
 
-## The seven extension surfaces
+## The eight extension surfaces
 
 | Folder | Surface | What it does | Hot-reload | Canonical docs |
 |---|---|---|---|---|
@@ -41,6 +41,7 @@ surface: what it is, how to build one, the security/scope model, and where the
 | [`bridge-adapters/`](bridge-adapters/) | **Bridge Adapters** | New messaging channels (Matrix, Signal, Teams, custom) | 🔄 daemon restart | [extending.md §4](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/extending.md) |
 | [`workflow-packages/`](workflow-packages/) | **Workflow Packages** | Signed `.corvin-pkg` bundles of personas + tools + skills | ➖ one-time install | [awpkg.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/awpkg.md) |
 | [`agentic-compute/`](agentic-compute/) | **Agentic Compute** | Pluggable compute engines, Fabric backends, and optimisation strategies for dispatched iterative jobs | 🔄 operator-installed | [compute.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/compute.md) |
+| [`plugins/`](plugins/) | **Plugins** | Code-shaped extensions with a lifecycle: routers, notification/recall/audit/user backends. Run **in-process** — read the folder README before installing | 🔄 declared in tenant config | [plugin-architecture.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/plugin-architecture.md) |
 
 ---
 
