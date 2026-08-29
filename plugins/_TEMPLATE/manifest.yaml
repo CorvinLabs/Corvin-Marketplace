@@ -1,0 +1,71 @@
+# Plugin Manifest Template
+# See schema/plugin-manifest.v1.json for complete schema
+# References: ADR-0233 (plugin-system), ADR-0243 (boot-layers), ADR-0249 (trust-anchor)
+
+# Format version (required)
+plugin: "1.0"
+
+# Identity (required)
+id: "com.example.my-plugin"  # Reverse-domain identifier, e.g., "com.org.plugin-name"
+name: "My Plugin"            # Human-readable name
+version: "1.0.0"             # Semantic versioning (MAJOR.MINOR.PATCH)
+
+# Description and metadata (required)
+description: |
+  Brief description of what this plugin does and how it extends CorvinOS.
+  Should be 1–3 sentences explaining the core functionality.
+
+# Author and licensing (required)
+author: "Your Name"
+email: "your.email@example.com"
+license: "Apache-2.0"  # Options: Apache-2.0, MIT, GPL-3.0-only, GPL-3.0-or-later, BSD-3-Clause, ISC
+
+# Links (optional but recommended)
+homepage: "https://github.com/yourusername/my-plugin"
+repository: "https://github.com/yourusername/my-plugin"
+
+# Plugin implementation (required)
+entry_point: "plugin.py::MyPluginClass"  # Module path and class name
+plugin_type: "router_backend"            # One of: router_backend, notification_backend, audit_backend, etc.
+
+# Plugin provenance and boot behavior (optional, defaults shown)
+origin: "community"              # "builtin" (core), "vetted" (maintainer-signed), "community" (user/vetted)
+boot_layer: "installed"          # "compliance" (always on), "core", "bundled", or "installed" (user-declared)
+tier: "c"                        # "a" (core), "b" (vetted community), "c" (user-owned)
+
+# CorvinOS version constraints (optional)
+min_corvin_version: "0.10.0"
+max_corvin_version: null         # null = no upper bound
+
+# Dependencies on other plugins (optional)
+dependencies: []
+  # - id: "com.other.plugin"
+  #   version: ">=1.0.0"
+
+# Permission and risk disclosures (optional; informational, not enforced)
+permissions:
+  network_egress: []               # [] = no network access; or list of allowed domains
+  pii_risk: "low"                  # "none", "low", "medium", "high"
+  data_locality: "local"           # "local" (in-process), "remote", "hybrid"
+  audit_logging: true              # Whether invocations are audit-logged (ADR-0232)
+
+# Python dependencies (optional)
+requires: []
+  # - "psycopg2>=3.0"
+  # - "requests>=2.28"
+
+# Plugin metadata for discovery (optional)
+keywords:
+  - "example"
+  - "plugin"
+
+categories: []  # Options: productivity, communication, data, integration, security, utility
+supports_auto_update: false
+health_check_interval: 60  # Seconds (default: 60, range: 1-3600)
+
+# Signature for vetted plugins (optional; maintainer-generated)
+# See ADR-0249 for signing procedures
+# signature:
+#   algorithm: "ed25519"
+#   public_key: "base64url-encoded-public-key"
+#   value: "base64url-encoded-signature"

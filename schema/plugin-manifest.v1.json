@@ -1,0 +1,227 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://corvin.dev/schemas/marketplace/plugin-manifest.v1.json",
+  "title": "Plugin Manifest Schema v1",
+  "description": "Schema for manifest.yaml in a CorvinOS plugin (ADR-0233, ADR-0243, ADR-0249)",
+  "type": "object",
+  "required": ["plugin", "id", "name", "version", "description", "author", "license", "entry_point"],
+  "additionalProperties": false,
+  "properties": {
+    "plugin": {
+      "type": "string",
+      "description": "Plugin manifest format version. Must be '1.0'.",
+      "enum": ["1.0"]
+    },
+    "id": {
+      "type": "string",
+      "description": "Globally unique reverse-domain identifier for the plugin.",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 128,
+      "minLength": 3
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable display name for the plugin.",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic versioning string (MAJOR.MINOR.PATCH).",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9.]+)?(\\+[a-zA-Z0-9.]+)?$"
+    },
+    "description": {
+      "type": "string",
+      "description": "One-paragraph description of the plugin's purpose.",
+      "minLength": 10,
+      "maxLength": 1000
+    },
+    "author": {
+      "type": "string",
+      "description": "Plugin author name or organization.",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "email": {
+      "type": "string",
+      "description": "Contact email for the plugin author.",
+      "format": "email",
+      "maxLength": 256
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier.",
+      "enum": ["Apache-2.0", "MIT", "GPL-3.0-only", "GPL-3.0-or-later", "BSD-3-Clause", "ISC"]
+    },
+    "homepage": {
+      "type": "string",
+      "description": "URL to plugin documentation or repository.",
+      "format": "uri",
+      "maxLength": 512
+    },
+    "repository": {
+      "type": "string",
+      "description": "URL to plugin source repository (GitHub, GitLab, etc.).",
+      "format": "uri",
+      "maxLength": 512
+    },
+    "entry_point": {
+      "type": "string",
+      "description": "Entry point for the plugin: 'module.py::ClassName' (ADR-0233).",
+      "pattern": "^[a-zA-Z0-9_./:-]+$",
+      "minLength": 5
+    },
+    "plugin_type": {
+      "type": "string",
+      "description": "Plugin type - determines which layer extension point this plugin implements (ADR-0233).",
+      "enum": [
+        "router_backend",
+        "summary_provider",
+        "notification_backend",
+        "recall_backend",
+        "audit_backend",
+        "user_backend",
+        "stt_provider",
+        "data_connector",
+        "compute_engine",
+        "worker_engine",
+        "bridge_channel"
+      ]
+    },
+    "origin": {
+      "type": "string",
+      "description": "Plugin provenance (ADR-0249): 'builtin' (core only), 'vetted' (maintainer-signed), 'community' (user/community).",
+      "enum": ["builtin", "vetted", "community"],
+      "default": "community"
+    },
+    "boot_layer": {
+      "type": "string",
+      "description": "When plugin loads in boot sequence (ADR-0243): 'compliance' (non-disableable), 'core', 'bundled', 'installed' (user-declared).",
+      "enum": ["compliance", "core", "bundled", "installed"],
+      "default": "installed"
+    },
+    "min_corvin_version": {
+      "type": "string",
+      "description": "Minimum CorvinOS version required to run this plugin.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "max_corvin_version": {
+      "oneOf": [
+        {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        {"type": "null"}
+      ],
+      "description": "Maximum CorvinOS version compatible with this plugin (null = no upper bound)."
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "List of plugin dependencies (other plugins required by this one).",
+      "items": {
+        "type": "object",
+        "required": ["id", "version"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID of the required plugin.",
+            "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+          },
+          "version": {
+            "type": "string",
+            "description": "Semantic version range (>=X.Y.Z, ^X.Y.Z, ~X.Y.Z, or exact).",
+            "minLength": 1
+          }
+        }
+      },
+      "uniqueItems": true
+    },
+    "permissions": {
+      "type": "object",
+      "description": "Permissions and risk profile for the plugin (governance disclosures, not enforced).",
+      "additionalProperties": false,
+      "properties": {
+        "network_egress": {
+          "type": "array",
+          "description": "List of allowed hostnames/domains for outbound network access. Empty = no network access.",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
+        "pii_risk": {
+          "type": "string",
+          "description": "Risk level for PII exposure: 'none', 'low', 'medium', 'high'.",
+          "enum": ["none", "low", "medium", "high"],
+          "default": "low"
+        },
+        "data_locality": {
+          "type": "string",
+          "description": "Where plugin processes data: 'local' (in-process), 'remote' (external), 'hybrid'.",
+          "enum": ["local", "remote", "hybrid"],
+          "default": "local"
+        },
+        "audit_logging": {
+          "type": "boolean",
+          "description": "Whether plugin invocations are audit-logged (ADR-0232).",
+          "default": true
+        }
+      }
+    },
+    "tier": {
+      "type": "string",
+      "description": "Capability tier (ADR-0156): 'a' (core), 'b' (vetted community), 'c' (user-owned). Defaults based on origin.",
+      "enum": ["a", "b", "c"]
+    },
+    "supports_auto_update": {
+      "type": "boolean",
+      "description": "Whether plugin supports automatic updates (security patches, features).",
+      "default": false
+    },
+    "health_check_interval": {
+      "type": "integer",
+      "description": "Health check polling interval in seconds. Must be > 0. Defaults to 60.",
+      "minimum": 1,
+      "maximum": 3600,
+      "default": 60
+    },
+    "requires": {
+      "type": "array",
+      "description": "Python package dependencies (requirements.txt style).",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "keywords": {
+      "type": "array",
+      "description": "Search keywords for plugin discovery.",
+      "items": {"type": "string", "minLength": 1, "maxLength": 50},
+      "maxItems": 10,
+      "uniqueItems": true
+    },
+    "categories": {
+      "type": "array",
+      "description": "Plugin categories for browsing in console (governance UI).",
+      "items": {
+        "type": "string",
+        "enum": ["productivity", "communication", "data", "integration", "security", "utility"]
+      },
+      "uniqueItems": true
+    },
+    "signature": {
+      "type": "object",
+      "description": "Optional Ed25519 signature over manifest digest (ADR-0249, for vetted plugins).",
+      "additionalProperties": false,
+      "required": ["algorithm", "public_key", "value"],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["ed25519"]
+        },
+        "public_key": {
+          "type": "string",
+          "description": "Base64url-encoded Ed25519 public key."
+        },
+        "value": {
+          "type": "string",
+          "description": "Base64url-encoded signature over manifest SHA-256 digest."
+        }
+      }
+    }
+  }
+}

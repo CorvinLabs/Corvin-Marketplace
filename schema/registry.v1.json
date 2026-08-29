@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://corvin.dev/schemas/marketplace/registry.v1.json",
+  "title": "Plugin Registry Schema v1",
+  "description": "Schema for registry.json — aggregated plugin metadata in Corvin-Marketplace",
+  "type": "object",
+  "required": ["version", "generated_at", "plugins"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Registry format version.",
+      "enum": ["1.0"]
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when registry was generated.",
+      "format": "date-time"
+    },
+    "plugins": {
+      "type": "object",
+      "description": "Map of plugin_id → PluginEntry",
+      "additionalProperties": {
+        "$ref": "#/definitions/PluginEntry"
+      }
+    }
+  },
+  "definitions": {
+    "PluginEntry": {
+      "type": "object",
+      "description": "A registered plugin entry with metadata.",
+      "required": [
+        "plugin_id",
+        "name",
+        "version",
+        "description",
+        "author",
+        "license",
+        "entry_point",
+        "plugin_type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "plugin_id": {
+          "type": "string",
+          "description": "Globally unique reverse-domain identifier.",
+          "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name."
+        },
+        "version": {
+          "type": "string",
+          "description": "Semantic version (MAJOR.MINOR.PATCH).",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9.]+)?(\\+[a-zA-Z0-9.]+)?$"
+        },
+        "description": {
+          "type": "string",
+          "description": "One-paragraph description."
+        },
+        "author": {
+          "type": "string",
+          "description": "Plugin author."
+        },
+        "email": {
+          "type": "string",
+          "description": "Author contact email."
+        },
+        "license": {
+          "type": "string",
+          "description": "SPDX license identifier."
+        },
+        "homepage": {
+          "type": "string",
+          "description": "Plugin homepage URL."
+        },
+        "repository": {
+          "type": "string",
+          "description": "Repository URL."
+        },
+        "entry_point": {
+          "type": "string",
+          "description": "Entry point: 'module.py::ClassName'."
+        },
+        "plugin_type": {
+          "type": "string",
+          "description": "Plugin type from KNOWN_PLUGIN_TYPES.",
+          "enum": [
+            "router_backend",
+            "summary_provider",
+            "notification_backend",
+            "recall_backend",
+            "audit_backend",
+            "user_backend",
+            "stt_provider",
+            "data_connector",
+            "compute_engine",
+            "worker_engine",
+            "bridge_channel"
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "description": "Plugin provenance: builtin, vetted, or community.",
+          "enum": ["builtin", "vetted", "community"]
+        },
+        "boot_layer": {
+          "type": "string",
+          "description": "Boot layer: compliance, core, bundled, or installed.",
+          "enum": ["compliance", "core", "bundled", "installed"]
+        },
+        "tier": {
+          "type": "string",
+          "description": "Capability tier: a (core), b (vetted), c (user-owned).",
+          "enum": ["a", "b", "c"]
+        },
+        "min_corvin_version": {
+          "type": "string",
+          "description": "Minimum CorvinOS version.",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "max_corvin_version": {
+          "oneOf": [
+            {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+            {"type": "null"}
+          ],
+          "description": "Maximum CorvinOS version (null = no upper bound)."
+        },
+        "dependencies": {
+          "type": "array",
+          "description": "List of plugin dependencies.",
+          "items": {
+            "type": "object",
+            "required": ["id", "version"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Required plugin ID."
+              },
+              "version": {
+                "type": "string",
+                "description": "Version constraint (>=, ^, ~, etc.)."
+              }
+            }
+          }
+        },
+        "permissions": {
+          "type": "object",
+          "description": "Permissions and risk profile.",
+          "additionalProperties": false,
+          "properties": {
+            "network_egress": {
+              "type": "array",
+              "description": "Allowed hostnames/domains for outbound access.",
+              "items": {"type": "string"}
+            },
+            "pii_risk": {
+              "type": "string",
+              "description": "PII risk level.",
+              "enum": ["none", "low", "medium", "high"]
+            },
+            "data_locality": {
+              "type": "string",
+              "description": "Where data is processed.",
+              "enum": ["local", "remote", "hybrid"]
+            },
+            "audit_logging": {
+              "type": "boolean",
+              "description": "Whether invocations are audit-logged."
+            }
+          }
+        },
+        "requires": {
+          "type": "array",
+          "description": "Python package dependencies.",
+          "items": {"type": "string"}
+        },
+        "keywords": {
+          "type": "array",
+          "description": "Search keywords.",
+          "items": {"type": "string"}
+        },
+        "categories": {
+          "type": "array",
+          "description": "Plugin categories.",
+          "items": {
+            "type": "string",
+            "enum": ["productivity", "communication", "data", "integration", "security", "utility"]
+          }
+        },
+        "supports_auto_update": {
+          "type": "boolean",
+          "description": "Whether plugin supports automatic updates."
+        },
+        "health_check_interval": {
+          "type": "integer",
+          "description": "Health check interval in seconds.",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "registered_at": {
+          "type": "string",
+          "description": "When plugin was registered (ISO 8601).",
+          "format": "date-time"
+        },
+        "directory": {
+          "type": "string",
+          "description": "Relative path to plugin directory in Corvin-Marketplace."
+        }
+      }
+    }
+  }
+}
