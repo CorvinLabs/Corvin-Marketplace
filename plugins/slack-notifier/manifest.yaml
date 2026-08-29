@@ -1,0 +1,64 @@
+# Slack Notifier Plugin Manifest
+# Forward audit events to Slack via incoming webhooks
+
+plugin: "1.0"
+
+# Identity
+id: "com.corvinlabs.slack-notifier"
+name: "Slack Notifier"
+version: "1.0.0"
+
+# Core metadata
+description: |
+  Notification backend plugin that forwards CorvinOS audit events to Slack.
+
+  Features:
+  - Sends audit events to Slack incoming webhooks
+  - Color-coded severity levels (debug, info, warning, error, critical)
+  - Configurable event filters and channel routing
+  - Health check monitoring (error rate tracking)
+  - Graceful handling of webhook failures (never crashes core)
+
+author: "CorvinOS Team"
+email: "plugins@corvin-labs.com"
+license: "Apache-2.0"
+homepage: "https://github.com/CorvinLabs/Corvin-Marketplace"
+repository: "https://github.com/CorvinLabs/Corvin-Marketplace"
+
+# Implementation
+entry_point: "plugin.py::SlackNotifierPlugin"
+plugin_type: "notification_backend"
+
+# CorvinOS integration
+origin: "builtin"
+boot_layer: "bundled"
+
+# Compatibility
+min_corvin_version: "0.10.0"
+max_corvin_version: null
+
+# Permissions & risk profile
+permissions:
+  network_egress: ["hooks.slack.com"]
+  pii_risk: "low"                    # Webhook URLs contain PII; events may too
+  data_locality: "remote"            # Sends data to Slack (external service)
+  audit_logging: true
+
+# Python package dependencies (requirements.txt style)
+requires:
+  - "requests>=2.25.0"
+
+# Metadata for discovery
+keywords:
+  - "slack"
+  - "notification"
+  - "webhook"
+  - "audit"
+  - "logging"
+
+categories:
+  - "communication"
+  - "integration"
+
+supports_auto_update: true
+health_check_interval: 5
