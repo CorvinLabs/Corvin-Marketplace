@@ -15,7 +15,7 @@ configuration tree. No forking, no patching core, no restart in most cases.*
 
 This repository is a **community marketplace**: a curated, browsable collection of
 extensions the CorvinOS community builds and shares — personas, tools, skills,
-extension layers, messaging bridges, and full workflow bundles.
+extension layers, messaging bridges, full workflow bundles, and **plugins** (the newest extension surface).
 
 Each top-level folder maps to one of the **eight extension surfaces** CorvinOS
 officially supports. Every folder has its own `README.md` that explains, for that
@@ -27,6 +27,36 @@ surface: what it is, how to build one, the security/scope model, and where the
 > extension inside its structural security boundaries (sandbox, path-gate, license
 > gate, hash-chained audit log) — but trust is still yours to grant. See
 > [CONTRIBUTING.md](CONTRIBUTING.md) for the review + signing model.
+
+---
+
+## 🔌 Plugin-Central (ADR-0511)
+
+Starting with Phase 4, plugins are organized hierarchically:
+
+```
+marketplace/
+├── buildin/          → 5 Core Plugins (Memory, Security, Data, Observability, Integration)
+├── contributor/      → 5+ Community Plugins
+├── docs/
+│   ├── marketplace/index.json
+│   └── stats/dashboard.html
+└── plugins/          → Legacy plugin directory (Phase 3)
+```
+
+### Buildin (Core System)
+- **memory-plugin** — Vector embeddings & semantic search
+- **security-compliance** — Audit, secrets, compliance gates
+- **data-processing** — CSV/JSON/Parquet processing
+- **observability** — Metrics, logs, tracing
+- **integration-hub** — APIs, webhooks, connectors
+
+### Community (Contributions)
+- **nlp-toolkit** — NLP processing, sentiment analysis
+- **sql-expert** — SQL optimization, query analysis
+- **cloud-deployer** — AWS, GCP, Azure, K8s
+- **document-analyzer** — PDF, Word, Excel, OCR
+- **web-scraper** — Web scraping, HTML parsing
 
 ---
 
@@ -54,10 +84,11 @@ surface: what it is, how to build one, the security/scope model, and where the
 - 🏛️ **Architecture & layer stack**:
   [docs/architecture.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/architecture.md)
   · [layer-summary.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/claude-ref/layer-summary.md)
+- 📊 **Live Stats & Dashboard**: [Stats Dashboard](docs/stats/dashboard.html)
 
 ## The core idea: drop-in, hot-reload, self-grading
 
-1. **Drop a file** into the right place (a persona JSON, a skill Markdown, a tool JSON).
+1. **Drop a file** into the right place (a persona JSON, a skill Markdown, a tool JSON, or a plugin directory).
 2. CorvinOS **reads it on the next message** — most surfaces need no restart.
 3. Every extension event is written to the **hash-chained audit log** — nothing happens silently.
 4. Skills and tools are **graded against real usage** and automatically **promoted**
@@ -75,6 +106,8 @@ surface: what it is, how to build one, the security/scope model, and where the
 ## Links
 
 - **CorvinOS** — the platform: <https://github.com/CorvinLabs/CorvinOS>
+- **Marketplace** — this repo: <https://github.com/CorvinLabs/Corvin-Marketplace>
+- **Stats Dashboard** — <https://corvinlabs.github.io/Corvin-Marketplace/stats/>
 - **Website** — <https://corvin-labs.com>
 - **License** — [MIT](LICENSE)
 
