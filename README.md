@@ -1,116 +1,92 @@
-<div align="center">
+# CorvinOS Plugin Marketplace
 
-# 🛒 Corvin Marketplace
+**Status:** Phase 1 — Foundation (Week 1 complete)
 
-**The community hub for extending [CorvinOS](https://github.com/CorvinLabs/CorvinOS).**
-
-*CorvinOS is a platform, not a product — you extend it by dropping files into a
-configuration tree. No forking, no patching core, no restart in most cases.*
-
-</div>
+This directory contains the CorvinOS Plugin Marketplace infrastructure.
 
 ---
 
-## What this is
-
-This repository is a **community marketplace**: a curated, browsable collection of
-extensions the CorvinOS community builds and shares — personas, tools, skills,
-extension layers, messaging bridges, full workflow bundles, and **plugins** (the newest extension surface).
-
-Each top-level folder maps to one of the **eight extension surfaces** CorvinOS
-officially supports. Every folder has its own `README.md` that explains, for that
-surface: what it is, how to build one, the security/scope model, and where the
-**canonical documentation** lives in the CorvinOS repo.
-
-> ⚠️ **Community content.** Extensions here are contributed by the community and are
-> **not** part of the CorvinOS core. Review anything you install. CorvinOS runs every
-> extension inside its structural security boundaries (sandbox, path-gate, license
-> gate, hash-chained audit log) — but trust is still yours to grant. See
-> [CONTRIBUTING.md](CONTRIBUTING.md) for the review + signing model.
-
----
-
-## 🔌 Plugin-Central (ADR-0511)
-
-Starting with Phase 4, plugins are organized hierarchically:
+## Directory Structure
 
 ```
-marketplace/
-├── buildin/          → 5 Core Plugins (Memory, Security, Data, Observability, Integration)
-├── contributor/      → 5+ Community Plugins
-├── docs/
-│   ├── marketplace/index.json
-│   └── stats/dashboard.html
-└── plugins/          → Legacy plugin directory (Phase 3)
+operator/marketplace/
+├── README.md                    ← This file
+├── plugins/                     ← Plugin storage
+│   ├── buildin/                 (Apache 2.0 + CLA)
+│   │   ├── memory/
+│   │   ├── security_compliance/
+│   │   ├── integration/
+│   │   ├── data_processing/
+│   │   └── observability/
+│   └── contributor/             (MIT)
+│       └── [same categories]
+├── extensions/                  ← Other extensions
+│   ├── skills/
+│   ├── tools/
+│   ├── connectors/
+│   └── layers/
+├── schemas/                     ← JSON schemas
+│   └── plugin-schema.json       (plugin manifest schema)
+├── templates/                   ← CLA/MIT templates
+│   ├── BUILDIN_PLUGIN_CLA.md
+│   └── CONTRIBUTOR_PLUGIN_MIT.md
+└── index/                       ← Generated indices (Week 2)
+    ├── plugins.json
+    ├── skills.json
+    ├── tools.json
+    ├── connectors.json
+    └── layers.json
 ```
 
-### Buildin (Core System)
-- **memory-plugin** — Vector embeddings & semantic search
-- **security-compliance** — Audit, secrets, compliance gates
-- **data-processing** — CSV/JSON/Parquet processing
-- **observability** — Metrics, logs, tracing
-- **integration-hub** — APIs, webhooks, connectors
+---
 
-### Community (Contributions)
-- **nlp-toolkit** — NLP processing, sentiment analysis
-- **sql-expert** — SQL optimization, query analysis
-- **cloud-deployer** — AWS, GCP, Azure, K8s
-- **document-analyzer** — PDF, Word, Excel, OCR
-- **web-scraper** — Web scraping, HTML parsing
+## Plugin Categories
+
+All plugins must be categorized in one of 5 categories:
+
+| Category | Purpose | Examples |
+|----------|---------|----------|
+| **memory** | Session recall, user modeling, learning (L28) | CEL Session Memory, User Model |
+| **security_compliance** | Auth, audit, path-gate, flow guard (L16, L10, L34) | Consent Gate, Audit Chain |
+| **integration** | Hooks, cowork, bridges, MCP servers (L4, L38) | Bridge Handler, Cowork Hub |
+| **data_processing** | Artifact extraction, classification, anonymization (L25, L34, L36) | Artifact Extractor, Data Classifier |
+| **observability** | Telemetry, heartbeat, diagnostics (ACO L5) | Telemetry Collector, Health Monitor |
 
 ---
 
-## The eight extension surfaces
+## Plugin Manifest (plugin.json)
 
-| Folder | Surface | What it does | Hot-reload | Canonical docs |
-|---|---|---|---|---|
-| [`personas/`](personas/) | **Personas** | An AI identity: system prompt, tool set, engine choice, LDD preset | ✅ next message | [extending.md §1](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/extending.md) · [personas-and-routing.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/personas-and-routing.md) |
-| [`forge-tools/`](forge-tools/) | **Forge Tools** | Sandboxed, bwrap-isolated, MCP-callable Python tools | ✅ MCP hot-register | [forge.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/forge.md) |
-| [`skills/`](skills/) | **Skills** | Markdown instruction files injected into future turns; self-grading | ✅ per turn | [extending.md §3](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/extending.md) |
-| [`extension-layers/`](extension-layers/) | **Extension Layers** | Custom Layers (CLS): prompt + skills + tools + MCP server as a unit | ✅ per turn (Tier A) | [layer-cls.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/claude-ref/layer-cls.md) · [layer-extension-api.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/claude-ref/layer-extension-api.md) |
-| [`bridge-adapters/`](bridge-adapters/) | **Bridge Adapters** | New messaging channels (Matrix, Signal, Teams, custom) | 🔄 daemon restart | [extending.md §4](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/extending.md) |
-| [`workflow-packages/`](workflow-packages/) | **Workflow Packages** | Signed `.corvin-pkg` bundles of personas + tools + skills | ➖ one-time install | [awpkg.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/awpkg.md) |
-| [`agentic-compute/`](agentic-compute/) | **Agentic Compute** | Pluggable compute engines, Fabric backends, and optimisation strategies for dispatched iterative jobs | 🔄 operator-installed | [compute.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/compute.md) |
-| [`plugins/`](plugins/) | **Plugins** | Code-shaped extensions with a lifecycle: routers, notification/recall/audit/user backends. Run **in-process** — read the folder README before installing | 🔄 declared in tenant config | [plugin-architecture.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/plugin-architecture.md) |
+Every plugin requires a `plugin.json` manifest validated against `schemas/plugin-schema.json`.
+
+**Phase 1 Deliverables (✅ Complete):**
+- ✅ Schema: `operator/marketplace/schemas/plugin-schema.json`
+- ✅ CLA: `operator/marketplace/templates/BUILDIN_PLUGIN_CLA.md`
+- ✅ MIT License: `operator/marketplace/templates/CONTRIBUTOR_PLUGIN_MIT.md`
+- ✅ Developer Guide: `docs/plugin-developer-guide.md`
+- ✅ Tests: `tests/unit/marketplace/test_plugin_schema.py`
 
 ---
 
-## Start here
+## Contributing
 
-- 📖 **The extensibility hub** — one page, all five core surfaces:
-  [docs/extending.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/extending.md)
-- 🧩 **The plugin system model** (grading, promotion, scope ladder):
-  [docs/plugin-system.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/plugin-system.md)
-- 🏛️ **Architecture & layer stack**:
-  [docs/architecture.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/architecture.md)
-  · [layer-summary.md](https://github.com/CorvinLabs/CorvinOS/blob/main/docs/claude-ref/layer-summary.md)
-- 📊 **Live Stats & Dashboard**: [Stats Dashboard](docs/stats/dashboard.html)
+**Buildin Plugins:** Requires CLA, Apache 2.0, security audit, SLA guarantee  
+**Contributor Plugins:** MIT license, no CLA, community-driven
 
-## The core idea: drop-in, hot-reload, self-grading
-
-1. **Drop a file** into the right place (a persona JSON, a skill Markdown, a tool JSON, or a plugin directory).
-2. CorvinOS **reads it on the next message** — most surfaces need no restart.
-3. Every extension event is written to the **hash-chained audit log** — nothing happens silently.
-4. Skills and tools are **graded against real usage** and automatically **promoted**
-   through a scope ladder (`task → session → project → user`) when they earn their keep.
-
-## Contributing an extension
-
-1. Fork this repo.
-2. Add your extension to the matching folder, following that folder's `README.md` format.
-3. Include a short `README.md` next to your extension: what it does, requirements, and any secrets/network it needs.
-4. Open a Pull Request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the format, review, and CLA details.
+See `docs/plugin-developer-guide.md` for complete instructions.
 
 ---
 
-## Links
+## Phase Roadmap
 
-- **CorvinOS** — the platform: <https://github.com/CorvinLabs/CorvinOS>
-- **Marketplace** — this repo: <https://github.com/CorvinLabs/Corvin-Marketplace>
-- **Stats Dashboard** — <https://corvinlabs.github.io/Corvin-Marketplace/stats/>
-- **Website** — <https://corvin-labs.com>
-- **License** — [MIT](LICENSE)
+| Phase | Week | Goals | Status |
+|-------|------|-------|--------|
+| **Phase 1** | W1 | Schema, CLA/MIT, Dev Guide | ✅ COMPLETE |
+| **Phase 2** | W2 | Directory structure, Wheel pipeline | ⏳ PENDING |
+| **Phase 3** | W3 | Migrate 25+ core plugins | ⏳ PENDING |
+| **Phase 4** | W4 | Console API + UI redesign | ⏳ PENDING |
+| **Phase 5** | W5 | Community launch, first plugins | ⏳ PENDING |
 
-<div align="center">
-<sub>Built by the CorvinOS community · Extensions are community-maintained, not core.</sub>
-</div>
+---
+
+**Last Updated:** 2026-08-31  
+**Next:** Week 2 (Infrastructure)
