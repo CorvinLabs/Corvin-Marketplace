@@ -1,0 +1,18 @@
+{
+  "id": "com.corvinlabs.slack-notifier",
+  "name": "Slack Notifier",
+  "version": "1.2.0",
+  "category": "Integration",
+  "description": "Send notifications to Slack channels and threads. Integrates with CorvinOS workflows to post messages, updates, and alerts to Slack.",
+  "author": "CorvinLabs",
+  "repository_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/contributor/slack-notifier",
+  "tier": "contributor",
+  "boot_layer": "installed",
+  "rating_average": 4.6,
+  "install_count": 1247,
+  "dependencies": ["core.http", "core.auth"],
+  "tags": ["messaging", "notifications", "integration", "slack"],
+  "manifest_version": "1.0",
+  "supported_platforms": ["linux", "darwin", "windows"],
+  "minimum_corvin_version": "0.10.50"
+}
