@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-29T16:54:10.406471Z",
+  "generated_at": "2026-08-31T09:30:48.029136Z",
   "plugins": {
     "com.corvinlabs.slack-notifier": {
       "author": "CorvinOS Team",
@@ -48,6 +48,140 @@
       "supports_auto_update": true,
       "tier": null,
       "version": "1.0.0"
+    },
+    "com.corvinlabs.example-router-backend": {
+      "id": "com.corvinlabs.example-router-backend",
+      "name": "Example Router Backend",
+      "version": "1.0.0",
+      "plugin_type": "router_backend",
+      "boot_layer": "bundled",
+      "origin": "builtin",
+      "author": "CorvinOS Team",
+      "email": "plugins@corvin-labs.com",
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/CorvinLabs/Corvin-Marketplace",
+      "repository": "https://github.com/CorvinLabs/Corvin-Marketplace",
+      "directory": "plugins/example-router-backend",
+      "entry_point": "plugin.py::ExampleRouterBackendPlugin",
+      "description": "Example router backend plugin for routing messages to different handlers.",
+      "categories": [
+        "integration",
+        "routing"
+      ],
+      "keywords": [
+        "router",
+        "backend",
+        "example"
+      ],
+      "requires": [
+        "requests>=2.25.0"
+      ],
+      "min_corvin_version": "0.10.0",
+      "permissions": {
+        "network_egress": [
+          "internal"
+        ],
+        "pii_risk": "low",
+        "data_locality": "local"
+      },
+      "health_check_interval": 5,
+      "supports_auto_update": true,
+      "rating_average": 5.0,
+      "rating_count": 0,
+      "download_count": 0,
+      "listed": true,
+      "registered_at": "2026-08-31T09:30:48.029092Z"
+    },
+    "com.corvinlabs.example-analytics": {
+      "id": "com.corvinlabs.example-analytics",
+      "name": "Example Analytics Plugin",
+      "version": "1.0.0",
+      "plugin_type": "analytics_backend",
+      "boot_layer": "bundled",
+      "origin": "builtin",
+      "author": "CorvinOS Team",
+      "email": "plugins@corvin-labs.com",
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/CorvinLabs/Corvin-Marketplace",
+      "repository": "https://github.com/CorvinLabs/Corvin-Marketplace",
+      "directory": "plugins/example-analytics",
+      "entry_point": "plugin.py::ExampleAnalyticsPlugin",
+      "description": "Example analytics plugin for tracking and analyzing system metrics.",
+      "categories": [
+        "analytics",
+        "monitoring"
+      ],
+      "keywords": [
+        "analytics",
+        "metrics",
+        "example"
+      ],
+      "requires": [
+        "pandas>=1.0.0",
+        "numpy>=1.19.0"
+      ],
+      "min_corvin_version": "0.10.0",
+      "permissions": {
+        "network_egress": [
+          "metrics.internal"
+        ],
+        "pii_risk": "low",
+        "data_locality": "local"
+      },
+      "health_check_interval": 10,
+      "supports_auto_update": true,
+      "rating_average": 5.0,
+      "rating_count": 0,
+      "download_count": 0,
+      "listed": true,
+      "registered_at": "2026-08-31T09:30:48.029120Z"
+    },
+    "com.corvinlabs.example-webhook": {
+      "id": "com.corvinlabs.example-webhook",
+      "name": "Example Webhook Plugin",
+      "version": "1.0.0",
+      "plugin_type": "webhook_backend",
+      "boot_layer": "bundled",
+      "origin": "builtin",
+      "author": "CorvinOS Team",
+      "email": "plugins@corvin-labs.com",
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/CorvinLabs/Corvin-Marketplace",
+      "repository": "https://github.com/CorvinLabs/Corvin-Marketplace",
+      "directory": "plugins/example-webhook",
+      "entry_point": "plugin.py::ExampleWebhookPlugin",
+      "description": "Example webhook plugin that depends on Slack Notifier for sending webhooks.",
+      "categories": [
+        "integration",
+        "webhook"
+      ],
+      "keywords": [
+        "webhook",
+        "example",
+        "integration"
+      ],
+      "requires": [
+        "requests>=2.25.0"
+      ],
+      "min_corvin_version": "0.10.0",
+      "permissions": {
+        "network_egress": [
+          "webhooks.internal",
+          "hooks.slack.com"
+        ],
+        "pii_risk": "low",
+        "data_locality": "remote"
+      },
+      "health_check_interval": 5,
+      "supports_auto_update": true,
+      "rating_average": 5.0,
+      "rating_count": 0,
+      "download_count": 0,
+      "listed": true,
+      "registered_at": "2026-08-31T09:30:48.029129Z",
+      "depends_on": [
+        "com.corvinlabs.slack-notifier>=1.0.0"
+      ]
     }
   },
   "version": "1.0"
