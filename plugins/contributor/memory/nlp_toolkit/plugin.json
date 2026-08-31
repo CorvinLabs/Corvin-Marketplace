@@ -1,0 +1,44 @@
+{
+  "id": "plugin:contributor-memory-nlp_toolkit",
+  "type": "plugin",
+  "name": "NLP Toolkit",
+  "version": "2.0.0",
+  "author": "Community Contributor (nlp-collective.io)",
+  "license": "MIT",
+  "license_url": "https://github.com/community-plugin/nlp-toolkit/blob/main/LICENSE",
+  "tier": "contributor",
+  "category": "memory",
+  "description": "Natural Language Processing utilities for text analysis, named entity recognition, sentiment analysis, and semantic similarity. Plugs into session memory for context enhancement.",
+  "readme_url": "https://github.com/community-plugin/nlp-toolkit/blob/main/README.md",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": false,
+    "source_url": "https://github.com/community-plugin/nlp-toolkit"
+  },
+  "dependencies": ["spacy", "nltk", "transformers"],
+  "requires_version": ">=1.0.0",
+  "boot_layer": "installed",
+  "sla_level": "community",
+  "security_audit": {
+    "last_audit_date": null,
+    "auditor": null,
+    "findings": null,
+    "audit_report_url": null
+  },
+  "maintainer_url": "mailto:nlp-team@example.com",
+  "tags": ["memory", "nlp", "analysis"],
+  "configuration": {
+    "spacy_model": {
+      "type": "string",
+      "default": "en_core_web_sm",
+      "description": "Spacy model for NER and POS tagging"
+    },
+    "similarity_threshold": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "default": 0.7,
+      "description": "Threshold for semantic similarity (0.0-1.0)"
+    }
+  }
+}

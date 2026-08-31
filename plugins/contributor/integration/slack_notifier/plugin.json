@@ -1,0 +1,43 @@
+{
+  "id": "plugin:contributor-integration-slack_notifier",
+  "type": "plugin",
+  "name": "Slack Notifier",
+  "version": "1.0.0",
+  "author": "Community Contributor (example.com)",
+  "license": "MIT",
+  "license_url": "https://github.com/community-plugin/slack-notifier/blob/main/LICENSE",
+  "tier": "contributor",
+  "category": "integration",
+  "description": "Send notifications to Slack channels from Corvin tasks and workflows. Supports rich formatting, mentions, and threading.",
+  "readme_url": "https://github.com/community-plugin/slack-notifier/blob/main/README.md",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": false,
+    "source_url": "https://github.com/community-plugin/slack-notifier"
+  },
+  "dependencies": ["requests"],
+  "requires_version": ">=1.0.0",
+  "boot_layer": "installed",
+  "sla_level": "community",
+  "security_audit": {
+    "last_audit_date": null,
+    "auditor": null,
+    "findings": null,
+    "audit_report_url": null
+  },
+  "maintainer_url": "mailto:maintainer@example.com",
+  "tags": ["integration", "notifications"],
+  "configuration": {
+    "slack_webhook_url": {
+      "type": "string",
+      "required": true,
+      "description": "Slack incoming webhook URL for notifications"
+    },
+    "channel": {
+      "type": "string",
+      "required": false,
+      "default": "#corvin-notifications",
+      "description": "Default Slack channel (overridable per notification)"
+    }
+  }
+}

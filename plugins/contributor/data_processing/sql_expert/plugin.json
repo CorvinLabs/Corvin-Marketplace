@@ -1,0 +1,43 @@
+{
+  "id": "plugin:contributor-data_processing-sql_expert",
+  "type": "plugin",
+  "name": "SQL Expert Assistant",
+  "version": "1.1.0",
+  "author": "Community Contributor (db-community.org)",
+  "license": "MIT",
+  "license_url": "https://github.com/community-plugin/sql-expert/blob/main/LICENSE",
+  "tier": "contributor",
+  "category": "data_processing",
+  "description": "Advanced SQL query optimization and debugging. Analyzes execution plans, suggests indexes, and refactors complex queries for performance.",
+  "readme_url": "https://github.com/community-plugin/sql-expert/blob/main/README.md",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": false,
+    "source_url": "https://github.com/community-plugin/sql-expert"
+  },
+  "dependencies": ["sqlalchemy", "psycopg2"],
+  "requires_version": ">=1.0.0",
+  "boot_layer": "installed",
+  "sla_level": "community",
+  "security_audit": {
+    "last_audit_date": null,
+    "auditor": null,
+    "findings": null,
+    "audit_report_url": null
+  },
+  "maintainer_url": "mailto:sql-team@example.com",
+  "tags": ["data", "sql", "performance"],
+  "configuration": {
+    "database_url": {
+      "type": "string",
+      "required": true,
+      "description": "Database connection string for analysis"
+    },
+    "optimization_level": {
+      "type": "string",
+      "enum": ["basic", "intermediate", "advanced"],
+      "default": "intermediate",
+      "description": "Depth of optimization analysis"
+    }
+  }
+}
