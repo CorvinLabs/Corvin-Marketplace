@@ -1,0 +1,21 @@
+{
+  "id": "plugin:buildin-memory-vibe_session_history",
+  "type": "plugin",
+  "name": "Vibe Session History",
+  "version": "1.0.0",
+  "author": "Anthropic PBC",
+  "license": "Apache-2.0",
+  "tier": "buildin",
+  "category": "memory",
+  "description": "Persistent history of Vibe sessions (decisions, context snapshots, outcomes)",
+  "boot_layer": "bundled",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": true,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/vibe_session_history/src",
+    "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_session_history-1.0.0-py3-none-any.whl"
+  },
+  "tags": [
+    "memory"
+  ]
+}

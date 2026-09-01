@@ -1,0 +1,21 @@
+{
+  "id": "plugin:buildin-observability-autonomy_status_tracker",
+  "type": "plugin",
+  "name": "Autonomy Status Tracker",
+  "version": "1.0.0",
+  "author": "Anthropic PBC",
+  "license": "Apache-2.0",
+  "tier": "buildin",
+  "category": "observability",
+  "description": "Tracks autonomous session status, hardening state, and error recovery",
+  "boot_layer": "bundled",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": true,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/autonomy_status_tracker/src",
+    "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/autonomy_status_tracker-1.0.0-py3-none-any.whl"
+  },
+  "tags": [
+    "observability"
+  ]
+}

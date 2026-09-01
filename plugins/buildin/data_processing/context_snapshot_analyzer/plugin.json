@@ -1,0 +1,21 @@
+{
+  "id": "plugin:buildin-data_processing-context_snapshot_analyzer",
+  "type": "plugin",
+  "name": "Context Snapshot Analyzer",
+  "version": "1.0.0",
+  "author": "Anthropic PBC",
+  "license": "Apache-2.0",
+  "tier": "buildin",
+  "category": "data_processing",
+  "description": "Analyze context engineering snapshots for drift, leaks, and optimization opportunities",
+  "boot_layer": "bundled",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": true,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/data_processing/context_snapshot_analyzer/src",
+    "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/context_snapshot_analyzer-1.0.0-py3-none-any.whl"
+  },
+  "tags": [
+    "data_processing"
+  ]
+}

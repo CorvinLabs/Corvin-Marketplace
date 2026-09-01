@@ -1,0 +1,21 @@
+{
+  "id": "plugin:buildin-integration-brain_event_emitter",
+  "type": "plugin",
+  "name": "Brain Event Emitter",
+  "version": "1.0.0",
+  "author": "Anthropic PBC",
+  "license": "Apache-2.0",
+  "tier": "buildin",
+  "category": "integration",
+  "description": "Emit Brain subsystem events to event bus for downstream processing",
+  "boot_layer": "bundled",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": true,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/brain_event_emitter/src",
+    "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_event_emitter-1.0.0-py3-none-any.whl"
+  },
+  "tags": [
+    "integration"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "plugin:buildin-observability-vibe_context_telemetry",
+  "type": "plugin",
+  "name": "Vibe Context Telemetry",
+  "version": "1.0.0",
+  "author": "Anthropic PBC",
+  "license": "Apache-2.0",
+  "tier": "buildin",
+  "category": "observability",
+  "description": "Collects Vibe context engineering metrics (preservation, additive model)",
+  "boot_layer": "bundled",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": true,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_context_telemetry/src",
+    "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_context_telemetry-1.0.0-py3-none-any.whl"
+  },
+  "tags": [
+    "observability"
+  ]
+}

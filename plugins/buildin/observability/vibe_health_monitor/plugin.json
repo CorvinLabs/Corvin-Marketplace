@@ -1,0 +1,21 @@
+{
+  "id": "plugin:buildin-observability-vibe_health_monitor",
+  "type": "plugin",
+  "name": "Vibe Health Monitor",
+  "version": "1.0.0",
+  "author": "Anthropic PBC",
+  "license": "Apache-2.0",
+  "tier": "buildin",
+  "category": "observability",
+  "description": "Monitors Vibe session health metrics, latency, and state transitions",
+  "boot_layer": "bundled",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": true,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_health_monitor/src",
+    "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_health_monitor-1.0.0-py3-none-any.whl"
+  },
+  "tags": [
+    "observability"
+  ]
+}

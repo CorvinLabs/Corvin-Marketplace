@@ -1,0 +1,21 @@
+{
+  "id": "plugin:buildin-observability-brain_layer_monitor",
+  "type": "plugin",
+  "name": "Brain Layer Monitor",
+  "version": "1.0.0",
+  "author": "Anthropic PBC",
+  "license": "Apache-2.0",
+  "tier": "buildin",
+  "category": "observability",
+  "description": "Monitors all 13 Brain layers for anomalies and performance bottlenecks",
+  "boot_layer": "bundled",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": true,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/brain_layer_monitor/src",
+    "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_layer_monitor-1.0.0-py3-none-any.whl"
+  },
+  "tags": [
+    "observability"
+  ]
+}

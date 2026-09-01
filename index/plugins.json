@@ -1,7 +1,7 @@
 {
   "version": "2.0",
   "schema": "ADR-0511",
-  "plugin_count": 27,
+  "plugin_count": 41,
   "plugins": [
     {
       "id": "plugin:buildin-data_processing-anonymization_engine",
@@ -83,6 +83,27 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "data"
+      ]
+    },
+    {
+      "id": "plugin:buildin-data_processing-context_snapshot_analyzer",
+      "type": "plugin",
+      "name": "Context Snapshot Analyzer",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "data_processing",
+      "description": "Analyze context engineering snapshots for drift, leaks, and optimization opportunities",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/data_processing/context_snapshot_analyzer/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/context_snapshot_analyzer-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "data_processing"
       ]
     },
     {
@@ -254,6 +275,27 @@
       "last_updated": "2026-08-31T18:29:14.520537Z"
     },
     {
+      "id": "plugin:buildin-data_processing-vibe_metrics_aggregator",
+      "type": "plugin",
+      "name": "Vibe Metrics Aggregator",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "data_processing",
+      "description": "Aggregate Vibe session metrics across time windows and cohorts",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/data_processing/vibe_metrics_aggregator/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_metrics_aggregator-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "data_processing"
+      ]
+    },
+    {
       "id": "plugin:buildin-data_processing-wheel_content_inspector",
       "type": "plugin",
       "name": "Wheel Content Inspector",
@@ -292,6 +334,27 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "data"
+      ]
+    },
+    {
+      "id": "plugin:buildin-integration-brain_event_emitter",
+      "type": "plugin",
+      "name": "Brain Event Emitter",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "integration",
+      "description": "Emit Brain subsystem events to event bus for downstream processing",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/brain_event_emitter/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_event_emitter-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "integration"
       ]
     },
     {
@@ -506,6 +569,48 @@
       "last_updated": "2026-08-31T18:29:14.520288Z"
     },
     {
+      "id": "plugin:buildin-integration-vibe_webhook_dispatcher",
+      "type": "plugin",
+      "name": "Vibe Webhook Dispatcher",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "integration",
+      "description": "Dispatch Vibe session events to external webhooks (lifecycle, errors, milestones)",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/vibe_webhook_dispatcher/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_webhook_dispatcher-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "integration"
+      ]
+    },
+    {
+      "id": "plugin:buildin-memory-brain_learning_tracker",
+      "type": "plugin",
+      "name": "Brain Learning Tracker",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "memory",
+      "description": "Track Brain subsystem learning and preference evolution over time",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/brain_learning_tracker/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_learning_tracker-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "memory"
+      ]
+    },
+    {
       "id": "plugin:buildin-memory-cel_session_memory",
       "type": "plugin",
       "name": "CEL Session Memory",
@@ -669,6 +774,90 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "memory"
+      ]
+    },
+    {
+      "id": "plugin:buildin-memory-vibe_session_history",
+      "type": "plugin",
+      "name": "Vibe Session History",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "memory",
+      "description": "Persistent history of Vibe sessions (decisions, context snapshots, outcomes)",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/vibe_session_history/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_session_history-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "memory"
+      ]
+    },
+    {
+      "id": "plugin:buildin-observability-autonomy_status_tracker",
+      "type": "plugin",
+      "name": "Autonomy Status Tracker",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "observability",
+      "description": "Tracks autonomous session status, hardening state, and error recovery",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/autonomy_status_tracker/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/autonomy_status_tracker-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "observability"
+      ]
+    },
+    {
+      "id": "plugin:buildin-observability-brain_diagnostics",
+      "type": "plugin",
+      "name": "Brain Diagnostics Dashboard",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "observability",
+      "description": "Real-time diagnostics for Brain 13 subsystems (execution context, autonomy, etc.)",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/brain_diagnostics/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_diagnostics-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "observability"
+      ]
+    },
+    {
+      "id": "plugin:buildin-observability-brain_layer_monitor",
+      "type": "plugin",
+      "name": "Brain Layer Monitor",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "observability",
+      "description": "Monitors all 13 Brain layers for anomalies and performance bottlenecks",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/brain_layer_monitor/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_layer_monitor-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "observability"
       ]
     },
     {
@@ -877,6 +1066,69 @@
       ]
     },
     {
+      "id": "plugin:buildin-observability-vibe_context_telemetry",
+      "type": "plugin",
+      "name": "Vibe Context Telemetry",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "observability",
+      "description": "Collects Vibe context engineering metrics (preservation, additive model)",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_context_telemetry/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_context_telemetry-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "observability"
+      ]
+    },
+    {
+      "id": "plugin:buildin-observability-vibe_health_monitor",
+      "type": "plugin",
+      "name": "Vibe Health Monitor",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "observability",
+      "description": "Monitors Vibe session health metrics, latency, and state transitions",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_health_monitor/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_health_monitor-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "observability"
+      ]
+    },
+    {
+      "id": "plugin:buildin-observability-vibe_session_tracer",
+      "type": "plugin",
+      "name": "Vibe Session Tracer",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "observability",
+      "description": "Distributed tracing for Vibe session lifecycle and decision points",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_session_tracer/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_session_tracer-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "observability"
+      ]
+    },
+    {
       "id": "plugin:buildin-security_compliance-audit_backend",
       "type": "plugin",
       "name": "Audit Backend",
@@ -1001,6 +1253,27 @@
       "tags": [
         "security",
         "compliance"
+      ]
+    },
+    {
+      "id": "plugin:buildin-security_compliance-context_audit_trail",
+      "type": "plugin",
+      "name": "Context Audit Trail",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "security_compliance",
+      "description": "Detailed audit trail for context engineering (preservation, truncation, re-injection)",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/context_audit_trail/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/context_audit_trail-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "security_compliance"
       ]
     },
     {
@@ -1129,6 +1402,27 @@
         "compliance"
       ],
       "last_updated": "2026-08-31T18:29:14.520902Z"
+    },
+    {
+      "id": "plugin:buildin-security_compliance-vibe_decision_audit",
+      "type": "plugin",
+      "name": "Vibe Decision Audit",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "security_compliance",
+      "description": "Audit trail for Vibe session decisions, routing, and state changes",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/vibe_decision_audit/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_decision_audit-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "security_compliance"
+      ]
     }
   ],
   "by_id": {
@@ -1212,6 +1506,27 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "data"
+      ]
+    },
+    "plugin:buildin-data_processing-context_snapshot_analyzer": {
+      "id": "plugin:buildin-data_processing-context_snapshot_analyzer",
+      "type": "plugin",
+      "name": "Context Snapshot Analyzer",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "data_processing",
+      "description": "Analyze context engineering snapshots for drift, leaks, and optimization opportunities",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/data_processing/context_snapshot_analyzer/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/context_snapshot_analyzer-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "data_processing"
       ]
     },
     "plugin:buildin-data_processing-data_classification": {
@@ -1382,6 +1697,27 @@
       ],
       "last_updated": "2026-08-31T18:29:14.520537Z"
     },
+    "plugin:buildin-data_processing-vibe_metrics_aggregator": {
+      "id": "plugin:buildin-data_processing-vibe_metrics_aggregator",
+      "type": "plugin",
+      "name": "Vibe Metrics Aggregator",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "data_processing",
+      "description": "Aggregate Vibe session metrics across time windows and cohorts",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/data_processing/vibe_metrics_aggregator/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_metrics_aggregator-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "data_processing"
+      ]
+    },
     "plugin:buildin-data_processing-wheel_content_inspector": {
       "id": "plugin:buildin-data_processing-wheel_content_inspector",
       "type": "plugin",
@@ -1421,6 +1757,27 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "data"
+      ]
+    },
+    "plugin:buildin-integration-brain_event_emitter": {
+      "id": "plugin:buildin-integration-brain_event_emitter",
+      "type": "plugin",
+      "name": "Brain Event Emitter",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "integration",
+      "description": "Emit Brain subsystem events to event bus for downstream processing",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/brain_event_emitter/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_event_emitter-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "integration"
       ]
     },
     "plugin:buildin-integration-bridge_adapter": {
@@ -1634,6 +1991,48 @@
       ],
       "last_updated": "2026-08-31T18:29:14.520288Z"
     },
+    "plugin:buildin-integration-vibe_webhook_dispatcher": {
+      "id": "plugin:buildin-integration-vibe_webhook_dispatcher",
+      "type": "plugin",
+      "name": "Vibe Webhook Dispatcher",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "integration",
+      "description": "Dispatch Vibe session events to external webhooks (lifecycle, errors, milestones)",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/vibe_webhook_dispatcher/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_webhook_dispatcher-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "integration"
+      ]
+    },
+    "plugin:buildin-memory-brain_learning_tracker": {
+      "id": "plugin:buildin-memory-brain_learning_tracker",
+      "type": "plugin",
+      "name": "Brain Learning Tracker",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "memory",
+      "description": "Track Brain subsystem learning and preference evolution over time",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/brain_learning_tracker/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_learning_tracker-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "memory"
+      ]
+    },
     "plugin:buildin-memory-cel_session_memory": {
       "id": "plugin:buildin-memory-cel_session_memory",
       "type": "plugin",
@@ -1798,6 +2197,90 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "memory"
+      ]
+    },
+    "plugin:buildin-memory-vibe_session_history": {
+      "id": "plugin:buildin-memory-vibe_session_history",
+      "type": "plugin",
+      "name": "Vibe Session History",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "memory",
+      "description": "Persistent history of Vibe sessions (decisions, context snapshots, outcomes)",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/vibe_session_history/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_session_history-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "memory"
+      ]
+    },
+    "plugin:buildin-observability-autonomy_status_tracker": {
+      "id": "plugin:buildin-observability-autonomy_status_tracker",
+      "type": "plugin",
+      "name": "Autonomy Status Tracker",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "observability",
+      "description": "Tracks autonomous session status, hardening state, and error recovery",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/autonomy_status_tracker/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/autonomy_status_tracker-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "observability"
+      ]
+    },
+    "plugin:buildin-observability-brain_diagnostics": {
+      "id": "plugin:buildin-observability-brain_diagnostics",
+      "type": "plugin",
+      "name": "Brain Diagnostics Dashboard",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "observability",
+      "description": "Real-time diagnostics for Brain 13 subsystems (execution context, autonomy, etc.)",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/brain_diagnostics/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_diagnostics-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "observability"
+      ]
+    },
+    "plugin:buildin-observability-brain_layer_monitor": {
+      "id": "plugin:buildin-observability-brain_layer_monitor",
+      "type": "plugin",
+      "name": "Brain Layer Monitor",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "observability",
+      "description": "Monitors all 13 Brain layers for anomalies and performance bottlenecks",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/brain_layer_monitor/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_layer_monitor-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "observability"
       ]
     },
     "plugin:buildin-observability-diagnostics_dashboard": {
@@ -2005,6 +2488,69 @@
         "observability"
       ]
     },
+    "plugin:buildin-observability-vibe_context_telemetry": {
+      "id": "plugin:buildin-observability-vibe_context_telemetry",
+      "type": "plugin",
+      "name": "Vibe Context Telemetry",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "observability",
+      "description": "Collects Vibe context engineering metrics (preservation, additive model)",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_context_telemetry/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_context_telemetry-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "observability"
+      ]
+    },
+    "plugin:buildin-observability-vibe_health_monitor": {
+      "id": "plugin:buildin-observability-vibe_health_monitor",
+      "type": "plugin",
+      "name": "Vibe Health Monitor",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "observability",
+      "description": "Monitors Vibe session health metrics, latency, and state transitions",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_health_monitor/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_health_monitor-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "observability"
+      ]
+    },
+    "plugin:buildin-observability-vibe_session_tracer": {
+      "id": "plugin:buildin-observability-vibe_session_tracer",
+      "type": "plugin",
+      "name": "Vibe Session Tracer",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "observability",
+      "description": "Distributed tracing for Vibe session lifecycle and decision points",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_session_tracer/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_session_tracer-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "observability"
+      ]
+    },
     "plugin:buildin-security_compliance-audit_backend": {
       "id": "plugin:buildin-security_compliance-audit_backend",
       "type": "plugin",
@@ -2130,6 +2676,27 @@
       "tags": [
         "security",
         "compliance"
+      ]
+    },
+    "plugin:buildin-security_compliance-context_audit_trail": {
+      "id": "plugin:buildin-security_compliance-context_audit_trail",
+      "type": "plugin",
+      "name": "Context Audit Trail",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "security_compliance",
+      "description": "Detailed audit trail for context engineering (preservation, truncation, re-injection)",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/context_audit_trail/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/context_audit_trail-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "security_compliance"
       ]
     },
     "plugin:buildin-security_compliance-flow_guard": {
@@ -2258,6 +2825,27 @@
         "compliance"
       ],
       "last_updated": "2026-08-31T18:29:14.520902Z"
+    },
+    "plugin:buildin-security_compliance-vibe_decision_audit": {
+      "id": "plugin:buildin-security_compliance-vibe_decision_audit",
+      "type": "plugin",
+      "name": "Vibe Decision Audit",
+      "version": "1.0.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "tier": "buildin",
+      "category": "security_compliance",
+      "description": "Audit trail for Vibe session decisions, routing, and state changes",
+      "boot_layer": "bundled",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": true,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/vibe_decision_audit/src",
+        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_decision_audit-1.0.0-py3-none-any.whl"
+      },
+      "tags": [
+        "security_compliance"
+      ]
     }
   },
   "by_category": {
@@ -2342,6 +2930,27 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "data"
+        ]
+      },
+      {
+        "id": "plugin:buildin-data_processing-context_snapshot_analyzer",
+        "type": "plugin",
+        "name": "Context Snapshot Analyzer",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "data_processing",
+        "description": "Analyze context engineering snapshots for drift, leaks, and optimization opportunities",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/data_processing/context_snapshot_analyzer/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/context_snapshot_analyzer-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "data_processing"
         ]
       },
       {
@@ -2513,6 +3122,27 @@
         "last_updated": "2026-08-31T18:29:14.520537Z"
       },
       {
+        "id": "plugin:buildin-data_processing-vibe_metrics_aggregator",
+        "type": "plugin",
+        "name": "Vibe Metrics Aggregator",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "data_processing",
+        "description": "Aggregate Vibe session metrics across time windows and cohorts",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/data_processing/vibe_metrics_aggregator/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_metrics_aggregator-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "data_processing"
+        ]
+      },
+      {
         "id": "plugin:buildin-data_processing-wheel_content_inspector",
         "type": "plugin",
         "name": "Wheel Content Inspector",
@@ -2555,6 +3185,27 @@
       }
     ],
     "integration": [
+      {
+        "id": "plugin:buildin-integration-brain_event_emitter",
+        "type": "plugin",
+        "name": "Brain Event Emitter",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "integration",
+        "description": "Emit Brain subsystem events to event bus for downstream processing",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/brain_event_emitter/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_event_emitter-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "integration"
+        ]
+      },
       {
         "id": "plugin:buildin-integration-bridge_adapter",
         "type": "plugin",
@@ -2765,9 +3416,51 @@
           "compliance"
         ],
         "last_updated": "2026-08-31T18:29:14.520288Z"
+      },
+      {
+        "id": "plugin:buildin-integration-vibe_webhook_dispatcher",
+        "type": "plugin",
+        "name": "Vibe Webhook Dispatcher",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "integration",
+        "description": "Dispatch Vibe session events to external webhooks (lifecycle, errors, milestones)",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/vibe_webhook_dispatcher/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_webhook_dispatcher-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "integration"
+        ]
       }
     ],
     "memory": [
+      {
+        "id": "plugin:buildin-memory-brain_learning_tracker",
+        "type": "plugin",
+        "name": "Brain Learning Tracker",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "memory",
+        "description": "Track Brain subsystem learning and preference evolution over time",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/brain_learning_tracker/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_learning_tracker-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "memory"
+        ]
+      },
       {
         "id": "plugin:buildin-memory-cel_session_memory",
         "type": "plugin",
@@ -2933,9 +3626,93 @@
         "tags": [
           "memory"
         ]
+      },
+      {
+        "id": "plugin:buildin-memory-vibe_session_history",
+        "type": "plugin",
+        "name": "Vibe Session History",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "memory",
+        "description": "Persistent history of Vibe sessions (decisions, context snapshots, outcomes)",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/vibe_session_history/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_session_history-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "memory"
+        ]
       }
     ],
     "observability": [
+      {
+        "id": "plugin:buildin-observability-autonomy_status_tracker",
+        "type": "plugin",
+        "name": "Autonomy Status Tracker",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "observability",
+        "description": "Tracks autonomous session status, hardening state, and error recovery",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/autonomy_status_tracker/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/autonomy_status_tracker-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "observability"
+        ]
+      },
+      {
+        "id": "plugin:buildin-observability-brain_diagnostics",
+        "type": "plugin",
+        "name": "Brain Diagnostics Dashboard",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "observability",
+        "description": "Real-time diagnostics for Brain 13 subsystems (execution context, autonomy, etc.)",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/brain_diagnostics/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_diagnostics-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "observability"
+        ]
+      },
+      {
+        "id": "plugin:buildin-observability-brain_layer_monitor",
+        "type": "plugin",
+        "name": "Brain Layer Monitor",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "observability",
+        "description": "Monitors all 13 Brain layers for anomalies and performance bottlenecks",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/brain_layer_monitor/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_layer_monitor-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "observability"
+        ]
+      },
       {
         "id": "plugin:buildin-observability-diagnostics_dashboard",
         "type": "plugin",
@@ -3137,6 +3914,69 @@
           "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
         },
         "maintainer_url": "mailto:plugins@anthropic.com",
+        "tags": [
+          "observability"
+        ]
+      },
+      {
+        "id": "plugin:buildin-observability-vibe_context_telemetry",
+        "type": "plugin",
+        "name": "Vibe Context Telemetry",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "observability",
+        "description": "Collects Vibe context engineering metrics (preservation, additive model)",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_context_telemetry/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_context_telemetry-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "observability"
+        ]
+      },
+      {
+        "id": "plugin:buildin-observability-vibe_health_monitor",
+        "type": "plugin",
+        "name": "Vibe Health Monitor",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "observability",
+        "description": "Monitors Vibe session health metrics, latency, and state transitions",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_health_monitor/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_health_monitor-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "observability"
+        ]
+      },
+      {
+        "id": "plugin:buildin-observability-vibe_session_tracer",
+        "type": "plugin",
+        "name": "Vibe Session Tracer",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "observability",
+        "description": "Distributed tracing for Vibe session lifecycle and decision points",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_session_tracer/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_session_tracer-1.0.0-py3-none-any.whl"
+        },
         "tags": [
           "observability"
         ]
@@ -3271,6 +4111,27 @@
         ]
       },
       {
+        "id": "plugin:buildin-security_compliance-context_audit_trail",
+        "type": "plugin",
+        "name": "Context Audit Trail",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "security_compliance",
+        "description": "Detailed audit trail for context engineering (preservation, truncation, re-injection)",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/context_audit_trail/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/context_audit_trail-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "security_compliance"
+        ]
+      },
+      {
         "id": "plugin:buildin-security_compliance-flow_guard",
         "type": "plugin",
         "name": "Flow Guard",
@@ -3396,6 +4257,27 @@
           "compliance"
         ],
         "last_updated": "2026-08-31T18:29:14.520902Z"
+      },
+      {
+        "id": "plugin:buildin-security_compliance-vibe_decision_audit",
+        "type": "plugin",
+        "name": "Vibe Decision Audit",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "security_compliance",
+        "description": "Audit trail for Vibe session decisions, routing, and state changes",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/vibe_decision_audit/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_decision_audit-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "security_compliance"
+        ]
       }
     ]
   },
@@ -3481,6 +4363,27 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "data"
+        ]
+      },
+      {
+        "id": "plugin:buildin-data_processing-context_snapshot_analyzer",
+        "type": "plugin",
+        "name": "Context Snapshot Analyzer",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "data_processing",
+        "description": "Analyze context engineering snapshots for drift, leaks, and optimization opportunities",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/data_processing/context_snapshot_analyzer/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/context_snapshot_analyzer-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "data_processing"
         ]
       },
       {
@@ -3652,6 +4555,27 @@
         "last_updated": "2026-08-31T18:29:14.520537Z"
       },
       {
+        "id": "plugin:buildin-data_processing-vibe_metrics_aggregator",
+        "type": "plugin",
+        "name": "Vibe Metrics Aggregator",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "data_processing",
+        "description": "Aggregate Vibe session metrics across time windows and cohorts",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/data_processing/vibe_metrics_aggregator/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_metrics_aggregator-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "data_processing"
+        ]
+      },
+      {
         "id": "plugin:buildin-data_processing-wheel_content_inspector",
         "type": "plugin",
         "name": "Wheel Content Inspector",
@@ -3690,6 +4614,27 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "data"
+        ]
+      },
+      {
+        "id": "plugin:buildin-integration-brain_event_emitter",
+        "type": "plugin",
+        "name": "Brain Event Emitter",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "integration",
+        "description": "Emit Brain subsystem events to event bus for downstream processing",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/brain_event_emitter/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_event_emitter-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "integration"
         ]
       },
       {
@@ -3904,6 +4849,48 @@
         "last_updated": "2026-08-31T18:29:14.520288Z"
       },
       {
+        "id": "plugin:buildin-integration-vibe_webhook_dispatcher",
+        "type": "plugin",
+        "name": "Vibe Webhook Dispatcher",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "integration",
+        "description": "Dispatch Vibe session events to external webhooks (lifecycle, errors, milestones)",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/vibe_webhook_dispatcher/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_webhook_dispatcher-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "integration"
+        ]
+      },
+      {
+        "id": "plugin:buildin-memory-brain_learning_tracker",
+        "type": "plugin",
+        "name": "Brain Learning Tracker",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "memory",
+        "description": "Track Brain subsystem learning and preference evolution over time",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/brain_learning_tracker/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_learning_tracker-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "memory"
+        ]
+      },
+      {
         "id": "plugin:buildin-memory-cel_session_memory",
         "type": "plugin",
         "name": "CEL Session Memory",
@@ -4067,6 +5054,90 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "memory"
+        ]
+      },
+      {
+        "id": "plugin:buildin-memory-vibe_session_history",
+        "type": "plugin",
+        "name": "Vibe Session History",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "memory",
+        "description": "Persistent history of Vibe sessions (decisions, context snapshots, outcomes)",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/vibe_session_history/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_session_history-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "memory"
+        ]
+      },
+      {
+        "id": "plugin:buildin-observability-autonomy_status_tracker",
+        "type": "plugin",
+        "name": "Autonomy Status Tracker",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "observability",
+        "description": "Tracks autonomous session status, hardening state, and error recovery",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/autonomy_status_tracker/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/autonomy_status_tracker-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "observability"
+        ]
+      },
+      {
+        "id": "plugin:buildin-observability-brain_diagnostics",
+        "type": "plugin",
+        "name": "Brain Diagnostics Dashboard",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "observability",
+        "description": "Real-time diagnostics for Brain 13 subsystems (execution context, autonomy, etc.)",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/brain_diagnostics/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_diagnostics-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "observability"
+        ]
+      },
+      {
+        "id": "plugin:buildin-observability-brain_layer_monitor",
+        "type": "plugin",
+        "name": "Brain Layer Monitor",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "observability",
+        "description": "Monitors all 13 Brain layers for anomalies and performance bottlenecks",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/brain_layer_monitor/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/brain_layer_monitor-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "observability"
         ]
       },
       {
@@ -4275,6 +5346,69 @@
         ]
       },
       {
+        "id": "plugin:buildin-observability-vibe_context_telemetry",
+        "type": "plugin",
+        "name": "Vibe Context Telemetry",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "observability",
+        "description": "Collects Vibe context engineering metrics (preservation, additive model)",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_context_telemetry/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_context_telemetry-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "observability"
+        ]
+      },
+      {
+        "id": "plugin:buildin-observability-vibe_health_monitor",
+        "type": "plugin",
+        "name": "Vibe Health Monitor",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "observability",
+        "description": "Monitors Vibe session health metrics, latency, and state transitions",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_health_monitor/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_health_monitor-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "observability"
+        ]
+      },
+      {
+        "id": "plugin:buildin-observability-vibe_session_tracer",
+        "type": "plugin",
+        "name": "Vibe Session Tracer",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "observability",
+        "description": "Distributed tracing for Vibe session lifecycle and decision points",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_session_tracer/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_session_tracer-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "observability"
+        ]
+      },
+      {
         "id": "plugin:buildin-security_compliance-audit_backend",
         "type": "plugin",
         "name": "Audit Backend",
@@ -4399,6 +5533,27 @@
         "tags": [
           "security",
           "compliance"
+        ]
+      },
+      {
+        "id": "plugin:buildin-security_compliance-context_audit_trail",
+        "type": "plugin",
+        "name": "Context Audit Trail",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "security_compliance",
+        "description": "Detailed audit trail for context engineering (preservation, truncation, re-injection)",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/context_audit_trail/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/context_audit_trail-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "security_compliance"
         ]
       },
       {
@@ -4527,8 +5682,29 @@
           "compliance"
         ],
         "last_updated": "2026-08-31T18:29:14.520902Z"
+      },
+      {
+        "id": "plugin:buildin-security_compliance-vibe_decision_audit",
+        "type": "plugin",
+        "name": "Vibe Decision Audit",
+        "version": "1.0.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "tier": "buildin",
+        "category": "security_compliance",
+        "description": "Audit trail for Vibe session decisions, routing, and state changes",
+        "boot_layer": "bundled",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": true,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/vibe_decision_audit/src",
+          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_decision_audit-1.0.0-py3-none-any.whl"
+        },
+        "tags": [
+          "security_compliance"
+        ]
       }
     ]
   },
-  "generated_at": "2026-09-01T10:04:07.191802Z"
+  "generated_at": "2026-09-01T10:31:18.668846+00:00"
 }

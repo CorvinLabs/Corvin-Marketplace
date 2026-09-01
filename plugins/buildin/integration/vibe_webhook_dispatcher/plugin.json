@@ -1,0 +1,21 @@
+{
+  "id": "plugin:buildin-integration-vibe_webhook_dispatcher",
+  "type": "plugin",
+  "name": "Vibe Webhook Dispatcher",
+  "version": "1.0.0",
+  "author": "Anthropic PBC",
+  "license": "Apache-2.0",
+  "tier": "buildin",
+  "category": "integration",
+  "description": "Dispatch Vibe session events to external webhooks (lifecycle, errors, milestones)",
+  "boot_layer": "bundled",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": true,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/vibe_webhook_dispatcher/src",
+    "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_webhook_dispatcher-1.0.0-py3-none-any.whl"
+  },
+  "tags": [
+    "integration"
+  ]
+}
