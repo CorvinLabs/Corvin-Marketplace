@@ -1,0 +1,1 @@
+"""Plugin: Bridge adapter framework"""
