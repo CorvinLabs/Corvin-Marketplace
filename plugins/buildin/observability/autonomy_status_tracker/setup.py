@@ -14,4 +14,7 @@ setup(
     install_requires=[
         # Vibe/Brain plugin depends on core CorvinOS only
     ],
+    extras_require={
+        "dev": ["pytest", "pytest-asyncio"],
+    },
 )

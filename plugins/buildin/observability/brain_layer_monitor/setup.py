@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 setup(
     name="brain_layer_monitor",
     version="1.0.0",
-    description="Monitors all 13 Brain layers for anomalies and performance bottlenecks",
+    description="Tracks individual layer performance and state",
     author="Anthropic PBC",
     license="Apache-2.0",
     package_dir={"": "src"},
@@ -14,4 +14,7 @@ setup(
     install_requires=[
         # Vibe/Brain plugin depends on core CorvinOS only
     ],
+    extras_require={
+        "dev": ["pytest", "pytest-asyncio"],
+    },
 )

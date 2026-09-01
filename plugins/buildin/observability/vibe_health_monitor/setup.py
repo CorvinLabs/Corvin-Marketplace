@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 setup(
     name="vibe_health_monitor",
     version="1.0.0",
-    description="Monitors Vibe session health metrics, latency, and state transitions",
+    description="Monitors Vibe session health metrics",
     author="Anthropic PBC",
     license="Apache-2.0",
     package_dir={"": "src"},
@@ -14,4 +14,7 @@ setup(
     install_requires=[
         # Vibe/Brain plugin depends on core CorvinOS only
     ],
+    extras_require={
+        "dev": ["pytest", "pytest-asyncio"],
+    },
 )
