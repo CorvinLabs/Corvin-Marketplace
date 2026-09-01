@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <style>
+      .box { fill: #e8f4f8; stroke: #1a5a7a; stroke-width: 2; }
+      .title { font-size: 20px; font-weight: bold; fill: #1a5a7a; }
+      .label { font-size: 14px; fill: #333; }
+      .arrow { stroke: #1a5a7a; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .latency { font-size: 12px; fill: #d9534f; font-weight: bold; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#1a5a7a" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="400" y="40" text-anchor="middle" class="title">{PLUGIN_NAME} Architecture</text>
+
+  <!-- Event Sources (top) -->
+  <rect x="50" y="80" width="150" height="60" class="box" rx="5"/>
+  <text x="125" y="110" text-anchor="middle" class="label">Event Source 1</text>
+
+  <rect x="250" y="80" width="150" height="60" class="box" rx="5"/>
+  <text x="325" y="110" text-anchor="middle" class="label">Event Source 2</text>
+
+  <rect x="450" y="80" width="150" height="60" class="box" rx="5"/>
+  <text x="525" y="110" text-anchor="middle" class="label">Metrics Feed</text>
+
+  <!-- Arrows down -->
+  <path d="M 125 140 L 125 180" class="arrow"/>
+  <path d="M 325 140 L 325 180" class="arrow"/>
+  <path d="M 525 140 L 525 180" class="arrow"/>
+
+  <!-- Plugin Core -->
+  <rect x="150" y="180" width="500" height="120" class="box" rx="5"/>
+  <text x="400" y="210" text-anchor="middle" class="title">{PluginClassName}</text>
+  <text x="400" y="240" text-anchor="middle" class="label">Async Event Queue</text>
+  <text x="400" y="265" text-anchor="middle" class="latency">&lt;1ms latency</text>
+
+  <!-- Latency annotation -->
+  <text x="680" y="245" class="latency">⚡ Critical Path</text>
+
+  <!-- Arrows down -->
+  <path d="M 400 300 L 400 340" class="arrow"/>
+
+  <!-- Event Buffer -->
+  <rect x="200" y="340" width="400" height="80" class="box" rx="5"/>
+  <text x="400" y="370" text-anchor="middle" class="label">Circular Event Buffer</text>
+  <text x="400" y="395" text-anchor="middle" class="label">size: 10k events (GC on full)</text>
+
+  <!-- Arrows down -->
+  <path d="M 400 420 L 400 460" class="arrow"/>
+
+  <!-- Diagnostics API -->
+  <rect x="100" y="460" width="250" height="100" class="box" rx="5"/>
+  <text x="225" y="490" text-anchor="middle" class="label">get_diagnostics()</text>
+  <text x="225" y="515" text-anchor="middle" class="label">get_event_count()</text>
+  <text x="225" y="540" text-anchor="middle" class="label">health_check()</text>
+
+  <!-- Status Output -->
+  <rect x="450" y="460" width="250" height="100" class="box" rx="5"/>
+  <text x="575" y="490" text-anchor="middle" class="label">Diagnostic Snapshot</text>
+  <text x="575" y="515" text-anchor="middle" class="label">status: operational</text>
+  <text x="575" y="540" text-anchor="middle" class="label">events_processed: N</text>
+</svg>
