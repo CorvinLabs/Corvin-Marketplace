@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <style>
+      .box { fill: #e8f4f8; stroke: #1a5a7a; stroke-width: 2; }
+      .title { font-size: 20px; font-weight: bold; fill: #1a5a7a; }
+      .label { font-size: 12px; fill: #333; }
+      .layer { font-size: 10px; fill: #1a5a7a; }
+      .arrow { stroke: #1a5a7a; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .latency { font-size: 12px; fill: #d9534f; font-weight: bold; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#1a5a7a" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="400" y="40" text-anchor="middle" class="title">Brain Layer Monitor Architecture</text>
+
+  <!-- Layer Events -->
+  <rect x="30" y="80" width="350" height="60" class="box" rx="5"/>
+  <text x="205" y="105" text-anchor="middle" class="label">Layer Events (L1-L44)</text>
+  <text x="205" y="125" text-anchor="middle" class="layer">entry_timestamp, exit_timestamp, duration_ms</text>
+
+  <!-- Arrows down -->
+  <path d="M 205 140 L 205 180" class="arrow"/>
+
+  <!-- Plugin Core -->
+  <rect x="50" y="180" width="700" height="100" class="box" rx="5"/>
+  <text x="400" y="210" text-anchor="middle" class="title">BrainLayerMonitor</text>
+  <text x="400" y="235" text-anchor="middle" class="label">Latency Histograms + SLA Validator</text>
+  <text x="400" y="260" text-anchor="middle" class="latency">&lt;0.05ms latency per layer</text>
+
+  <!-- Latency annotation -->
+  <text x="680" y="235" class="latency">⚡ Critical</text>
+
+  <!-- Arrow down -->
+  <path d="M 400 280 L 400 320" class="arrow"/>
+
+  <!-- Histogram Buffer -->
+  <rect x="50" y="320" width="700" height="80" class="box" rx="5"/>
+  <text x="400" y="345" text-anchor="middle" class="label">Per-Layer Histogram Buffers</text>
+  <text x="400" y="370" text-anchor="middle" class="label">Percentiles: p50, p95, p99 for each of 44 layers</text>
+
+  <!-- Arrows down -->
+  <path d="M 400 400 L 400 440" class="arrow"/>
+
+  <!-- Diagnostics API -->
+  <rect x="40" y="440" width="330" height="120" class="box" rx="5"/>
+  <text x="205" y="465" text-anchor="middle" class="label">get_diagnostics()</text>
+  <text x="205" y="490" text-anchor="middle" class="label">get_layer_stats(layer_id)</text>
+  <text x="205" y="515" text-anchor="middle" class="label">get_sla_breaches()</text>
+  <text x="205" y="540" text-anchor="middle" class="label">health_check()</text>
+
+  <!-- Status Output -->
+  <rect x="430" y="440" width="330" height="120" class="box" rx="5"/>
+  <text x="595" y="465" text-anchor="middle" class="label">Layer Performance Snapshot</text>
+  <text x="595" y="490" text-anchor="middle" class="label">avg_latency_ms, p95_latency_ms</text>
+  <text x="595" y="515" text-anchor="middle" class="label">p99_latency_ms, throughput_ops</text>
+  <text x="595" y="540" text-anchor="middle" class="label">sla_breaches, health</text>
+</svg>

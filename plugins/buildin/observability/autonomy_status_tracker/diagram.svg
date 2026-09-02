@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <style>
+      .box { fill: #e8f4f8; stroke: #1a5a7a; stroke-width: 2; }
+      .title { font-size: 20px; font-weight: bold; fill: #1a5a7a; }
+      .label { font-size: 14px; fill: #333; }
+      .arrow { stroke: #1a5a7a; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .latency { font-size: 12px; fill: #d9534f; font-weight: bold; }
+      .state { font-size: 11px; fill: #1a5a7a; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#1a5a7a" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="400" y="40" text-anchor="middle" class="title">Autonomy Status Tracker Architecture</text>
+
+  <!-- Session Event Sources (top) -->
+  <rect x="30" y="80" width="140" height="60" class="box" rx="5"/>
+  <text x="100" y="105" text-anchor="middle" class="label">Session Init</text>
+  <text x="100" y="125" text-anchor="middle" class="state">state change</text>
+
+  <rect x="210" y="80" width="140" height="60" class="box" rx="5"/>
+  <text x="280" y="105" text-anchor="middle" class="label">Hardening</text>
+  <text x="280" y="125" text-anchor="middle" class="state">escalation event</text>
+
+  <rect x="390" y="80" width="140" height="60" class="box" rx="5"/>
+  <text x="460" y="105" text-anchor="middle" class="label">Recovery</text>
+  <text x="460" y="125" text-anchor="middle" class="state">attempt event</text>
+
+  <rect x="570" y="80" width="140" height="60" class="box" rx="5"/>
+  <text x="640" y="105" text-anchor="middle" class="label">Shutdown</text>
+  <text x="640" y="125" text-anchor="middle" class="state">termination</text>
+
+  <!-- Arrows down to tracker -->
+  <path d="M 100 140 L 100 180" class="arrow"/>
+  <path d="M 280 140 L 280 180" class="arrow"/>
+  <path d="M 460 140 L 460 180" class="arrow"/>
+  <path d="M 640 140 L 640 180" class="arrow"/>
+
+  <!-- Plugin Core -->
+  <rect x="80" y="180" width="640" height="120" class="box" rx="5"/>
+  <text x="400" y="210" text-anchor="middle" class="title">AutonomyStatusTracker</text>
+  <text x="400" y="240" text-anchor="middle" class="label">State Machine + Hardening Escalator</text>
+  <text x="400" y="265" text-anchor="middle" class="latency">&lt;0.2ms latency</text>
+
+  <!-- Latency annotation -->
+  <text x="680" y="245" class="latency">⚡ Critical Path</text>
+
+  <!-- Arrow down -->
+  <path d="M 400 300 L 400 340" class="arrow"/>
+
+  <!-- State Buffer -->
+  <rect x="120" y="340" width="560" height="80" class="box" rx="5"/>
+  <text x="400" y="365" text-anchor="middle" class="label">Circular State Buffer (10k events)</text>
+  <text x="400" y="390" text-anchor="middle" class="label">States: init→active→paused→recovery→shutdown</text>
+
+  <!-- Arrows down -->
+  <path d="M 400 420 L 400 460" class="arrow"/>
+
+  <!-- Diagnostics API -->
+  <rect x="40" y="460" width="330" height="110" class="box" rx="5"/>
+  <text x="205" y="485" text-anchor="middle" class="label">get_diagnostics()</text>
+  <text x="205" y="510" text-anchor="middle" class="label">get_hardening_level()</text>
+  <text x="205" y="535" text-anchor="middle" class="label">health_check()</text>
+  <text x="205" y="560" text-anchor="middle" class="label">get_state_transitions()</text>
+
+  <!-- Status Output -->
+  <rect x="430" y="460" width="330" height="110" class="box" rx="5"/>
+  <text x="595" y="485" text-anchor="middle" class="label">Diagnostic Snapshot</text>
+  <text x="595" y="510" text-anchor="middle" class="label">session_id, state, hardening_level</text>
+  <text x="595" y="535" text-anchor="middle" class="label">constraints_applied</text>
+  <text x="595" y="560" text-anchor="middle" class="label">recovery_attempts, health</text>
+</svg>

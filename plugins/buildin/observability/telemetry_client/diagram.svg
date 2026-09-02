@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <style>
+      .box { fill: #e8f4f8; stroke: #1a5a7a; stroke-width: 2; }
+      .title { font-size: 20px; font-weight: bold; fill: #1a5a7a; }
+      .label { font-size: 12px; fill: #333; }
+      .stage { font-size: 10px; fill: #1a5a7a; }
+      .arrow { stroke: #1a5a7a; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .latency { font-size: 12px; fill: #d9534f; font-weight: bold; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#1a5a7a" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="400" y="40" text-anchor="middle" class="title">Telemetry Client Architecture</text>
+
+  <!-- Event Sources -->
+  <rect x="50" y="80" width="170" height="60" class="box" rx="5"/>
+  <text x="135" y="105" text-anchor="middle" class="label">Performance</text>
+  <text x="135" y="125" text-anchor="middle" class="label">Events</text>
+
+  <rect x="260" y="80" width="170" height="60" class="box" rx="5"/>
+  <text x="345" y="105" text-anchor="middle" class="label">Error</text>
+  <text x="345" y="125" text-anchor="middle" class="label">Events</text>
+
+  <rect x="470" y="80" width="170" height="60" class="box" rx="5"/>
+  <text x="555" y="105" text-anchor="middle" class="label">Custom</text>
+  <text x="555" y="125" text-anchor="middle" class="label">Events</text>
+
+  <rect x="680" y="80" width="100" height="60" class="box" rx="5"/>
+  <text x="730" y="110" text-anchor="middle" class="label">Other</text>
+
+  <!-- Arrows down -->
+  <path d="M 135 140 L 200 180" class="arrow"/>
+  <path d="M 345 140 L 400 180" class="arrow"/>
+  <path d="M 555 140 L 600 180" class="arrow"/>
+  <path d="M 730 140 L 600 180" class="arrow"/>
+
+  <!-- Plugin Core -->
+  <rect x="50" y="180" width="700" height="100" class="box" rx="5"/>
+  <text x="400" y="210" text-anchor="middle" class="title">TelemetryClient</text>
+  <text x="400" y="235" text-anchor="middle" class="label">Event Filter → PII Check → Type Classification</text>
+  <text x="400" y="260" text-anchor="middle" class="latency">&lt;0.05ms latency</text>
+
+  <!-- Latency annotation -->
+  <text x="680" y="235" class="latency">⚡ Critical</text>
+
+  <!-- Arrow down -->
+  <path d="M 400 280 L 400 320" class="arrow"/>
+
+  <!-- Circular Buffer -->
+  <rect x="80" y="320" width="640" height="80" class="box" rx="5"/>
+  <text x="400" y="345" text-anchor="middle" class="label">Circular Event Buffer (50k capacity)</text>
+  <text x="400" y="370" text-anchor="middle" class="stage">perf (6000), error (4500), custom (1845) | Overflow: evict oldest</text>
+
+  <!-- Arrows down -->
+  <path d="M 400 400 L 400 440" class="arrow"/>
+
+  <!-- Batch Manager -->
+  <rect x="100" y="440" width="600" height="80" class="box" rx="5"/>
+  <text x="400" y="465" text-anchor="middle" class="label">Batch Manager</text>
+  <text x="250" y="490" text-anchor="middle" class="stage">Size-trigger: ≥1000 events</text>
+  <text x="550" y="490" text-anchor="middle" class="stage">Time-trigger: every 60s</text>
+  <text x="400" y="510" text-anchor="middle" class="stage">Ready batches prepared for external forwarding</text>
+</svg>
