@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <style>
+      .box { fill: #e8f4f8; stroke: #1a5a7a; stroke-width: 2; }
+      .title { font-size: 20px; font-weight: bold; fill: #1a5a7a; }
+      .label { font-size: 13px; fill: #333; }
+      .flow { font-size: 11px; fill: #1a5a7a; }
+      .arrow { stroke: #1a5a7a; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .latency { font-size: 12px; fill: #d9534f; font-weight: bold; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#1a5a7a" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="400" y="40" text-anchor="middle" class="title">Self Repair Engine Architecture</text>
+
+  <!-- Repair Triggers -->
+  <rect x="80" y="80" width="300" height="60" class="box" rx="5"/>
+  <text x="230" y="105" text-anchor="middle" class="label">Repair Trigger Events</text>
+  <text x="230" y="125" text-anchor="middle" class="flow">Error detected → auto-repair initiated</text>
+
+  <!-- Arrows down -->
+  <path d="M 230 140 L 230 180" class="arrow"/>
+
+  <!-- Plugin Core -->
+  <rect x="50" y="180" width="700" height="100" class="box" rx="5"/>
+  <text x="400" y="210" text-anchor="middle" class="title">SelfRepairEngine</text>
+  <text x="400" y="235" text-anchor="middle" class="label">Strategy Selection → Apply → Rollback Detection</text>
+  <text x="400" y="260" text-anchor="middle" class="latency">&lt;0.1ms latency</text>
+
+  <!-- Latency annotation -->
+  <text x="680" y="235" class="latency">⚡ Critical</text>
+
+  <!-- Arrow down -->
+  <path d="M 400 280 L 400 320" class="arrow"/>
+
+  <!-- Repair &amp; Outcome Buffer -->
+  <rect x="80" y="320" width="640" height="80" class="box" rx="5"/>
+  <text x="400" y="345" text-anchor="middle" class="label">Repair &amp; Outcome Buffer (5k events)</text>
+  <text x="400" y="370" text-anchor="middle" class="flow">cache_clear (18), timeout_reset (12), connection_rebuild (8), state_reset (3), other (2)</text>
+
+  <!-- Arrows down -->
+  <path d="M 400 400 L 400 440" class="arrow"/>
+
+  <!-- Diagnostics API -->
+  <rect x="40" y="440" width="330" height="120" class="box" rx="5"/>
+  <text x="205" y="465" text-anchor="middle" class="label">get_diagnostics()</text>
+  <text x="205" y="490" text-anchor="middle" class="label">get_repair_metrics(type)</text>
+  <text x="205" y="515" text-anchor="middle" class="label">get_rollback_analysis()</text>
+  <text x="205" y="540" text-anchor="middle" class="label">health_check()</text>
+
+  <!-- Status Output -->
+  <rect x="430" y="440" width="330" height="120" class="box" rx="5"/>
+  <text x="595" y="465" text-anchor="middle" class="label">Repair Snapshot</text>
+  <text x="595" y="490" text-anchor="middle" class="label">total_repairs, successful_repairs</text>
+  <text x="595" y="515" text-anchor="middle" class="label">success_rate, mtbf_hours</text>
+  <text x="595" y="540" text-anchor="middle" class="label">rollbacks_needed, health</text>
+</svg>

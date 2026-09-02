@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <style>
+      .box { fill: #e8f4f8; stroke: #1a5a7a; stroke-width: 2; }
+      .title { font-size: 20px; font-weight: bold; fill: #1a5a7a; }
+      .label { font-size: 13px; fill: #333; }
+      .weight { font-size: 11px; fill: #d9534f; font-weight: bold; }
+      .arrow { stroke: #1a5a7a; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .latency { font-size: 12px; fill: #d9534f; font-weight: bold; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#1a5a7a" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="400" y="40" text-anchor="middle" class="title">Diagnostics Dashboard Architecture</text>
+
+  <!-- Input Sources -->
+  <rect x="20" y="80" width="130" height="60" class="box" rx="5"/>
+  <text x="85" y="105" text-anchor="middle" class="label">Brain</text>
+  <text x="85" y="125" text-anchor="middle" class="label">Diagnostics</text>
+
+  <rect x="175" y="80" width="130" height="60" class="box" rx="5"/>
+  <text x="240" y="105" text-anchor="middle" class="label">Brain Layer</text>
+  <text x="240" y="125" text-anchor="middle" class="label">Monitor</text>
+
+  <rect x="330" y="80" width="130" height="60" class="box" rx="5"/>
+  <text x="395" y="105" text-anchor="middle" class="label">Heartbeat</text>
+  <text x="395" y="125" text-anchor="middle" class="label">Monitor</text>
+
+  <rect x="485" y="80" width="130" height="60" class="box" rx="5"/>
+  <text x="550" y="105" text-anchor="middle" class="label">Error</text>
+  <text x="550" y="125" text-anchor="middle" class="label">Healing</text>
+
+  <rect x="640" y="80" width="130" height="60" class="box" rx="5"/>
+  <text x="705" y="105" text-anchor="middle" class="label">Other</text>
+  <text x="705" y="125" text-anchor="middle" class="label">Plugins</text>
+
+  <!-- Arrows down -->
+  <path d="M 85 140 L 400 180" class="arrow"/>
+  <path d="M 240 140 L 400 180" class="arrow"/>
+  <path d="M 395 140 L 400 180" class="arrow"/>
+  <path d="M 550 140 L 400 180" class="arrow"/>
+  <path d="M 705 140 L 400 180" class="arrow"/>
+
+  <!-- Plugin Core -->
+  <rect x="80" y="180" width="640" height="100" class="box" rx="5"/>
+  <text x="400" y="210" text-anchor="middle" class="title">DiagnosticsDashboard</text>
+  <text x="400" y="235" text-anchor="middle" class="label">Metric Aggregator + Health Score Calculator</text>
+  <text x="400" y="260" text-anchor="middle" class="latency">&lt;0.3ms latency</text>
+
+  <!-- Latency annotation -->
+  <text x="680" y="235" class="latency">⚡ Critical</text>
+
+  <!-- Arrow down -->
+  <path d="M 400 280 L 400 320" class="arrow"/>
+
+  <!-- Health Score Calculation -->
+  <rect x="100" y="320" width="600" height="90" class="box" rx="5"/>
+  <text x="400" y="345" text-anchor="middle" class="label">Weighted Health Score (0-100)</text>
+  <text x="150" y="370" text-anchor="middle" class="weight">Subsystems: 40%</text>
+  <text x="300" y="370" text-anchor="middle" class="weight">Layer SLA: 30%</text>
+  <text x="500" y="370" text-anchor="middle" class="weight">Recovery: 20%</text>
+  <text x="650" y="370" text-anchor="middle" class="weight">Responsiveness: 10%</text>
+
+  <!-- Arrows down -->
+  <path d="M 400 410 L 400 450" class="arrow"/>
+
+  <!-- Diagnostics API -->
+  <rect x="40" y="450" width="330" height="120" class="box" rx="5"/>
+  <text x="205" y="475" text-anchor="middle" class="label">get_diagnostics()</text>
+  <text x="205" y="500" text-anchor="middle" class="label">get_health_score()</text>
+  <text x="205" y="525" text-anchor="middle" class="label">get_critical_alerts()</text>
+  <text x="205" y="550" text-anchor="middle" class="label">health_check()</text>
+
+  <!-- Status Output -->
+  <rect x="430" y="450" width="330" height="120" class="box" rx="5"/>
+  <text x="595" y="475" text-anchor="middle" class="label">Unified Health Snapshot</text>
+  <text x="595" y="500" text-anchor="middle" class="label">health_score (0-100), status</text>
+  <text x="595" y="525" text-anchor="middle" class="label">critical_alerts, warnings</text>
+  <text x="595" y="550" text-anchor="middle" class="label">component_matrix</text>
+</svg>

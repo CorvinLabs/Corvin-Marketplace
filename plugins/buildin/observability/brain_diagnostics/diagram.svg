@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <style>
+      .box { fill: #e8f4f8; stroke: #1a5a7a; stroke-width: 2; }
+      .title { font-size: 20px; font-weight: bold; fill: #1a5a7a; }
+      .label { font-size: 12px; fill: #333; }
+      .subsystem { font-size: 11px; fill: #1a5a7a; }
+      .arrow { stroke: #1a5a7a; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .latency { font-size: 12px; fill: #d9534f; font-weight: bold; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#1a5a7a" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="400" y="40" text-anchor="middle" class="title">Brain Diagnostics Architecture</text>
+
+  <!-- Brain Subsystems -->
+  <g id="subsystems">
+    <rect x="20" y="80" width="90" height="50" class="box" rx="3"/>
+    <text x="65" y="100" text-anchor="middle" class="subsystem">ExecutionContext</text>
+    <text x="65" y="115" text-anchor="middle" class="subsystem">Latency</text>
+
+    <rect x="125" y="80" width="90" height="50" class="box" rx="3"/>
+    <text x="170" y="100" text-anchor="middle" class="subsystem">PluginMgr</text>
+    <text x="170" y="115" text-anchor="middle" class="subsystem">Cache Hit</text>
+
+    <rect x="230" y="80" width="90" height="50" class="box" rx="3"/>
+    <text x="275" y="100" text-anchor="middle" class="subsystem">UserBackend</text>
+    <text x="275" y="115" text-anchor="middle" class="subsystem">Errors</text>
+
+    <rect x="335" y="80" width="90" height="50" class="box" rx="3"/>
+    <text x="380" y="100" text-anchor="middle" class="subsystem">Delegation</text>
+    <text x="380" y="115" text-anchor="middle" class="subsystem">Routes</text>
+
+    <rect x="440" y="80" width="90" height="50" class="box" rx="3"/>
+    <text x="485" y="100" text-anchor="middle" class="subsystem">ContextBus</text>
+    <text x="485" y="115" text-anchor="middle" class="subsystem">Events</text>
+
+    <rect x="545" y="80" width="90" height="50" class="box" rx="3"/>
+    <text x="590" y="100" text-anchor="middle" class="subsystem">Audit</text>
+    <text x="590" y="115" text-anchor="middle" class="subsystem">Chain</text>
+
+    <rect x="650" y="80" width="130" height="50" class="box" rx="3"/>
+    <text x="715" y="100" text-anchor="middle" class="subsystem">+ 7 more subsystems</text>
+    <text x="715" y="115" text-anchor="middle" class="subsystem">(Cloud, Storage, etc)</text>
+  </g>
+
+  <!-- Arrows converging -->
+  <path d="M 65 130 L 400 180" class="arrow"/>
+  <path d="M 170 130 L 400 180" class="arrow"/>
+  <path d="M 275 130 L 400 180" class="arrow"/>
+  <path d="M 380 130 L 400 180" class="arrow"/>
+  <path d="M 485 130 L 400 180" class="arrow"/>
+  <path d="M 590 130 L 400 180" class="arrow"/>
+  <path d="M 715 130 L 400 180" class="arrow"/>
+
+  <!-- Plugin Core -->
+  <rect x="100" y="180" width="600" height="100" class="box" rx="5"/>
+  <text x="400" y="210" text-anchor="middle" class="title">BrainDiagnostics</text>
+  <text x="400" y="235" text-anchor="middle" class="label">Latency Tracking + Cache Monitoring + Error Aggregation</text>
+  <text x="400" y="260" text-anchor="middle" class="latency">&lt;0.1ms latency</text>
+
+  <!-- Latency annotation -->
+  <text x="680" y="235" class="latency">⚡ Critical</text>
+
+  <!-- Arrow down -->
+  <path d="M 400 280 L 400 320" class="arrow"/>
+
+  <!-- Metrics Buffer -->
+  <rect x="120" y="320" width="560" height="80" class="box" rx="5"/>
+  <text x="400" y="345" text-anchor="middle" class="label">Circular Metrics Buffer (50k events)</text>
+  <text x="400" y="370" text-anchor="middle" class="label">Per-subsystem: latency, cache_hit_rate, error_count, memory_mb</text>
+
+  <!-- Arrows down -->
+  <path d="M 400 400 L 400 440" class="arrow"/>
+
+  <!-- Diagnostics API -->
+  <rect x="40" y="440" width="330" height="120" class="box" rx="5"/>
+  <text x="205" y="465" text-anchor="middle" class="label">get_diagnostics()</text>
+  <text x="205" y="490" text-anchor="middle" class="label">get_subsystem_health(id)</text>
+  <text x="205" y="515" text-anchor="middle" class="label">get_cache_metrics()</text>
+  <text x="205" y="540" text-anchor="middle" class="label">health_check()</text>
+
+  <!-- Status Output -->
+  <rect x="430" y="440" width="330" height="120" class="box" rx="5"/>
+  <text x="595" y="465" text-anchor="middle" class="label">Diagnostic Snapshot</text>
+  <text x="595" y="490" text-anchor="middle" class="label">subsystems_ok, avg_latency_ms</text>
+  <text x="595" y="515" text-anchor="middle" class="label">cache_hit_rate, error_count</text>
+  <text x="595" y="540" text-anchor="middle" class="label">health: healthy/degraded/failed</text>
+</svg>
