@@ -1,0 +1,1040 @@
+{
+  "version": "1.0.0",
+  "generated": "2026-09-02T21:10:56.184576",
+  "plugins": {
+    "plugin:buildin-data_processing-anonymization_engine": {
+      "id": "plugin:buildin-data_processing-anonymization_engine",
+      "name": "Anonymization Engine",
+      "version": "1.0.0",
+      "category": "data_processing",
+      "tier": "buildin",
+      "description": "L36 GDPR anonymization",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 2,
+        "e2e": 0,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/data-processing/plugin:buildin-data-processing-anonymization-engine/README.md"
+      },
+      "path": "plugins/buildin/data_processing/anonymization_engine",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-data_processing-artifact_extraction": {
+      "id": "plugin:buildin-data_processing-artifact_extraction",
+      "name": "Artifact Extraction",
+      "version": "1.0.0",
+      "category": "data_processing",
+      "tier": "buildin",
+      "description": "L25 data artifact extraction",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 0,
+        "total": 1
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/data-processing/plugin:buildin-data-processing-artifact-extraction/README.md"
+      },
+      "path": "plugins/buildin/data_processing/artifact_extraction",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-data_processing-context_snapshot_analyzer": {
+      "id": "plugin:buildin-data_processing-context_snapshot_analyzer",
+      "name": "Context Snapshot Analyzer",
+      "version": "1.0.0",
+      "category": "data_processing",
+      "tier": "buildin",
+      "description": "Analyze context engineering snapshots for drift, leaks, and optimization opportunities",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 0,
+        "total": 1
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/data-processing/plugin:buildin-data-processing-context-snapshot-analyzer/README.md"
+      },
+      "path": "plugins/buildin/data_processing/context_snapshot_analyzer",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-data_processing-data_classification": {
+      "id": "plugin:buildin-data_processing-data_classification",
+      "name": "Data Classification",
+      "version": "1.0.0",
+      "category": "data_processing",
+      "tier": "buildin",
+      "description": "L34 data classification engine",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 0,
+        "total": 1
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/data-processing/plugin:buildin-data-processing-data-classification/README.md"
+      },
+      "path": "plugins/buildin/data_processing/data_classification",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-data_processing-pii_detector": {
+      "id": "plugin:buildin-data_processing-pii_detector",
+      "name": "PII Detector",
+      "version": "1.0.0",
+      "category": "data_processing",
+      "tier": "buildin",
+      "description": "L34 personally identifiable information detection",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 2,
+        "e2e": 0,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/data-processing/plugin:buildin-data-processing-pii-detector/README.md"
+      },
+      "path": "plugins/buildin/data_processing/pii_detector",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-data_processing-stt_provider": {
+      "id": "plugin:buildin-data_processing-stt_provider",
+      "name": "Speech-to-Text Provider",
+      "version": "1.0.0",
+      "category": "data_processing",
+      "tier": "buildin",
+      "description": "Speech transcription with metadata-only audit. GDPR Art. 5 compliance.",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 0,
+        "total": 1
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/data-processing/plugin:buildin-data-processing-stt-provider/README.md"
+      },
+      "path": "plugins/buildin/data_processing/stt_provider",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-data_processing-summary_provider": {
+      "id": "plugin:buildin-data_processing-summary_provider",
+      "name": "Summary Provider",
+      "version": "1.0.0",
+      "category": "data_processing",
+      "tier": "buildin",
+      "description": "Turn summary generation for memory enrichment.",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 0,
+        "total": 1
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/data-processing/plugin:buildin-data-processing-summary-provider/README.md"
+      },
+      "path": "plugins/buildin/data_processing/summary_provider",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-data_processing-vibe_metrics_aggregator": {
+      "id": "plugin:buildin-data_processing-vibe_metrics_aggregator",
+      "name": "Vibe Metrics Aggregator",
+      "version": "1.0.0",
+      "category": "data_processing",
+      "tier": "buildin",
+      "description": "Aggregate Vibe session metrics across time windows and cohorts",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 0,
+        "total": 1
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/data-processing/plugin:buildin-data-processing-vibe-metrics-aggregator/README.md"
+      },
+      "path": "plugins/buildin/data_processing/vibe_metrics_aggregator",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-data_processing-wheel_content_inspector": {
+      "id": "plugin:buildin-data_processing-wheel_content_inspector",
+      "name": "Wheel Content Inspector",
+      "version": "1.0.0",
+      "category": "data_processing",
+      "tier": "buildin",
+      "description": "L34 package content inspection",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 0,
+        "total": 1
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/data-processing/plugin:buildin-data-processing-wheel-content-inspector/README.md"
+      },
+      "path": "plugins/buildin/data_processing/wheel_content_inspector",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-integration-brain_event_emitter": {
+      "id": "plugin:buildin-integration-brain_event_emitter",
+      "name": "Brain Event Emitter",
+      "version": "1.0.0",
+      "category": "integration",
+      "tier": "buildin",
+      "description": "Emit Brain subsystem events to event bus for downstream processing",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 0,
+        "total": 1
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/integration/plugin:buildin-integration-brain-event-emitter/README.md"
+      },
+      "path": "plugins/buildin/integration/brain_event_emitter",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-integration-bridge_adapter": {
+      "id": "plugin:buildin-integration-bridge_adapter",
+      "name": "Bridge Adapter",
+      "version": "1.0.0",
+      "category": "integration",
+      "tier": "buildin",
+      "description": "L38 message bridge protocol",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 0,
+        "e2e": 0,
+        "total": 0
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/integration/plugin:buildin-integration-bridge-adapter/README.md"
+      },
+      "path": "plugins/buildin/integration/bridge_adapter",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-integration-cowork_hub": {
+      "id": "plugin:buildin-integration-cowork_hub",
+      "name": "Cowork Hub",
+      "version": "1.0.0",
+      "category": "integration",
+      "tier": "buildin",
+      "description": "L4 multi-persona orchestration",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 0,
+        "e2e": 0,
+        "total": 0
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/integration/plugin:buildin-integration-cowork-hub/README.md"
+      },
+      "path": "plugins/buildin/integration/cowork_hub",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-integration-data_connector": {
+      "id": "plugin:buildin-integration-data_connector",
+      "name": "Data Connector",
+      "version": "1.0.0",
+      "category": "integration",
+      "tier": "buildin",
+      "description": "External data source integration for artifact processing.",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/integration/plugin:buildin-integration-data-connector/README.md"
+      },
+      "path": "plugins/buildin/integration/data_connector",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-integration-notification_backend": {
+      "id": "plugin:buildin-integration-notification_backend",
+      "name": "Notification Backend",
+      "version": "1.0.0",
+      "category": "integration",
+      "tier": "buildin",
+      "description": "Event notification and pub/sub messaging.",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/integration/plugin:buildin-integration-notification-backend/README.md"
+      },
+      "path": "plugins/buildin/integration/notification_backend",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-integration-router_backend": {
+      "id": "plugin:buildin-integration-router_backend",
+      "name": "Router Backend",
+      "version": "1.0.0",
+      "category": "integration",
+      "tier": "buildin",
+      "description": "Message routing and delegation. ADR-0255 worker engine integration.",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/integration/plugin:buildin-integration-router-backend/README.md"
+      },
+      "path": "plugins/buildin/integration/router_backend",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-integration-vibe_webhook_dispatcher": {
+      "id": "plugin:buildin-integration-vibe_webhook_dispatcher",
+      "name": "Vibe Webhook Dispatcher",
+      "version": "1.0.0",
+      "category": "integration",
+      "tier": "buildin",
+      "description": "Dispatch Vibe session events to external webhooks (lifecycle, errors, milestones)",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/integration/plugin:buildin-integration-vibe-webhook-dispatcher/README.md"
+      },
+      "path": "plugins/buildin/integration/vibe_webhook_dispatcher",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-memory-brain_learning_tracker": {
+      "id": "plugin:buildin-memory-brain_learning_tracker",
+      "name": "Brain Learning Tracker",
+      "version": "1.0.0",
+      "category": "memory",
+      "tier": "buildin",
+      "description": "Track Brain subsystem learning and preference evolution over time",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/memory/plugin:buildin-memory-brain-learning-tracker/README.md"
+      },
+      "path": "plugins/buildin/memory/brain_learning_tracker",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-memory-cel_session_memory": {
+      "id": "plugin:buildin-memory-cel_session_memory",
+      "name": "CEL Session Memory",
+      "version": "1.0.0",
+      "category": "memory",
+      "tier": "buildin",
+      "description": "L28 session memory provider",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/memory/plugin:buildin-memory-cel-session-memory/README.md"
+      },
+      "path": "plugins/buildin/memory/cel_session_memory",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-memory-learning_event_storage": {
+      "id": "plugin:buildin-memory-learning_event_storage",
+      "name": "Learning Event Storage",
+      "version": "1.0.0",
+      "category": "memory",
+      "tier": "buildin",
+      "description": "L28 learning event persistence",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/memory/plugin:buildin-memory-learning-event-storage/README.md"
+      },
+      "path": "plugins/buildin/memory/learning_event_storage",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-memory-recall_backend": {
+      "id": "plugin:buildin-memory-recall_backend",
+      "name": "CEL Session Recall",
+      "version": "1.0.0",
+      "category": "memory",
+      "tier": "buildin",
+      "description": "Session recall backend providing memory persistence and retrieval. Implements ADR-0314 learning infr",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/memory/plugin:buildin-memory-recall-backend/README.md"
+      },
+      "path": "plugins/buildin/memory/recall_backend",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-memory-user_model_learner": {
+      "id": "plugin:buildin-memory-user_model_learner",
+      "name": "User Model Learner",
+      "version": "1.0.0",
+      "category": "memory",
+      "tier": "buildin",
+      "description": "L28 user modeling and learning",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/memory/plugin:buildin-memory-user-model-learner/README.md"
+      },
+      "path": "plugins/buildin/memory/user_model_learner",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-memory-vibe_session_history": {
+      "id": "plugin:buildin-memory-vibe_session_history",
+      "name": "Vibe Session History",
+      "version": "1.0.0",
+      "category": "memory",
+      "tier": "buildin",
+      "description": "Persistent history of Vibe sessions (decisions, context snapshots, outcomes)",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/memory/plugin:buildin-memory-vibe-session-history/README.md"
+      },
+      "path": "plugins/buildin/memory/vibe_session_history",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-observability-autonomy_status_tracker": {
+      "id": "plugin:buildin-observability-autonomy_status_tracker",
+      "name": "Autonomy Status Tracker",
+      "version": "1.0.0",
+      "category": "observability",
+      "tier": "buildin",
+      "description": "Tracks autonomous session status, hardening state, and error recovery",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 3,
+        "e2e": 1,
+        "total": 4
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/observability/plugin:buildin-observability-autonomy-status-tracker/README.md"
+      },
+      "path": "plugins/buildin/observability/autonomy_status_tracker",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-observability-brain_diagnostics": {
+      "id": "plugin:buildin-observability-brain_diagnostics",
+      "name": "Brain Diagnostics Dashboard",
+      "version": "1.0.0",
+      "category": "observability",
+      "tier": "buildin",
+      "description": "Real-time diagnostics for Brain 13 subsystems (execution context, autonomy, etc.)",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/observability/plugin:buildin-observability-brain-diagnostics/README.md"
+      },
+      "path": "plugins/buildin/observability/brain_diagnostics",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-observability-brain_layer_monitor": {
+      "id": "plugin:buildin-observability-brain_layer_monitor",
+      "name": "Brain Layer Monitor",
+      "version": "1.0.0",
+      "category": "observability",
+      "tier": "buildin",
+      "description": "Monitors all 13 Brain layers for anomalies and performance bottlenecks",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/observability/plugin:buildin-observability-brain-layer-monitor/README.md"
+      },
+      "path": "plugins/buildin/observability/brain_layer_monitor",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-observability-diagnostics_dashboard": {
+      "id": "plugin:buildin-observability-diagnostics_dashboard",
+      "name": "Diagnostics Dashboard",
+      "version": "1.0.0",
+      "category": "observability",
+      "tier": "buildin",
+      "description": "L36 system diagnostics",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/observability/plugin:buildin-observability-diagnostics-dashboard/README.md"
+      },
+      "path": "plugins/buildin/observability/diagnostics_dashboard",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-observability-error_healing": {
+      "id": "plugin:buildin-observability-error_healing",
+      "name": "Error Healing",
+      "version": "1.0.0",
+      "category": "observability",
+      "tier": "buildin",
+      "description": "ACO error recovery",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/observability/plugin:buildin-observability-error-healing/README.md"
+      },
+      "path": "plugins/buildin/observability/error_healing",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-observability-heartbeat_monitor": {
+      "id": "plugin:buildin-observability-heartbeat_monitor",
+      "name": "Heartbeat Monitor",
+      "version": "1.0.0",
+      "category": "observability",
+      "tier": "buildin",
+      "description": "L36 instance heartbeat",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/observability/plugin:buildin-observability-heartbeat-monitor/README.md"
+      },
+      "path": "plugins/buildin/observability/heartbeat_monitor",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-observability-self_repair_engine": {
+      "id": "plugin:buildin-observability-self_repair_engine",
+      "name": "Self Repair Engine",
+      "version": "1.0.0",
+      "category": "observability",
+      "tier": "buildin",
+      "description": "ACO self-healing",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/observability/plugin:buildin-observability-self-repair-engine/README.md"
+      },
+      "path": "plugins/buildin/observability/self_repair_engine",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-observability-telemetry_client": {
+      "id": "plugin:buildin-observability-telemetry_client",
+      "name": "Telemetry Client",
+      "version": "1.0.0",
+      "category": "observability",
+      "tier": "buildin",
+      "description": "ACO telemetry collection",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/observability/plugin:buildin-observability-telemetry-client/README.md"
+      },
+      "path": "plugins/buildin/observability/telemetry_client",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-observability-vibe_context_telemetry": {
+      "id": "plugin:buildin-observability-vibe_context_telemetry",
+      "name": "Vibe Context Telemetry",
+      "version": "1.0.0",
+      "category": "observability",
+      "tier": "buildin",
+      "description": "Collects Vibe context engineering metrics (preservation, additive model)",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/observability/plugin:buildin-observability-vibe-context-telemetry/README.md"
+      },
+      "path": "plugins/buildin/observability/vibe_context_telemetry",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-observability-vibe_health_monitor": {
+      "id": "plugin:buildin-observability-vibe_health_monitor",
+      "name": "Vibe Health Monitor",
+      "version": "1.0.0",
+      "category": "observability",
+      "tier": "buildin",
+      "description": "Monitors Vibe session health metrics, latency, and state transitions",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/observability/plugin:buildin-observability-vibe-health-monitor/README.md"
+      },
+      "path": "plugins/buildin/observability/vibe_health_monitor",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-observability-vibe_session_tracer": {
+      "id": "plugin:buildin-observability-vibe_session_tracer",
+      "name": "Vibe Session Tracer",
+      "version": "1.0.0",
+      "category": "observability",
+      "tier": "buildin",
+      "description": "Distributed tracing for Vibe session lifecycle and decision points",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 0,
+        "e2e": 0,
+        "total": 0
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/observability/plugin:buildin-observability-vibe-session-tracer/README.md"
+      },
+      "path": "plugins/buildin/observability/vibe_session_tracer",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-security_compliance-audit_backend": {
+      "id": "plugin:buildin-security_compliance-audit_backend",
+      "name": "Audit Backend",
+      "version": "1.0.0",
+      "category": "security_compliance",
+      "tier": "buildin",
+      "description": "Audit trail management with hash-chained immutability. Implements GDPR Art. 30, 32 compliance.",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 0,
+        "e2e": 0,
+        "total": 0
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/security-compliance/plugin:buildin-security-compliance-audit-backend/README.md"
+      },
+      "path": "plugins/buildin/security_compliance/audit_backend",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-security_compliance-audit_chain": {
+      "id": "plugin:buildin-security_compliance-audit_chain",
+      "name": "Audit Chain",
+      "version": "1.0.0",
+      "category": "security_compliance",
+      "tier": "buildin",
+      "description": "L16 hash-chained audit logging",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 0,
+        "e2e": 0,
+        "total": 0
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/security-compliance/plugin:buildin-security-compliance-audit-chain/README.md"
+      },
+      "path": "plugins/buildin/security_compliance/audit_chain",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-security_compliance-consent_gate": {
+      "id": "plugin:buildin-security_compliance-consent_gate",
+      "name": "Consent Gate",
+      "version": "1.0.0",
+      "category": "security_compliance",
+      "tier": "buildin",
+      "description": "L16 user consent enforcement",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 0,
+        "e2e": 0,
+        "total": 0
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/security-compliance/plugin:buildin-security-compliance-consent-gate/README.md"
+      },
+      "path": "plugins/buildin/security_compliance/consent_gate",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-security_compliance-context_audit_trail": {
+      "id": "plugin:buildin-security_compliance-context_audit_trail",
+      "name": "Context Audit Trail",
+      "version": "1.0.0",
+      "category": "security_compliance",
+      "tier": "buildin",
+      "description": "Detailed audit trail for context engineering (preservation, truncation, re-injection)",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 0,
+        "e2e": 0,
+        "total": 0
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/security-compliance/plugin:buildin-security-compliance-context-audit-trail/README.md"
+      },
+      "path": "plugins/buildin/security_compliance/context_audit_trail",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-security_compliance-flow_guard": {
+      "id": "plugin:buildin-security_compliance-flow_guard",
+      "name": "Flow Guard",
+      "version": "1.0.0",
+      "category": "security_compliance",
+      "tier": "buildin",
+      "description": "L34 data flow guard",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 0,
+        "e2e": 0,
+        "total": 0
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/security-compliance/plugin:buildin-security-compliance-flow-guard/README.md"
+      },
+      "path": "plugins/buildin/security_compliance/flow_guard",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-security_compliance-path_gate": {
+      "id": "plugin:buildin-security_compliance-path_gate",
+      "name": "Path Gate",
+      "version": "1.0.0",
+      "category": "security_compliance",
+      "tier": "buildin",
+      "description": "L10 filesystem write protection",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 0,
+        "e2e": 0,
+        "total": 0
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/security-compliance/plugin:buildin-security-compliance-path-gate/README.md"
+      },
+      "path": "plugins/buildin/security_compliance/path_gate",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-security_compliance-user_backend": {
+      "id": "plugin:buildin-security_compliance-user_backend",
+      "name": "User Backend",
+      "version": "1.0.0",
+      "category": "security_compliance",
+      "tier": "buildin",
+      "description": "User authentication and authorization. GDPR Art. 6, 7 consent management.",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 0,
+        "e2e": 0,
+        "total": 0
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/security-compliance/plugin:buildin-security-compliance-user-backend/README.md"
+      },
+      "path": "plugins/buildin/security_compliance/user_backend",
+      "boot_layer": "bundled"
+    },
+    "plugin:buildin-security_compliance-vibe_decision_audit": {
+      "id": "plugin:buildin-security_compliance-vibe_decision_audit",
+      "name": "Vibe Decision Audit",
+      "version": "1.0.0",
+      "category": "security_compliance",
+      "tier": "buildin",
+      "description": "Audit trail for Vibe session decisions, routing, and state changes",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 0,
+        "e2e": 0,
+        "total": 0
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/security-compliance/plugin:buildin-security-compliance-vibe-decision-audit/README.md"
+      },
+      "path": "plugins/buildin/security_compliance/vibe_decision_audit",
+      "boot_layer": "bundled"
+    },
+    "plugin:contributor-data_processing-sql_expert": {
+      "id": "plugin:contributor-data_processing-sql_expert",
+      "name": "SQL Expert Assistant",
+      "version": "1.1.0",
+      "category": "data_processing",
+      "tier": "contributor",
+      "description": "Advanced SQL query optimization and debugging. Analyzes execution plans, suggests indexes, and refac",
+      "author": "Community Contributor (db-community.org)",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/data-processing/plugin:contributor-data-processing-sql-expert/README.md"
+      },
+      "path": "plugins/contributor/data_processing/sql_expert",
+      "boot_layer": "installed"
+    },
+    "plugin:contributor-integration-slack_notifier": {
+      "id": "plugin:contributor-integration-slack_notifier",
+      "name": "Slack Notifier",
+      "version": "1.0.0",
+      "category": "integration",
+      "tier": "contributor",
+      "description": "Send notifications to Slack channels from Corvin tasks and workflows. Supports rich formatting, ment",
+      "author": "Community Contributor (example.com)",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/integration/plugin:contributor-integration-slack-notifier/README.md"
+      },
+      "path": "plugins/contributor/integration/slack_notifier",
+      "boot_layer": "installed"
+    },
+    "plugin:contributor-memory-nlp_toolkit": {
+      "id": "plugin:contributor-memory-nlp_toolkit",
+      "name": "NLP Toolkit",
+      "version": "2.0.0",
+      "category": "memory",
+      "tier": "contributor",
+      "description": "Natural Language Processing utilities for text analysis, named entity recognition, sentiment analysi",
+      "author": "Community Contributor (nlp-collective.io)",
+      "rating": 4.5,
+      "status": "production-ready",
+      "tests": {
+        "unit": 1,
+        "e2e": 1,
+        "total": 2
+      },
+      "documentation": {
+        "has_readme": true,
+        "has_enhanced_readme": true,
+        "path": "plugins/memory/plugin:contributor-memory-nlp-toolkit/README.md"
+      },
+      "path": "plugins/contributor/memory/nlp_toolkit",
+      "boot_layer": "installed"
+    }
+  },
+  "summary": {
+    "total_plugins": 44,
+    "by_tier": {
+      "buildin": 41,
+      "contributor": 3
+    },
+    "by_category": {
+      "data_processing": 10,
+      "integration": 8,
+      "memory": 7,
+      "observability": 11,
+      "security_compliance": 8
+    },
+    "tests": {
+      "total_unit": 37,
+      "total_e2e": 23
+    },
+    "documentation": {
+      "with_readme": 23,
+      "with_enhanced": 0
+    }
+  }
+}
