@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generated": "2026-09-02T21:10:56.184576",
+  "generated": "2026-09-04T00:00:00.000000",
   "plugins": {
     "plugin:buildin-data_processing-anonymization_engine": {
       "id": "plugin:buildin-data_processing-anonymization_engine",
@@ -241,7 +241,7 @@
       "description": "L38 message bridge protocol",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 0,
         "e2e": 0,
@@ -264,7 +264,7 @@
       "description": "L4 multi-persona orchestration",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 0,
         "e2e": 0,
@@ -287,7 +287,7 @@
       "description": "External data source integration for artifact processing.",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -310,7 +310,7 @@
       "description": "Event notification and pub/sub messaging.",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -333,7 +333,7 @@
       "description": "Message routing and delegation. ADR-0255 worker engine integration.",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -356,7 +356,7 @@
       "description": "Dispatch Vibe session events to external webhooks (lifecycle, errors, milestones)",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -379,7 +379,7 @@
       "description": "Track Brain subsystem learning and preference evolution over time",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -402,7 +402,7 @@
       "description": "L28 session memory provider",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -425,7 +425,7 @@
       "description": "L28 learning event persistence",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -448,7 +448,7 @@
       "description": "Session recall backend providing memory persistence and retrieval. Implements ADR-0314 learning infr",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -471,7 +471,7 @@
       "description": "L28 user modeling and learning",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -494,7 +494,7 @@
       "description": "Persistent history of Vibe sessions (decisions, context snapshots, outcomes)",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -747,7 +747,7 @@
       "description": "Distributed tracing for Vibe session lifecycle and decision points",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 0,
         "e2e": 0,
@@ -770,7 +770,7 @@
       "description": "Audit trail management with hash-chained immutability. Implements GDPR Art. 30, 32 compliance.",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 0,
         "e2e": 0,
@@ -793,7 +793,7 @@
       "description": "L16 hash-chained audit logging",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 0,
         "e2e": 0,
@@ -816,7 +816,7 @@
       "description": "L16 user consent enforcement",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 0,
         "e2e": 0,
@@ -839,7 +839,7 @@
       "description": "Detailed audit trail for context engineering (preservation, truncation, re-injection)",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 0,
         "e2e": 0,
@@ -862,7 +862,7 @@
       "description": "L34 data flow guard",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 0,
         "e2e": 0,
@@ -885,7 +885,7 @@
       "description": "L10 filesystem write protection",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 0,
         "e2e": 0,
@@ -908,7 +908,7 @@
       "description": "User authentication and authorization. GDPR Art. 6, 7 consent management.",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 0,
         "e2e": 0,
@@ -931,7 +931,7 @@
       "description": "Audit trail for Vibe session decisions, routing, and state changes",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "beta",
       "tests": {
         "unit": 0,
         "e2e": 0,
