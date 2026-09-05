@@ -15,29 +15,13 @@
     "supports_wheel": false,
     "source_url": "https://github.com/community-plugin/sql-expert"
   },
-  "dependencies": ["sqlalchemy", "psycopg2"],
+  "dependencies": [],
   "requires_version": ">=1.0.0",
   "boot_layer": "installed",
-  "sla_level": "community",
-  "security_audit": {
-    "last_audit_date": null,
-    "auditor": null,
-    "findings": null,
-    "audit_report_url": null
-  },
+  "sla_level": "contributor",
   "maintainer_url": "mailto:sql-team@example.com",
-  "tags": ["data", "sql", "performance"],
-  "configuration": {
-    "database_url": {
-      "type": "string",
-      "required": true,
-      "description": "Database connection string for analysis"
-    },
-    "optimization_level": {
-      "type": "string",
-      "enum": ["basic", "intermediate", "advanced"],
-      "default": "intermediate",
-      "description": "Depth of optimization analysis"
-    }
-  }
+  "tags": [
+    "data",
+    "performance"
+  ]
 }

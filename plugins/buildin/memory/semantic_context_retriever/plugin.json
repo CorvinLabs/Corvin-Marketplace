@@ -12,7 +12,7 @@
   "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/semantic_context_retriever/README.md",
   "distribution": {
     "supports_source": true,
-    "supports_wheel": false,
+    "supports_wheel": true,
     "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/semantic_context_retriever/provider.py",
     "wheel_url": "",
     "wheel_signature_url": "",
@@ -36,9 +36,6 @@
   },
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
-    "memory",
-    "context-engineering",
-    "retrieval",
-    "bm25"
+    "memory"
   ]
 }

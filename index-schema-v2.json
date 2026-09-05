@@ -70,8 +70,7 @@
         "tier",
         "category",
         "description",
-        "distribution",
-        "last_updated"
+        "distribution"
       ],
       "properties": {
         "id": { "type": "string" },

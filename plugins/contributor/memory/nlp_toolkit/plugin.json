@@ -15,30 +15,13 @@
     "supports_wheel": false,
     "source_url": "https://github.com/community-plugin/nlp-toolkit"
   },
-  "dependencies": ["spacy", "nltk", "transformers"],
+  "dependencies": [],
   "requires_version": ">=1.0.0",
   "boot_layer": "installed",
-  "sla_level": "community",
-  "security_audit": {
-    "last_audit_date": null,
-    "auditor": null,
-    "findings": null,
-    "audit_report_url": null
-  },
+  "sla_level": "contributor",
   "maintainer_url": "mailto:nlp-team@example.com",
-  "tags": ["memory", "nlp", "analysis"],
-  "configuration": {
-    "spacy_model": {
-      "type": "string",
-      "default": "en_core_web_sm",
-      "description": "Spacy model for NER and POS tagging"
-    },
-    "similarity_threshold": {
-      "type": "number",
-      "minimum": 0.0,
-      "maximum": 1.0,
-      "default": 0.7,
-      "description": "Threshold for semantic similarity (0.0-1.0)"
-    }
-  }
+  "tags": [
+    "memory",
+    "ai-learning"
+  ]
 }
