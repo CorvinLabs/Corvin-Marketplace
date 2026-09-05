@@ -1,0 +1,25 @@
+plugin_id: context_snapshot_analyzer
+version: 0.1.0
+display_name: Context Snapshot Analyzer
+origin: builtin
+boot_layer: installed
+locality: local
+network_egress: none
+egress_hosts: []
+pii_risk: none
+requires_consent: false
+audit_required: true
+capabilities_version: '1.0'
+capabilities:
+- id: context.analysis
+  type: context_analyzer
+  description: Analyze context snapshots for relevance
+  parameters:
+    type: object
+  returns:
+    type: object
+  slo_latency_ms: 250
+  slo_error_rate: 0.01
+  audit_event: plugin.context_analyzer_invoked
+  on_failure: fail_closed
+  added_in: '1.0'

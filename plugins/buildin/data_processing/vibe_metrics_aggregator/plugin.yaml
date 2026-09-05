@@ -1,0 +1,25 @@
+plugin_id: vibe_metrics_aggregator
+version: 0.1.0
+display_name: Vibe Metrics Aggregator
+origin: builtin
+boot_layer: installed
+locality: local
+network_egress: none
+egress_hosts: []
+pii_risk: none
+requires_consent: false
+audit_required: true
+capabilities_version: '1.0'
+capabilities:
+- id: metrics.aggregation
+  type: metrics_aggregator
+  description: Aggregate Vibe metrics across invocations
+  parameters:
+    type: object
+  returns:
+    type: object
+  slo_latency_ms: 100
+  slo_error_rate: 0.01
+  audit_event: plugin.metrics_aggregator_invoked
+  on_failure: fail_closed
+  added_in: '1.0'

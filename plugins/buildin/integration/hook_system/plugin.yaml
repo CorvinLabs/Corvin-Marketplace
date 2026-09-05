@@ -1,0 +1,16 @@
+plugin_id: hook_system
+version: 0.1.0
+display_name: Hook System
+description: Hook registry and dispatch
+origin: builtin
+boot_layer: installed
+locality: local
+network_egress: none
+egress_hosts: []
+pii_risk: none
+requires_consent: false
+audit_required: true
+infrastructure_plugin: true
+orchestration_support: false
+capabilities_note: This is an infrastructure plugin. Skills do not orchestrate it;
+  it is always active.

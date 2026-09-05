@@ -1,0 +1,41 @@
+plugin_id: cel_session_memory
+version: 0.1.0
+display_name: Cel Session Memory
+origin: builtin
+boot_layer: installed
+locality: local
+network_egress: none
+egress_hosts: []
+pii_risk: none
+requires_consent: false
+audit_required: true
+capabilities_version: '1.0'
+capabilities:
+- id: memory.session_store
+  type: session_store
+  description: Store and retrieve session-scoped context
+  parameters:
+    type: object
+    required:
+    - operation
+    properties:
+      operation:
+        type: string
+        enum:
+        - store
+        - retrieve
+        - update
+        - delete
+      session_id:
+        type: string
+      key:
+        type: string
+      value:
+        type: object
+  returns:
+    type: object
+  slo_latency_ms: 25
+  slo_error_rate: 0.001
+  audit_event: plugin.session_memory_accessed
+  on_failure: fail_closed
+  added_in: '1.0'
