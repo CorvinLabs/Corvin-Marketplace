@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generated": "2026-09-05T23:42:35.926105",
+  "generated": "2026-09-05T23:48:04.608534",
   "plugins": {
     "plugin:buildin-data_processing-anonymization_engine": {
       "id": "plugin:buildin-data_processing-anonymization_engine",
@@ -115,52 +115,6 @@
         "path": "plugins/data-processing/plugin:buildin-data-processing-pii-detector/README.md"
       },
       "path": "plugins/buildin/data_processing/pii_detector",
-      "boot_layer": "bundled"
-    },
-    "plugin:buildin-data_processing-stt_provider": {
-      "id": "plugin:buildin-data_processing-stt_provider",
-      "name": "Speech-to-Text Provider",
-      "version": "1.0.0",
-      "category": "data_processing",
-      "tier": "buildin",
-      "description": "Speech transcription with metadata-only audit. GDPR Art. 5 compliance.",
-      "author": "Anthropic PBC",
-      "rating": 4.5,
-      "status": "production-ready",
-      "tests": {
-        "unit": 1,
-        "e2e": 0,
-        "total": 1
-      },
-      "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": false,
-        "path": "plugins/data-processing/plugin:buildin-data-processing-stt-provider/README.md"
-      },
-      "path": "plugins/buildin/data_processing/stt_provider",
-      "boot_layer": "bundled"
-    },
-    "plugin:buildin-data_processing-summary_provider": {
-      "id": "plugin:buildin-data_processing-summary_provider",
-      "name": "Summary Provider",
-      "version": "1.0.0",
-      "category": "data_processing",
-      "tier": "buildin",
-      "description": "Turn summary generation for memory enrichment.",
-      "author": "Anthropic PBC",
-      "rating": 4.5,
-      "status": "production-ready",
-      "tests": {
-        "unit": 1,
-        "e2e": 0,
-        "total": 1
-      },
-      "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": false,
-        "path": "plugins/data-processing/plugin:buildin-data-processing-summary-provider/README.md"
-      },
-      "path": "plugins/buildin/data_processing/summary_provider",
       "boot_layer": "bundled"
     },
     "plugin:buildin-data_processing-vibe_metrics_aggregator": {
@@ -278,75 +232,6 @@
       "path": "plugins/buildin/integration/cowork_hub",
       "boot_layer": "bundled"
     },
-    "plugin:buildin-integration-data_connector": {
-      "id": "plugin:buildin-integration-data_connector",
-      "name": "Data Connector",
-      "version": "1.0.0",
-      "category": "integration",
-      "tier": "buildin",
-      "description": "External data source integration for artifact processing.",
-      "author": "Anthropic PBC",
-      "rating": 4.5,
-      "status": "production-ready",
-      "tests": {
-        "unit": 1,
-        "e2e": 1,
-        "total": 2
-      },
-      "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": false,
-        "path": "plugins/integration/plugin:buildin-integration-data-connector/README.md"
-      },
-      "path": "plugins/buildin/integration/data_connector",
-      "boot_layer": "bundled"
-    },
-    "plugin:buildin-integration-notification_backend": {
-      "id": "plugin:buildin-integration-notification_backend",
-      "name": "Notification Backend",
-      "version": "1.0.0",
-      "category": "integration",
-      "tier": "buildin",
-      "description": "Event notification and pub/sub messaging.",
-      "author": "Anthropic PBC",
-      "rating": 4.5,
-      "status": "production-ready",
-      "tests": {
-        "unit": 1,
-        "e2e": 1,
-        "total": 2
-      },
-      "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": false,
-        "path": "plugins/integration/plugin:buildin-integration-notification-backend/README.md"
-      },
-      "path": "plugins/buildin/integration/notification_backend",
-      "boot_layer": "bundled"
-    },
-    "plugin:buildin-integration-router_backend": {
-      "id": "plugin:buildin-integration-router_backend",
-      "name": "Router Backend",
-      "version": "1.0.0",
-      "category": "integration",
-      "tier": "buildin",
-      "description": "Message routing and delegation. ADR-0255 worker engine integration.",
-      "author": "Anthropic PBC",
-      "rating": 4.5,
-      "status": "production-ready",
-      "tests": {
-        "unit": 1,
-        "e2e": 1,
-        "total": 2
-      },
-      "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": false,
-        "path": "plugins/integration/plugin:buildin-integration-router-backend/README.md"
-      },
-      "path": "plugins/buildin/integration/router_backend",
-      "boot_layer": "bundled"
-    },
     "plugin:buildin-integration-vibe_webhook_dispatcher": {
       "id": "plugin:buildin-integration-vibe_webhook_dispatcher",
       "name": "Vibe Webhook Dispatcher",
@@ -437,29 +322,6 @@
         "path": "plugins/memory/plugin:buildin-memory-learning-event-storage/README.md"
       },
       "path": "plugins/buildin/memory/learning_event_storage",
-      "boot_layer": "bundled"
-    },
-    "plugin:buildin-memory-recall_backend": {
-      "id": "plugin:buildin-memory-recall_backend",
-      "name": "CEL Session Recall",
-      "version": "1.0.0",
-      "category": "memory",
-      "tier": "buildin",
-      "description": "Session recall backend providing memory persistence and retrieval. Implements ADR-0314 learning infr",
-      "author": "Anthropic PBC",
-      "rating": 4.5,
-      "status": "production-ready",
-      "tests": {
-        "unit": 1,
-        "e2e": 1,
-        "total": 2
-      },
-      "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": false,
-        "path": "plugins/memory/plugin:buildin-memory-recall-backend/README.md"
-      },
-      "path": "plugins/buildin/memory/recall_backend",
       "boot_layer": "bundled"
     },
     "plugin:buildin-memory-semantic_context_retriever": {
@@ -993,24 +855,24 @@
     }
   },
   "summary": {
-    "total_plugins": 43,
+    "total_plugins": 37,
     "by_tier": {
-      "buildin": 40,
+      "buildin": 34,
       "contributor": 3
     },
     "by_category": {
-      "data_processing": 10,
-      "integration": 8,
-      "memory": 8,
+      "data_processing": 8,
+      "integration": 5,
+      "memory": 7,
       "observability": 11,
       "security_compliance": 6
     },
     "tests": {
-      "total_unit": 38,
-      "total_e2e": 23
+      "total_unit": 32,
+      "total_e2e": 19
     },
     "documentation": {
-      "with_readme": 36,
+      "with_readme": 30,
       "with_enhanced": 0
     }
   }
