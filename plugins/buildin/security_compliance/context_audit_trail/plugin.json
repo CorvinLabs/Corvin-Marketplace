@@ -5,10 +5,23 @@
   "version": "1.0.0",
   "author": "Anthropic PBC",
   "license": "Apache-2.0",
+  "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
   "tier": "buildin",
   "category": "security_compliance",
   "description": "Detailed audit trail for context engineering (preservation, truncation, re-injection)",
   "boot_layer": "bundled",
+  "security_audit": {
+    "last_audit_date": "2026-09-05",
+    "auditor": "CorvinOS Security Team",
+    "findings": 0,
+    "findings_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    },
+    "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
+  },
   "distribution": {
     "supports_source": true,
     "supports_wheel": true,
@@ -16,6 +29,6 @@
     "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/context_audit_trail-1.0.0-py3-none-any.whl"
   },
   "tags": [
-    "security_compliance"
+    "compliance"
   ]
 }
