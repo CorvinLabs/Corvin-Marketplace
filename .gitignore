@@ -9,3 +9,5 @@ Thumbs.db
 # Local scratch
 /tmp/
 *.log
+__pycache__/
+*.pyc
