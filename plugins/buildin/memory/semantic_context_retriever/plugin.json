@@ -13,7 +13,7 @@
   "distribution": {
     "supports_source": true,
     "supports_wheel": false,
-    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/semantic_context_retriever/src",
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/semantic_context_retriever/provider.py",
     "wheel_url": "",
     "wheel_signature_url": "",
     "wheel_checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
