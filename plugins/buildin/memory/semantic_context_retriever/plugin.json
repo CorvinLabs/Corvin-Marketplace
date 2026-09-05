@@ -8,12 +8,12 @@
   "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
   "tier": "buildin",
   "category": "memory",
-  "description": "BM25 context-selection provider (ADR-0599 context_retriever). Narrows/reorders already-gated CEL memory and TDE step candidates by relevance to the query — never adds content. Torch-free, local, no network egress.",
-  "readme_url": "https://github.com/CorvinLabs/CorvinOS/tree/main/core/plugins/buildin/context_engineering/semantic-context-retriever",
+  "description": "BM25 context-selection provider (ADR-0599 context_retriever). Narrows/reorders already-gated CEL memory and TDE step candidates by relevance to the query \u2014 never adds content. Torch-free, local, no network egress.",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/semantic_context_retriever/README.md",
   "distribution": {
     "supports_source": true,
     "supports_wheel": false,
-    "source_url": "https://github.com/CorvinLabs/CorvinOS/tree/main/core/plugins/buildin/context_engineering/semantic-context-retriever",
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/semantic_context_retriever/src",
     "wheel_url": "",
     "wheel_signature_url": "",
     "wheel_checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000"

@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generated": "2026-09-05T22:20:14.934719",
+  "generated": "2026-09-05T22:36:23.832428",
   "plugins": {
     "plugin:buildin-data_processing-anonymization_engine": {
       "id": "plugin:buildin-data_processing-anonymization_engine",
@@ -471,14 +471,14 @@
       "description": "BM25 context-selection provider (ADR-0599 context_retriever). Narrows/reorders already-gated CEL mem",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "development",
+      "status": "production-ready",
       "tests": {
-        "unit": 0,
+        "unit": 1,
         "e2e": 0,
-        "total": 0
+        "total": 1
       },
       "documentation": {
-        "has_readme": false,
+        "has_readme": true,
         "has_enhanced_readme": false,
         "path": "plugins/memory/plugin:buildin-memory-semantic-context-retriever/README.md"
       },
@@ -1052,11 +1052,11 @@
       "security_compliance": 8
     },
     "tests": {
-      "total_unit": 37,
+      "total_unit": 38,
       "total_e2e": 23
     },
     "documentation": {
-      "with_readme": 35,
+      "with_readme": 36,
       "with_enhanced": 0
     }
   }
