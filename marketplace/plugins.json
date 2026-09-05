@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generated": "2026-09-04T00:00:00.000000",
+  "generated": "2026-09-05T22:20:14.934719",
   "plugins": {
     "plugin:buildin-data_processing-anonymization_engine": {
       "id": "plugin:buildin-data_processing-anonymization_engine",
@@ -19,7 +19,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/data-processing/plugin:buildin-data-processing-anonymization-engine/README.md"
       },
       "path": "plugins/buildin/data_processing/anonymization_engine",
@@ -42,7 +42,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/data-processing/plugin:buildin-data-processing-artifact-extraction/README.md"
       },
       "path": "plugins/buildin/data_processing/artifact_extraction",
@@ -65,7 +65,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/data-processing/plugin:buildin-data-processing-context-snapshot-analyzer/README.md"
       },
       "path": "plugins/buildin/data_processing/context_snapshot_analyzer",
@@ -88,7 +88,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/data-processing/plugin:buildin-data-processing-data-classification/README.md"
       },
       "path": "plugins/buildin/data_processing/data_classification",
@@ -111,7 +111,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/data-processing/plugin:buildin-data-processing-pii-detector/README.md"
       },
       "path": "plugins/buildin/data_processing/pii_detector",
@@ -134,7 +134,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/data-processing/plugin:buildin-data-processing-stt-provider/README.md"
       },
       "path": "plugins/buildin/data_processing/stt_provider",
@@ -157,7 +157,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/data-processing/plugin:buildin-data-processing-summary-provider/README.md"
       },
       "path": "plugins/buildin/data_processing/summary_provider",
@@ -180,7 +180,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/data-processing/plugin:buildin-data-processing-vibe-metrics-aggregator/README.md"
       },
       "path": "plugins/buildin/data_processing/vibe_metrics_aggregator",
@@ -203,7 +203,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/data-processing/plugin:buildin-data-processing-wheel-content-inspector/README.md"
       },
       "path": "plugins/buildin/data_processing/wheel_content_inspector",
@@ -226,7 +226,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/integration/plugin:buildin-integration-brain-event-emitter/README.md"
       },
       "path": "plugins/buildin/integration/brain_event_emitter",
@@ -241,7 +241,7 @@
       "description": "L38 message bridge protocol",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "development",
       "tests": {
         "unit": 0,
         "e2e": 0,
@@ -249,7 +249,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/integration/plugin:buildin-integration-bridge-adapter/README.md"
       },
       "path": "plugins/buildin/integration/bridge_adapter",
@@ -264,7 +264,7 @@
       "description": "L4 multi-persona orchestration",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "development",
       "tests": {
         "unit": 0,
         "e2e": 0,
@@ -272,7 +272,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/integration/plugin:buildin-integration-cowork-hub/README.md"
       },
       "path": "plugins/buildin/integration/cowork_hub",
@@ -287,7 +287,7 @@
       "description": "External data source integration for artifact processing.",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "production-ready",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -295,7 +295,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/integration/plugin:buildin-integration-data-connector/README.md"
       },
       "path": "plugins/buildin/integration/data_connector",
@@ -310,7 +310,7 @@
       "description": "Event notification and pub/sub messaging.",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "production-ready",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -318,7 +318,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/integration/plugin:buildin-integration-notification-backend/README.md"
       },
       "path": "plugins/buildin/integration/notification_backend",
@@ -333,7 +333,7 @@
       "description": "Message routing and delegation. ADR-0255 worker engine integration.",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "production-ready",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -341,7 +341,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/integration/plugin:buildin-integration-router-backend/README.md"
       },
       "path": "plugins/buildin/integration/router_backend",
@@ -356,7 +356,7 @@
       "description": "Dispatch Vibe session events to external webhooks (lifecycle, errors, milestones)",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "production-ready",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -364,7 +364,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/integration/plugin:buildin-integration-vibe-webhook-dispatcher/README.md"
       },
       "path": "plugins/buildin/integration/vibe_webhook_dispatcher",
@@ -379,7 +379,7 @@
       "description": "Track Brain subsystem learning and preference evolution over time",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "production-ready",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -387,7 +387,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/memory/plugin:buildin-memory-brain-learning-tracker/README.md"
       },
       "path": "plugins/buildin/memory/brain_learning_tracker",
@@ -402,7 +402,7 @@
       "description": "L28 session memory provider",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "production-ready",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -410,7 +410,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/memory/plugin:buildin-memory-cel-session-memory/README.md"
       },
       "path": "plugins/buildin/memory/cel_session_memory",
@@ -425,7 +425,7 @@
       "description": "L28 learning event persistence",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "production-ready",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -433,7 +433,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/memory/plugin:buildin-memory-learning-event-storage/README.md"
       },
       "path": "plugins/buildin/memory/learning_event_storage",
@@ -448,7 +448,7 @@
       "description": "Session recall backend providing memory persistence and retrieval. Implements ADR-0314 learning infr",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "production-ready",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -456,11 +456,34 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/memory/plugin:buildin-memory-recall-backend/README.md"
       },
       "path": "plugins/buildin/memory/recall_backend",
       "boot_layer": "bundled"
+    },
+    "plugin:buildin-memory-semantic_context_retriever": {
+      "id": "plugin:buildin-memory-semantic_context_retriever",
+      "name": "Semantic Context Retriever",
+      "version": "0.1.0",
+      "category": "memory",
+      "tier": "buildin",
+      "description": "BM25 context-selection provider (ADR-0599 context_retriever). Narrows/reorders already-gated CEL mem",
+      "author": "Anthropic PBC",
+      "rating": 4.5,
+      "status": "development",
+      "tests": {
+        "unit": 0,
+        "e2e": 0,
+        "total": 0
+      },
+      "documentation": {
+        "has_readme": false,
+        "has_enhanced_readme": false,
+        "path": "plugins/memory/plugin:buildin-memory-semantic-context-retriever/README.md"
+      },
+      "path": "plugins/buildin/memory/semantic_context_retriever",
+      "boot_layer": "installed"
     },
     "plugin:buildin-memory-user_model_learner": {
       "id": "plugin:buildin-memory-user_model_learner",
@@ -471,7 +494,7 @@
       "description": "L28 user modeling and learning",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "production-ready",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -479,7 +502,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/memory/plugin:buildin-memory-user-model-learner/README.md"
       },
       "path": "plugins/buildin/memory/user_model_learner",
@@ -494,7 +517,7 @@
       "description": "Persistent history of Vibe sessions (decisions, context snapshots, outcomes)",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "production-ready",
       "tests": {
         "unit": 1,
         "e2e": 1,
@@ -502,7 +525,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/memory/plugin:buildin-memory-vibe-session-history/README.md"
       },
       "path": "plugins/buildin/memory/vibe_session_history",
@@ -525,7 +548,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/observability/plugin:buildin-observability-autonomy-status-tracker/README.md"
       },
       "path": "plugins/buildin/observability/autonomy_status_tracker",
@@ -548,7 +571,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/observability/plugin:buildin-observability-brain-diagnostics/README.md"
       },
       "path": "plugins/buildin/observability/brain_diagnostics",
@@ -571,7 +594,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/observability/plugin:buildin-observability-brain-layer-monitor/README.md"
       },
       "path": "plugins/buildin/observability/brain_layer_monitor",
@@ -594,7 +617,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/observability/plugin:buildin-observability-diagnostics-dashboard/README.md"
       },
       "path": "plugins/buildin/observability/diagnostics_dashboard",
@@ -617,7 +640,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/observability/plugin:buildin-observability-error-healing/README.md"
       },
       "path": "plugins/buildin/observability/error_healing",
@@ -640,7 +663,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/observability/plugin:buildin-observability-heartbeat-monitor/README.md"
       },
       "path": "plugins/buildin/observability/heartbeat_monitor",
@@ -663,7 +686,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/observability/plugin:buildin-observability-self-repair-engine/README.md"
       },
       "path": "plugins/buildin/observability/self_repair_engine",
@@ -686,7 +709,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/observability/plugin:buildin-observability-telemetry-client/README.md"
       },
       "path": "plugins/buildin/observability/telemetry_client",
@@ -709,7 +732,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/observability/plugin:buildin-observability-vibe-context-telemetry/README.md"
       },
       "path": "plugins/buildin/observability/vibe_context_telemetry",
@@ -732,7 +755,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/observability/plugin:buildin-observability-vibe-health-monitor/README.md"
       },
       "path": "plugins/buildin/observability/vibe_health_monitor",
@@ -747,15 +770,15 @@
       "description": "Distributed tracing for Vibe session lifecycle and decision points",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "development",
       "tests": {
         "unit": 0,
         "e2e": 0,
         "total": 0
       },
       "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_readme": false,
+        "has_enhanced_readme": false,
         "path": "plugins/observability/plugin:buildin-observability-vibe-session-tracer/README.md"
       },
       "path": "plugins/buildin/observability/vibe_session_tracer",
@@ -770,15 +793,15 @@
       "description": "Audit trail management with hash-chained immutability. Implements GDPR Art. 30, 32 compliance.",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "development",
       "tests": {
         "unit": 0,
         "e2e": 0,
         "total": 0
       },
       "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_readme": false,
+        "has_enhanced_readme": false,
         "path": "plugins/security-compliance/plugin:buildin-security-compliance-audit-backend/README.md"
       },
       "path": "plugins/buildin/security_compliance/audit_backend",
@@ -793,15 +816,15 @@
       "description": "L16 hash-chained audit logging",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "development",
       "tests": {
         "unit": 0,
         "e2e": 0,
         "total": 0
       },
       "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_readme": false,
+        "has_enhanced_readme": false,
         "path": "plugins/security-compliance/plugin:buildin-security-compliance-audit-chain/README.md"
       },
       "path": "plugins/buildin/security_compliance/audit_chain",
@@ -816,15 +839,15 @@
       "description": "L16 user consent enforcement",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "development",
       "tests": {
         "unit": 0,
         "e2e": 0,
         "total": 0
       },
       "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_readme": false,
+        "has_enhanced_readme": false,
         "path": "plugins/security-compliance/plugin:buildin-security-compliance-consent-gate/README.md"
       },
       "path": "plugins/buildin/security_compliance/consent_gate",
@@ -839,15 +862,15 @@
       "description": "Detailed audit trail for context engineering (preservation, truncation, re-injection)",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "development",
       "tests": {
         "unit": 0,
         "e2e": 0,
         "total": 0
       },
       "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_readme": false,
+        "has_enhanced_readme": false,
         "path": "plugins/security-compliance/plugin:buildin-security-compliance-context-audit-trail/README.md"
       },
       "path": "plugins/buildin/security_compliance/context_audit_trail",
@@ -862,15 +885,15 @@
       "description": "L34 data flow guard",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "development",
       "tests": {
         "unit": 0,
         "e2e": 0,
         "total": 0
       },
       "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_readme": false,
+        "has_enhanced_readme": false,
         "path": "plugins/security-compliance/plugin:buildin-security-compliance-flow-guard/README.md"
       },
       "path": "plugins/buildin/security_compliance/flow_guard",
@@ -885,15 +908,15 @@
       "description": "L10 filesystem write protection",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "development",
       "tests": {
         "unit": 0,
         "e2e": 0,
         "total": 0
       },
       "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_readme": false,
+        "has_enhanced_readme": false,
         "path": "plugins/security-compliance/plugin:buildin-security-compliance-path-gate/README.md"
       },
       "path": "plugins/buildin/security_compliance/path_gate",
@@ -908,15 +931,15 @@
       "description": "User authentication and authorization. GDPR Art. 6, 7 consent management.",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "development",
       "tests": {
         "unit": 0,
         "e2e": 0,
         "total": 0
       },
       "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_readme": false,
+        "has_enhanced_readme": false,
         "path": "plugins/security-compliance/plugin:buildin-security-compliance-user-backend/README.md"
       },
       "path": "plugins/buildin/security_compliance/user_backend",
@@ -931,15 +954,15 @@
       "description": "Audit trail for Vibe session decisions, routing, and state changes",
       "author": "Anthropic PBC",
       "rating": 4.5,
-      "status": "beta",
+      "status": "development",
       "tests": {
         "unit": 0,
         "e2e": 0,
         "total": 0
       },
       "documentation": {
-        "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_readme": false,
+        "has_enhanced_readme": false,
         "path": "plugins/security-compliance/plugin:buildin-security-compliance-vibe-decision-audit/README.md"
       },
       "path": "plugins/buildin/security_compliance/vibe_decision_audit",
@@ -962,7 +985,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/data-processing/plugin:contributor-data-processing-sql-expert/README.md"
       },
       "path": "plugins/contributor/data_processing/sql_expert",
@@ -985,7 +1008,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/integration/plugin:contributor-integration-slack-notifier/README.md"
       },
       "path": "plugins/contributor/integration/slack_notifier",
@@ -1008,7 +1031,7 @@
       },
       "documentation": {
         "has_readme": true,
-        "has_enhanced_readme": true,
+        "has_enhanced_readme": false,
         "path": "plugins/memory/plugin:contributor-memory-nlp-toolkit/README.md"
       },
       "path": "plugins/contributor/memory/nlp_toolkit",
@@ -1016,15 +1039,15 @@
     }
   },
   "summary": {
-    "total_plugins": 44,
+    "total_plugins": 45,
     "by_tier": {
-      "buildin": 41,
+      "buildin": 42,
       "contributor": 3
     },
     "by_category": {
       "data_processing": 10,
       "integration": 8,
-      "memory": 7,
+      "memory": 8,
       "observability": 11,
       "security_compliance": 8
     },
@@ -1033,7 +1056,7 @@
       "total_e2e": 23
     },
     "documentation": {
-      "with_readme": 23,
+      "with_readme": 35,
       "with_enhanced": 0
     }
   }
