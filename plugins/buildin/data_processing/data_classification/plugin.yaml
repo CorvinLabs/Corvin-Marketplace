@@ -1,0 +1,53 @@
+plugin_id: data_classification
+version: 0.1.0
+display_name: Data Classification
+origin: builtin
+boot_layer: installed
+locality: local
+network_egress: none
+egress_hosts: []
+pii_risk: none
+requires_consent: false
+audit_required: true
+capabilities_version: '1.0'
+capabilities:
+- id: data.classification
+  type: data_classifier
+  description: Classify data by sensitivity level
+  parameters:
+    type: object
+    required:
+    - content
+    properties:
+      content:
+        type: string
+      context_type:
+        type: string
+        enum:
+        - prompt
+        - response
+        - log
+        - metric
+        - audit
+        default: response
+  returns:
+    type: object
+    properties:
+      classification:
+        type: string
+        enum:
+        - public
+        - internal
+        - confidential
+        - restricted
+      confidence:
+        type: number
+      reasoning:
+        type: string
+      tags:
+        type: array
+  slo_latency_ms: 100
+  slo_error_rate: 0.001
+  audit_event: plugin.data_classified
+  on_failure: fail_closed
+  added_in: '1.0'

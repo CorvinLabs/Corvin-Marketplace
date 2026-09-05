@@ -1,0 +1,25 @@
+plugin_id: anonymization_engine
+version: 0.1.0
+display_name: Anonymization Engine
+origin: builtin
+boot_layer: installed
+locality: local
+network_egress: none
+egress_hosts: []
+pii_risk: none
+requires_consent: false
+audit_required: true
+capabilities_version: '1.0'
+capabilities:
+- id: data.anonymization
+  type: data_anonymizer
+  description: Anonymize sensitive data while preserving structure
+  parameters:
+    type: object
+  returns:
+    type: object
+  slo_latency_ms: 300
+  slo_error_rate: 0.01
+  audit_event: plugin.data_anonymizer_invoked
+  on_failure: fail_closed
+  added_in: '1.0'

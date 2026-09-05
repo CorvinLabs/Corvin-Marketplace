@@ -1,0 +1,16 @@
+plugin_id: bridge_adapter
+version: 0.1.0
+display_name: Bridge Adapter
+description: Bridge to Discord/Slack
+origin: builtin
+boot_layer: installed
+locality: local
+network_egress: none
+egress_hosts: []
+pii_risk: none
+requires_consent: false
+audit_required: true
+infrastructure_plugin: true
+orchestration_support: false
+capabilities_note: This is an infrastructure plugin. Skills do not orchestrate it;
+  it is always active.
