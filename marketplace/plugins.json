@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generated": "2026-09-05T23:20:53.331954",
+  "generated": "2026-09-05T23:42:35.926105",
   "plugins": {
     "plugin:buildin-data_processing-anonymization_engine": {
       "id": "plugin:buildin-data_processing-anonymization_engine",
@@ -784,29 +784,6 @@
       "path": "plugins/buildin/observability/vibe_session_tracer",
       "boot_layer": "bundled"
     },
-    "plugin:buildin-security_compliance-audit_backend": {
-      "id": "plugin:buildin-security_compliance-audit_backend",
-      "name": "Audit Backend",
-      "version": "1.0.0",
-      "category": "security_compliance",
-      "tier": "buildin",
-      "description": "Audit trail management with hash-chained immutability. Implements GDPR Art. 30, 32 compliance.",
-      "author": "Anthropic PBC",
-      "rating": 4.5,
-      "status": "development",
-      "tests": {
-        "unit": 0,
-        "e2e": 0,
-        "total": 0
-      },
-      "documentation": {
-        "has_readme": false,
-        "has_enhanced_readme": false,
-        "path": "plugins/security-compliance/plugin:buildin-security-compliance-audit-backend/README.md"
-      },
-      "path": "plugins/buildin/security_compliance/audit_backend",
-      "boot_layer": "bundled"
-    },
     "plugin:buildin-security_compliance-audit_chain": {
       "id": "plugin:buildin-security_compliance-audit_chain",
       "name": "Audit Chain",
@@ -922,29 +899,6 @@
       "path": "plugins/buildin/security_compliance/path_gate",
       "boot_layer": "bundled"
     },
-    "plugin:buildin-security_compliance-user_backend": {
-      "id": "plugin:buildin-security_compliance-user_backend",
-      "name": "User Backend",
-      "version": "1.0.0",
-      "category": "security_compliance",
-      "tier": "buildin",
-      "description": "User authentication and authorization. GDPR Art. 6, 7 consent management.",
-      "author": "Anthropic PBC",
-      "rating": 4.5,
-      "status": "development",
-      "tests": {
-        "unit": 0,
-        "e2e": 0,
-        "total": 0
-      },
-      "documentation": {
-        "has_readme": false,
-        "has_enhanced_readme": false,
-        "path": "plugins/security-compliance/plugin:buildin-security-compliance-user-backend/README.md"
-      },
-      "path": "plugins/buildin/security_compliance/user_backend",
-      "boot_layer": "bundled"
-    },
     "plugin:buildin-security_compliance-vibe_decision_audit": {
       "id": "plugin:buildin-security_compliance-vibe_decision_audit",
       "name": "Vibe Decision Audit",
@@ -1039,9 +993,9 @@
     }
   },
   "summary": {
-    "total_plugins": 45,
+    "total_plugins": 43,
     "by_tier": {
-      "buildin": 42,
+      "buildin": 40,
       "contributor": 3
     },
     "by_category": {
@@ -1049,7 +1003,7 @@
       "integration": 8,
       "memory": 8,
       "observability": 11,
-      "security_compliance": 8
+      "security_compliance": 6
     },
     "tests": {
       "total_unit": 38,
