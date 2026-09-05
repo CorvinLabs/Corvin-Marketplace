@@ -1,7 +1,7 @@
 {
   "version": "2.0",
   "schema": "ADR-0511",
-  "plugin_count": 42,
+  "plugin_count": 40,
   "plugins": [
     {
       "id": "plugin:buildin-data_processing-anonymization_engine",
@@ -1129,49 +1129,6 @@
       ]
     },
     {
-      "id": "plugin:buildin-security_compliance-audit_backend",
-      "type": "plugin",
-      "name": "Audit Backend",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "security_compliance",
-      "description": "Audit trail management with hash-chained immutability. Implements GDPR Art. 30, 32 compliance.",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#audit_backend",
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": true,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/audit_backend.py",
-        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.0.0/security_compliance-audit_backend-1.0.0-py3-none-any.whl",
-        "wheel_signature_url": "https://releases.corvinlabs.com/plugins/buildin-security_compliance-audit_backend-1.0.0-py3-none-any.whl.asc",
-        "wheel_checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-      },
-      "dependencies": [],
-      "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
-      "sla_level": "buildin",
-      "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-      },
-      "maintainer_url": "mailto:plugins@anthropic.com",
-      "tags": [
-        "ai-learning",
-        "compliance"
-      ],
-      "last_updated": "2026-08-31T18:29:14.519729Z"
-    },
-    {
       "id": "plugin:buildin-security_compliance-audit_chain",
       "type": "plugin",
       "name": "Audit Chain",
@@ -1359,49 +1316,6 @@
         "security",
         "compliance"
       ]
-    },
-    {
-      "id": "plugin:buildin-security_compliance-user_backend",
-      "type": "plugin",
-      "name": "User Backend",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "security_compliance",
-      "description": "User authentication and authorization. GDPR Art. 6, 7 consent management.",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#user_backend",
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": true,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/user_backend.py",
-        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.0.0/security_compliance-user_backend-1.0.0-py3-none-any.whl",
-        "wheel_signature_url": "https://releases.corvinlabs.com/plugins/buildin-security_compliance-user_backend-1.0.0-py3-none-any.whl.asc",
-        "wheel_checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-      },
-      "dependencies": [],
-      "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
-      "sla_level": "buildin",
-      "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-      },
-      "maintainer_url": "mailto:plugins@anthropic.com",
-      "tags": [
-        "ai-learning",
-        "compliance"
-      ],
-      "last_updated": "2026-08-31T18:29:14.520902Z"
     },
     {
       "id": "plugin:buildin-security_compliance-vibe_decision_audit",
@@ -2595,49 +2509,6 @@
         "observability"
       ]
     },
-    "plugin:buildin-security_compliance-audit_backend": {
-      "id": "plugin:buildin-security_compliance-audit_backend",
-      "type": "plugin",
-      "name": "Audit Backend",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "security_compliance",
-      "description": "Audit trail management with hash-chained immutability. Implements GDPR Art. 30, 32 compliance.",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#audit_backend",
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": true,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/audit_backend.py",
-        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.0.0/security_compliance-audit_backend-1.0.0-py3-none-any.whl",
-        "wheel_signature_url": "https://releases.corvinlabs.com/plugins/buildin-security_compliance-audit_backend-1.0.0-py3-none-any.whl.asc",
-        "wheel_checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-      },
-      "dependencies": [],
-      "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
-      "sla_level": "buildin",
-      "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-      },
-      "maintainer_url": "mailto:plugins@anthropic.com",
-      "tags": [
-        "ai-learning",
-        "compliance"
-      ],
-      "last_updated": "2026-08-31T18:29:14.519729Z"
-    },
     "plugin:buildin-security_compliance-audit_chain": {
       "id": "plugin:buildin-security_compliance-audit_chain",
       "type": "plugin",
@@ -2826,49 +2697,6 @@
         "security",
         "compliance"
       ]
-    },
-    "plugin:buildin-security_compliance-user_backend": {
-      "id": "plugin:buildin-security_compliance-user_backend",
-      "type": "plugin",
-      "name": "User Backend",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "security_compliance",
-      "description": "User authentication and authorization. GDPR Art. 6, 7 consent management.",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#user_backend",
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": true,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/user_backend.py",
-        "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.0.0/security_compliance-user_backend-1.0.0-py3-none-any.whl",
-        "wheel_signature_url": "https://releases.corvinlabs.com/plugins/buildin-security_compliance-user_backend-1.0.0-py3-none-any.whl.asc",
-        "wheel_checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-      },
-      "dependencies": [],
-      "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
-      "sla_level": "buildin",
-      "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-      },
-      "maintainer_url": "mailto:plugins@anthropic.com",
-      "tags": [
-        "ai-learning",
-        "compliance"
-      ],
-      "last_updated": "2026-08-31T18:29:14.520902Z"
     },
     "plugin:buildin-security_compliance-vibe_decision_audit": {
       "id": "plugin:buildin-security_compliance-vibe_decision_audit",
@@ -4116,49 +3944,6 @@
     ],
     "security_compliance": [
       {
-        "id": "plugin:buildin-security_compliance-audit_backend",
-        "type": "plugin",
-        "name": "Audit Backend",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "security_compliance",
-        "description": "Audit trail management with hash-chained immutability. Implements GDPR Art. 30, 32 compliance.",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#audit_backend",
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": true,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/audit_backend.py",
-          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.0.0/security_compliance-audit_backend-1.0.0-py3-none-any.whl",
-          "wheel_signature_url": "https://releases.corvinlabs.com/plugins/buildin-security_compliance-audit_backend-1.0.0-py3-none-any.whl.asc",
-          "wheel_checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-        },
-        "dependencies": [],
-        "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
-        "sla_level": "buildin",
-        "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-        },
-        "maintainer_url": "mailto:plugins@anthropic.com",
-        "tags": [
-          "ai-learning",
-          "compliance"
-        ],
-        "last_updated": "2026-08-31T18:29:14.519729Z"
-      },
-      {
         "id": "plugin:buildin-security_compliance-audit_chain",
         "type": "plugin",
         "name": "Audit Chain",
@@ -4346,49 +4131,6 @@
           "security",
           "compliance"
         ]
-      },
-      {
-        "id": "plugin:buildin-security_compliance-user_backend",
-        "type": "plugin",
-        "name": "User Backend",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "security_compliance",
-        "description": "User authentication and authorization. GDPR Art. 6, 7 consent management.",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#user_backend",
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": true,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/user_backend.py",
-          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.0.0/security_compliance-user_backend-1.0.0-py3-none-any.whl",
-          "wheel_signature_url": "https://releases.corvinlabs.com/plugins/buildin-security_compliance-user_backend-1.0.0-py3-none-any.whl.asc",
-          "wheel_checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-        },
-        "dependencies": [],
-        "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
-        "sla_level": "buildin",
-        "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-        },
-        "maintainer_url": "mailto:plugins@anthropic.com",
-        "tags": [
-          "ai-learning",
-          "compliance"
-        ],
-        "last_updated": "2026-08-31T18:29:14.520902Z"
       },
       {
         "id": "plugin:buildin-security_compliance-vibe_decision_audit",
@@ -5541,49 +5283,6 @@
         ]
       },
       {
-        "id": "plugin:buildin-security_compliance-audit_backend",
-        "type": "plugin",
-        "name": "Audit Backend",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "security_compliance",
-        "description": "Audit trail management with hash-chained immutability. Implements GDPR Art. 30, 32 compliance.",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#audit_backend",
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": true,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/audit_backend.py",
-          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.0.0/security_compliance-audit_backend-1.0.0-py3-none-any.whl",
-          "wheel_signature_url": "https://releases.corvinlabs.com/plugins/buildin-security_compliance-audit_backend-1.0.0-py3-none-any.whl.asc",
-          "wheel_checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-        },
-        "dependencies": [],
-        "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
-        "sla_level": "buildin",
-        "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-        },
-        "maintainer_url": "mailto:plugins@anthropic.com",
-        "tags": [
-          "ai-learning",
-          "compliance"
-        ],
-        "last_updated": "2026-08-31T18:29:14.519729Z"
-      },
-      {
         "id": "plugin:buildin-security_compliance-audit_chain",
         "type": "plugin",
         "name": "Audit Chain",
@@ -5771,49 +5470,6 @@
           "security",
           "compliance"
         ]
-      },
-      {
-        "id": "plugin:buildin-security_compliance-user_backend",
-        "type": "plugin",
-        "name": "User Backend",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "security_compliance",
-        "description": "User authentication and authorization. GDPR Art. 6, 7 consent management.",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#user_backend",
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": true,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/user_backend.py",
-          "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.0.0/security_compliance-user_backend-1.0.0-py3-none-any.whl",
-          "wheel_signature_url": "https://releases.corvinlabs.com/plugins/buildin-security_compliance-user_backend-1.0.0-py3-none-any.whl.asc",
-          "wheel_checksum": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-        },
-        "dependencies": [],
-        "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
-        "sla_level": "buildin",
-        "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-        },
-        "maintainer_url": "mailto:plugins@anthropic.com",
-        "tags": [
-          "ai-learning",
-          "compliance"
-        ],
-        "last_updated": "2026-08-31T18:29:14.520902Z"
       },
       {
         "id": "plugin:buildin-security_compliance-vibe_decision_audit",
