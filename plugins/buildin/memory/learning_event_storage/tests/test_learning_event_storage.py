@@ -28,19 +28,19 @@ class TestLearningEventStorage:
         # Should complete without error
 
     @pytest.mark.asyncio
-    async def test_execute_not_implemented(self):
-        """Execute raises NotImplementedError (stub)."""
+    async def test_execute_stats(self):
+        """execute("stats") answers with the emitter statistics."""
         storage = LearningEventStorage()
-        with pytest.raises(NotImplementedError):
-            await storage.execute()
+        result = await storage.execute("stats")
+        assert result["success"] is True
 
     @pytest.mark.asyncio
-    async def test_execute_store_event_not_implemented(self):
-        """Execute with store_event args raises NotImplementedError."""
+    async def test_execute_unknown_operation_is_reported(self):
+        """An unknown operation is answered as a failure, never raised into the host."""
         storage = LearningEventStorage()
-        event = {"type": "confidence", "value": 0.92}
-        with pytest.raises(NotImplementedError):
-            await storage.execute("store_event", event)
+        result = await storage.execute("store_event")
+        assert result["success"] is False
+        assert "Unknown operation" in result["error"]
 
     @pytest.mark.asyncio
     async def test_shutdown_noop(self):
@@ -53,4 +53,4 @@ class TestLearningEventStorage:
         """Audit persistence documented."""
         import learning_event_storage as mod
         doc = mod.__doc__
-        assert "stub" in doc.lower()
+        assert "adr-0314" in doc.lower()

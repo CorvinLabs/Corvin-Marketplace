@@ -11,18 +11,8 @@ from unittest.mock import MagicMock
 from datetime import datetime, timedelta
 import sys
 
-mock_plugin_base = MagicMock()
-mock_plugin_base.DeterministicPlugin = object
-mock_plugin_base.PluginTier = MagicMock()
-mock_plugin_base.PluginTier.GENERAL = "general"
-mock_protocol = MagicMock()
-mock_protocol.HealthStatus = MagicMock()
 
-sys.modules['corvin_plugins'] = MagicMock()
-sys.modules['corvin_plugins.plugin_base'] = mock_plugin_base
-sys.modules['corvin_plugins.protocol'] = mock_protocol
 
-sys.path.insert(0, '/home/shumway/projects/Corvin-Marketplace/plugins/buildin/observability/heartbeat_monitor/src')
 from heartbeat_monitor import HeartbeatMonitor
 
 
@@ -40,7 +30,7 @@ async def test_initialization():
     """Test plugin initializes correctly."""
     monitor = HeartbeatMonitor()
     assert monitor.last_heartbeat is None
-    assert monitor.heartbeat_history.__class__.__name__ == "deque"
+    assert monitor.heartbeat_history == []  # list, trimmed to the last 1000 records
     assert monitor.missed_beats == 0
     await monitor.initialize(MagicMock())
     assert monitor.start_time is not None
@@ -62,9 +52,9 @@ async def test_record_heartbeat_healthy(monitor):
     await monitor.record_heartbeat("instance_1", latency_ms=1.0, healthy=True)
 
     heartbeat = monitor.heartbeat_history[0]
-    assert heartbeat["instance_id"] == "instance_1"
-    assert heartbeat["healthy"] is True
-    assert heartbeat["latency_ms"] == 1.0
+    assert heartbeat.instance_id == "instance_1"
+    assert heartbeat.healthy is True
+    assert heartbeat.latency_ms == 1.0
 
 
 @pytest.mark.asyncio
@@ -73,7 +63,7 @@ async def test_record_heartbeat_unhealthy(monitor):
     await monitor.record_heartbeat("instance_1", latency_ms=2.0, healthy=False)
 
     heartbeat = monitor.heartbeat_history[0]
-    assert heartbeat["healthy"] is False
+    assert heartbeat.healthy is False
     assert monitor.missed_beats == 1
 
 
@@ -96,7 +86,9 @@ async def test_mixed_healthy_unhealthy(monitor):
         await monitor.record_heartbeat("instance_1", latency_ms=1.0, healthy=healthy)
 
     assert len(monitor.heartbeat_history) == 5
-    assert monitor.missed_beats == 2
+    # missed_beats counts CONSECUTIVE misses (stale detection = 3 in a row);
+    # the last pulse was healthy, so the streak is back to 0.
+    assert monitor.missed_beats == 0
 
 
 @pytest.mark.asyncio
@@ -178,7 +170,7 @@ async def test_high_latency_heartbeat(monitor):
     await monitor.record_heartbeat("instance_1", latency_ms=50.0, healthy=True)
 
     heartbeat = monitor.heartbeat_history[0]
-    assert heartbeat["latency_ms"] == 50.0
+    assert heartbeat.latency_ms == 50.0
 
 
 @pytest.mark.asyncio

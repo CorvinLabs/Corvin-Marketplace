@@ -18,7 +18,15 @@ from pathlib import Path
 import pytest
 
 _PLUGIN_DIR = Path(__file__).resolve().parents[1]
-_REPO = Path(__file__).resolve().parents[6]
+# The CorvinOS checkout (host contract: corvin_plugins, operator/context_engineering).
+# This plugin used to live INSIDE CorvinOS (core/plugins/buildin/...), where
+# ``parents[6]`` was the repo root; in the marketplace checkout that path is
+# ``~/projects`` and nothing there is importable. Resolve like conftest.py does.
+import os as _os
+
+_REPO = Path(
+    _os.environ.get("CORVINOS_ROOT") or (Path(__file__).resolve().parents[5].parent / "CorvinOS")
+).resolve()
 
 # ── Load the hyphenated-dir provider module by path ──────────────────────────
 _spec = importlib.util.spec_from_file_location(
