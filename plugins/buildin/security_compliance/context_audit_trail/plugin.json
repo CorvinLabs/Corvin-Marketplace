@@ -24,9 +24,8 @@
   },
   "distribution": {
     "supports_source": true,
-    "supports_wheel": true,
-    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/context_audit_trail/src",
-    "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/context_audit_trail-1.0.0-py3-none-any.whl"
+    "supports_wheel": false,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/context_audit_trail/src"
   },
   "tags": [
     "compliance"
