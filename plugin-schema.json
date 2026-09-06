@@ -227,8 +227,30 @@
           "sla_level": { "const": "buildin" },
           "distribution": {
             "properties": {
-              "supports_source": { "const": true },
-              "supports_wheel": { "const": true }
+              "supports_source": { "const": true }
+            }
+          }
+        }
+      }
+    },
+    {
+      "comment": "Honesty guard (2026-09-06): a manifest that CLAIMS a wheel must ship a real one. Prevents the schema-forced falsehood where every source-only buildin was made to declare supports_wheel:true with an empty url + all-zeros checksum.",
+      "if": {
+        "properties": {
+          "distribution": {
+            "properties": { "supports_wheel": { "const": true } },
+            "required": ["supports_wheel"]
+          }
+        },
+        "required": ["distribution"]
+      },
+      "then": {
+        "properties": {
+          "distribution": {
+            "required": ["wheel_url", "wheel_checksum"],
+            "properties": {
+              "wheel_url": { "type": "string", "minLength": 1, "format": "uri" },
+              "wheel_checksum": { "type": "string", "pattern": "^(sha256|sha512):[a-f0-9]{64,128}$" }
             }
           }
         }

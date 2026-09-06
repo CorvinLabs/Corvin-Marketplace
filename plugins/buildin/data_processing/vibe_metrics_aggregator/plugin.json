@@ -24,9 +24,8 @@
   },
   "distribution": {
     "supports_source": true,
-    "supports_wheel": true,
-    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/data_processing/vibe_metrics_aggregator/src",
-    "wheel_url": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.1.0/vibe_metrics_aggregator-1.0.0-py3-none-any.whl"
+    "supports_wheel": false,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/data_processing/vibe_metrics_aggregator/src"
   },
   "tags": [
     "data"
