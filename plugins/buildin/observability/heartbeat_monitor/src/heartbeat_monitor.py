@@ -56,7 +56,8 @@ class HeartbeatMonitor(DeterministicPlugin):
         """Initialize heartbeat monitor."""
         self.context = context
         self.start_time = datetime.utcnow()
-        self.last_heartbeat = datetime.utcnow()
+        # No heartbeat has been RECORDED yet: the instance is not alive until
+        # the first pulse arrives (a fresh monitor must not report ok).
 
     async def record_heartbeat(self, instance_id: str, latency_ms: float, healthy: bool = True):
         """Record a heartbeat pulse."""
@@ -106,6 +107,7 @@ class HeartbeatMonitor(DeterministicPlugin):
             "missed_beats": self.missed_beats,
             "heartbeat_count": len(self.heartbeat_history),
             "instance_id": self.instance_id,
+            "timestamp": self.last_heartbeat.isoformat(),
         }
 
     async def on_health_check(self):
@@ -114,9 +116,12 @@ class HeartbeatMonitor(DeterministicPlugin):
 
         alive = await self.is_instance_alive()
         status_dict = await self.get_heartbeat_status()
+        # An instance whose LAST pulse said "unhealthy" is not ok, even if the
+        # pulse itself was fresh.
+        last_healthy = bool(self.heartbeat_history[-1].healthy) if self.heartbeat_history else False
 
         return HealthStatus(
-            ok=alive,
+            ok=alive and last_healthy,
             message=f"Heartbeat status: {status_dict['status']}, Elapsed: {status_dict['elapsed_ms']}ms"
         )
 

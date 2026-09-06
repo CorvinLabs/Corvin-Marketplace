@@ -68,8 +68,11 @@ class BrainDiagnostics(DeterministicPlugin):
 
     async def record_layer_latency(self, layer_name: str, latency_ms: float, success: bool):
         """Record latency for a specific layer."""
+        # Callers pass either a bare index ("0") or an already-prefixed name
+        # ("layer_0"); never produce "layer_layer_0".
+        component = layer_name if layer_name.startswith("layer_") else f"layer_{layer_name}"
         metric = BrainMetric(
-            component=f"layer_{layer_name}",
+            component=component,
             latency_ms=latency_ms,
             success_count=1 if success else 0,
             error_count=0 if success else 1,
@@ -138,7 +141,7 @@ class BrainDiagnostics(DeterministicPlugin):
         # Determine overall health
         if error_rate > 10:
             health = "unhealthy"
-        elif error_rate > 5:
+        elif error_rate >= 5:
             health = "degraded"
         elif avg_latency > 50:
             health = "slow"

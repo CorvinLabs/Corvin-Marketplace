@@ -138,10 +138,9 @@ class TestVibeMetricsAggregatorErrorHandling:
         mock_context = MagicMock()
         await plugin.initialize(mock_context)
 
-        # Should handle gracefully
-        malformed_event = None
-        with pytest.raises((TypeError, AttributeError, TypeError)):
-            result = await plugin.on_vibe_session_event(malformed_event)
+        # Should handle gracefully: an observability hook must never raise
+        # into the host's event loop.
+        await plugin.on_vibe_session_event(None)
 
     @pytest.mark.asyncio
     async def test_handle_missing_fields(self):

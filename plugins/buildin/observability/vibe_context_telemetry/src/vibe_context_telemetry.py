@@ -79,7 +79,13 @@ class VibeContextTelemetry(DeterministicPlugin):
     async def get_context_telemetry(self) -> Dict:
         """Get context update telemetry."""
         if not self.update_log:
-            return {"total_updates": 0, "sessions": {}}
+            return {
+                "total_updates": 0,
+                "avg_update_latency_ms": 0.0,
+                "sessions_active": 0,
+                "total_context_size_bytes": 0,
+                "update_stats": {},
+            }
 
         latencies = [u.latency_ms for u in self.update_log]
         avg_latency = sum(latencies) / len(latencies) if latencies else 0.0

@@ -10,18 +10,8 @@ from unittest.mock import MagicMock
 import sys
 
 # Mock corvin_plugins
-mock_plugin_base = MagicMock()
-mock_plugin_base.DeterministicPlugin = object
-mock_plugin_base.PluginTier = MagicMock()
-mock_plugin_base.PluginTier.GENERAL = "general"
-mock_protocol = MagicMock()
-mock_protocol.HealthStatus = MagicMock()
 
-sys.modules['corvin_plugins'] = MagicMock()
-sys.modules['corvin_plugins.plugin_base'] = mock_plugin_base
-sys.modules['corvin_plugins.protocol'] = mock_protocol
 
-sys.path.insert(0, '/home/shumway/projects/Corvin-Marketplace/plugins/buildin/observability/brain_diagnostics/src')
 from brain_diagnostics import BrainDiagnostics, BrainMetric
 
 

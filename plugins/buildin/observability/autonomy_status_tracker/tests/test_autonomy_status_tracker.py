@@ -14,22 +14,11 @@ import sys
 from unittest.mock import MagicMock
 
 # Create mock module
-mock_plugin_base = MagicMock()
-mock_plugin_base.DeterministicPlugin = object
-mock_plugin_base.PluginTier = MagicMock()
-mock_plugin_base.PluginTier.GENERAL = "general"
-mock_plugin_base.PluginTier.CRITICAL = "critical"
 
-mock_protocol = MagicMock()
-mock_protocol.HealthStatus = MagicMock()
 
-sys.modules['corvin_plugins'] = MagicMock()
-sys.modules['corvin_plugins.plugin_base'] = mock_plugin_base
-sys.modules['corvin_plugins.protocol'] = mock_protocol
 
 # Now import our plugin
 import sys
-sys.path.insert(0, '/home/shumway/projects/Corvin-Marketplace/plugins/buildin/observability/autonomy_status_tracker/src')
 from autonomy_status_tracker import AutonomyStatusTracker, SessionStatus
 
 
@@ -150,7 +139,9 @@ async def test_get_diagnostics(tracker):
 
     assert diagnostics["status"] == "operational"
     assert diagnostics["total_sessions"] == 3
-    assert diagnostics["active_sessions"] == 1  # session_1 is running
+    # "active" = running OR hardening (a hardening session is still alive)
+    assert diagnostics["active_sessions"] == 2
+    assert diagnostics["hardening_sessions"] == 1
     assert diagnostics["hardening_sessions"] == 1  # session_2 is hardening
     assert diagnostics["failed_sessions"] == 1  # session_3 is failed
     assert diagnostics["max_hardening_level"] == 2
@@ -174,9 +165,6 @@ async def test_health_check_healthy(tracker):
     # Add some events but stay under max queue size
     for i in range(10):
         await tracker.on_session_start(f"session_{i}")
-
-    # Mock HealthStatus
-    mock_protocol.HealthStatus.return_value = MagicMock(ok=True)
 
     # health_check should indicate healthy
     # (We can't fully test this without mocking, but we verify the method exists)
