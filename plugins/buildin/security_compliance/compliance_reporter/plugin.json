@@ -1,0 +1,30 @@
+{
+  "id": "plugin:buildin-security_compliance-compliance_reporter",
+  "type": "plugin",
+  "name": "Compliance Reporter",
+  "version": "0.1.0",
+  "author": "Anthropic PBC",
+  "license": "Apache-2.0",
+  "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+  "tier": "buildin",
+  "category": "security_compliance",
+  "description": "Compliance report generation",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/compliance_reporter/README.md",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": false,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/compliance_reporter"
+  },
+  "dependencies": [],
+  "requires_version": ">=1.0.0",
+  "boot_layer": "installed",
+  "sla_level": "buildin",
+  "security_audit": {
+    "audited": false
+  },
+  "maintainer_url": "mailto:plugins@anthropic.com",
+  "tags": [
+    "security",
+    "compliance"
+  ]
+}

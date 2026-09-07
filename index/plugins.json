@@ -1,8 +1,8 @@
 {
   "version": "2.0",
   "schema": "ADR-0511",
-  "generated_at": "2026-09-06T16:39:16.215388Z",
-  "plugin_count": 37,
+  "generated_at": "2026-09-07T16:14:31.476784Z",
+  "plugin_count": 33,
   "plugins": [
     {
       "id": "plugin:contributor-integration-slack_notifier",
@@ -82,6 +82,64 @@
       "tags": [
         "data",
         "performance"
+      ]
+    },
+    {
+      "id": "plugin:buildin-integration-hook_system",
+      "type": "plugin",
+      "name": "Hook System",
+      "version": "0.1.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "buildin",
+      "category": "integration",
+      "description": "Hook registry and dispatch",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/integration/hook_system/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/hook_system"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "buildin",
+      "security_audit": {
+        "audited": false
+      },
+      "maintainer_url": "mailto:plugins@anthropic.com",
+      "tags": [
+        "integration"
+      ]
+    },
+    {
+      "id": "plugin:buildin-integration-event_emitter",
+      "type": "plugin",
+      "name": "Event Emitter",
+      "version": "0.1.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "buildin",
+      "category": "integration",
+      "description": "Event bus system",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/integration/event_emitter/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/event_emitter"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "buildin",
+      "security_audit": {
+        "audited": false
+      },
+      "maintainer_url": "mailto:plugins@anthropic.com",
+      "tags": [
+        "integration"
       ]
     },
     {
@@ -227,37 +285,28 @@
       ]
     },
     {
-      "id": "plugin:buildin-security_compliance-consent_gate",
+      "id": "plugin:buildin-security_compliance-secret_scanner",
       "type": "plugin",
-      "name": "Consent Gate",
-      "version": "1.0.0",
+      "name": "Secret Scanner",
+      "version": "0.1.0",
       "author": "Anthropic PBC",
       "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "buildin",
       "category": "security_compliance",
-      "description": "L16 user consent enforcement",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#consent_gate",
+      "description": "Detect leaked secrets",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/secret_scanner/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/consent_gate.py"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/secret_scanner"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
+      "boot_layer": "installed",
       "sla_level": "buildin",
       "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+        "audited": false
       },
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
@@ -266,37 +315,28 @@
       ]
     },
     {
-      "id": "plugin:buildin-security_compliance-flow_guard",
+      "id": "plugin:buildin-security_compliance-threat_detector",
       "type": "plugin",
-      "name": "Flow Guard",
-      "version": "1.0.0",
+      "name": "Threat Detector",
+      "version": "0.1.0",
       "author": "Anthropic PBC",
       "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "buildin",
       "category": "security_compliance",
-      "description": "L34 data flow guard",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#flow_guard",
+      "description": "Security threat detection",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/threat_detector/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/flow_guard.py"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/threat_detector"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
+      "boot_layer": "installed",
       "sla_level": "buildin",
       "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+        "audited": false
       },
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
@@ -305,103 +345,28 @@
       ]
     },
     {
-      "id": "plugin:buildin-security_compliance-vibe_decision_audit",
+      "id": "plugin:buildin-security_compliance-policy_enforcer",
       "type": "plugin",
-      "name": "Vibe Decision Audit",
-      "version": "1.0.0",
+      "name": "Policy Enforcer",
+      "version": "0.1.0",
       "author": "Anthropic PBC",
       "license": "Apache-2.0",
-      "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "buildin",
       "category": "security_compliance",
-      "description": "Audit trail for Vibe session decisions, routing, and state changes",
-      "boot_layer": "bundled",
-      "security_audit": {
-        "last_audit_date": "2026-09-05",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-      },
+      "description": "Security policy enforcement",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/policy_enforcer/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/vibe_decision_audit/src"
-      },
-      "tags": [
-        "compliance"
-      ]
-    },
-    {
-      "id": "plugin:buildin-security_compliance-context_audit_trail",
-      "type": "plugin",
-      "name": "Context Audit Trail",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "security_compliance",
-      "description": "Detailed audit trail for context engineering (preservation, truncation, re-injection)",
-      "boot_layer": "bundled",
-      "security_audit": {
-        "last_audit_date": "2026-09-05",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-      },
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/context_audit_trail/src"
-      },
-      "tags": [
-        "compliance"
-      ]
-    },
-    {
-      "id": "plugin:buildin-security_compliance-path_gate",
-      "type": "plugin",
-      "name": "Path Gate",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "security_compliance",
-      "description": "L10 filesystem write protection",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#path_gate",
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/path_gate.py"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/policy_enforcer"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
+      "boot_layer": "installed",
       "sla_level": "buildin",
       "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+        "audited": false
       },
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
@@ -410,37 +375,88 @@
       ]
     },
     {
-      "id": "plugin:buildin-security_compliance-audit_chain",
+      "id": "plugin:buildin-security_compliance-compliance_reporter",
       "type": "plugin",
-      "name": "Audit Chain",
-      "version": "1.0.0",
+      "name": "Compliance Reporter",
+      "version": "0.1.0",
       "author": "Anthropic PBC",
       "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "buildin",
       "category": "security_compliance",
-      "description": "L16 hash-chained audit logging",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#audit_chain",
+      "description": "Compliance report generation",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/compliance_reporter/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/audit_chain.py"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/compliance_reporter"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
+      "boot_layer": "installed",
       "sla_level": "buildin",
       "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+        "audited": false
+      },
+      "maintainer_url": "mailto:plugins@anthropic.com",
+      "tags": [
+        "security",
+        "compliance"
+      ]
+    },
+    {
+      "id": "plugin:buildin-security_compliance-consent_manager",
+      "type": "plugin",
+      "name": "Consent Manager",
+      "version": "0.1.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "buildin",
+      "category": "security_compliance",
+      "description": "Consent gate enforcement",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/consent_manager/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/consent_manager"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "buildin",
+      "security_audit": {
+        "audited": false
+      },
+      "maintainer_url": "mailto:plugins@anthropic.com",
+      "tags": [
+        "security",
+        "compliance"
+      ]
+    },
+    {
+      "id": "plugin:buildin-security_compliance-audit_logger",
+      "type": "plugin",
+      "name": "Audit Logger",
+      "version": "0.1.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "buildin",
+      "category": "security_compliance",
+      "description": "Audit trail persistence",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/audit_logger/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/audit_logger"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "buildin",
+      "security_audit": {
+        "audited": false
       },
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
@@ -776,72 +792,6 @@
       ]
     },
     {
-      "id": "plugin:buildin-observability-vibe_session_tracer",
-      "type": "plugin",
-      "name": "Vibe Session Tracer",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "observability",
-      "description": "Distributed tracing for Vibe session lifecycle and decision points",
-      "boot_layer": "bundled",
-      "security_audit": {
-        "last_audit_date": "2026-09-05",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-      },
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_session_tracer/src"
-      },
-      "tags": [
-        "observability"
-      ]
-    },
-    {
-      "id": "plugin:buildin-observability-vibe_context_telemetry",
-      "type": "plugin",
-      "name": "Vibe Context Telemetry",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "observability",
-      "description": "Collects Vibe context engineering metrics (preservation, additive model)",
-      "boot_layer": "bundled",
-      "security_audit": {
-        "last_audit_date": "2026-09-05",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-      },
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_context_telemetry/src"
-      },
-      "tags": [
-        "observability"
-      ]
-    },
-    {
       "id": "plugin:buildin-observability-diagnostics_dashboard",
       "type": "plugin",
       "name": "Diagnostics Dashboard",
@@ -946,115 +896,6 @@
       ]
     },
     {
-      "id": "plugin:buildin-observability-vibe_health_monitor",
-      "type": "plugin",
-      "name": "Vibe Health Monitor",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "observability",
-      "description": "Monitors Vibe session health metrics, latency, and state transitions",
-      "boot_layer": "bundled",
-      "security_audit": {
-        "last_audit_date": "2026-09-05",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-      },
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_health_monitor/src"
-      },
-      "tags": [
-        "observability"
-      ]
-    },
-    {
-      "id": "plugin:buildin-observability-self_repair_engine",
-      "type": "plugin",
-      "name": "Self Repair Engine",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "observability",
-      "description": "ACO self-healing",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#self_repair_engine",
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/self_repair_engine.py"
-      },
-      "dependencies": [],
-      "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
-      "sla_level": "buildin",
-      "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-      },
-      "maintainer_url": "mailto:plugins@anthropic.com",
-      "tags": [
-        "observability"
-      ]
-    },
-    {
-      "id": "plugin:buildin-observability-telemetry_client",
-      "type": "plugin",
-      "name": "Telemetry Client",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "observability",
-      "description": "ACO telemetry collection",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#telemetry_client",
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/telemetry_client.py"
-      },
-      "dependencies": [],
-      "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
-      "sla_level": "buildin",
-      "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-      },
-      "maintainer_url": "mailto:plugins@anthropic.com",
-      "tags": [
-        "observability"
-      ]
-    },
-    {
       "id": "plugin:buildin-data_processing-wheel_content_inspector",
       "type": "plugin",
       "name": "Wheel Content Inspector",
@@ -1108,44 +949,6 @@
         "supports_source": true,
         "supports_wheel": false,
         "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/data_classification.py"
-      },
-      "dependencies": [],
-      "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
-      "sla_level": "buildin",
-      "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-      },
-      "maintainer_url": "mailto:plugins@anthropic.com",
-      "tags": [
-        "data"
-      ]
-    },
-    {
-      "id": "plugin:buildin-data_processing-pii_detector",
-      "type": "plugin",
-      "name": "PII Detector",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "data_processing",
-      "description": "L34 personally identifiable information detection",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#pii_detector",
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/pii_detector.py"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
@@ -1392,6 +1195,64 @@
         "performance"
       ]
     },
+    "plugin:buildin-integration-hook_system": {
+      "id": "plugin:buildin-integration-hook_system",
+      "type": "plugin",
+      "name": "Hook System",
+      "version": "0.1.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "buildin",
+      "category": "integration",
+      "description": "Hook registry and dispatch",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/integration/hook_system/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/hook_system"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "buildin",
+      "security_audit": {
+        "audited": false
+      },
+      "maintainer_url": "mailto:plugins@anthropic.com",
+      "tags": [
+        "integration"
+      ]
+    },
+    "plugin:buildin-integration-event_emitter": {
+      "id": "plugin:buildin-integration-event_emitter",
+      "type": "plugin",
+      "name": "Event Emitter",
+      "version": "0.1.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "buildin",
+      "category": "integration",
+      "description": "Event bus system",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/integration/event_emitter/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/event_emitter"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "buildin",
+      "security_audit": {
+        "audited": false
+      },
+      "maintainer_url": "mailto:plugins@anthropic.com",
+      "tags": [
+        "integration"
+      ]
+    },
     "plugin:buildin-integration-cowork_hub": {
       "id": "plugin:buildin-integration-cowork_hub",
       "type": "plugin",
@@ -1534,38 +1395,29 @@
         "integration"
       ]
     },
-    "plugin:buildin-security_compliance-consent_gate": {
-      "id": "plugin:buildin-security_compliance-consent_gate",
+    "plugin:buildin-security_compliance-secret_scanner": {
+      "id": "plugin:buildin-security_compliance-secret_scanner",
       "type": "plugin",
-      "name": "Consent Gate",
-      "version": "1.0.0",
+      "name": "Secret Scanner",
+      "version": "0.1.0",
       "author": "Anthropic PBC",
       "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "buildin",
       "category": "security_compliance",
-      "description": "L16 user consent enforcement",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#consent_gate",
+      "description": "Detect leaked secrets",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/secret_scanner/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/consent_gate.py"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/secret_scanner"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
+      "boot_layer": "installed",
       "sla_level": "buildin",
       "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+        "audited": false
       },
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
@@ -1573,38 +1425,29 @@
         "compliance"
       ]
     },
-    "plugin:buildin-security_compliance-flow_guard": {
-      "id": "plugin:buildin-security_compliance-flow_guard",
+    "plugin:buildin-security_compliance-threat_detector": {
+      "id": "plugin:buildin-security_compliance-threat_detector",
       "type": "plugin",
-      "name": "Flow Guard",
-      "version": "1.0.0",
+      "name": "Threat Detector",
+      "version": "0.1.0",
       "author": "Anthropic PBC",
       "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "buildin",
       "category": "security_compliance",
-      "description": "L34 data flow guard",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#flow_guard",
+      "description": "Security threat detection",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/threat_detector/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/flow_guard.py"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/threat_detector"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
+      "boot_layer": "installed",
       "sla_level": "buildin",
       "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+        "audited": false
       },
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
@@ -1612,104 +1455,29 @@
         "compliance"
       ]
     },
-    "plugin:buildin-security_compliance-vibe_decision_audit": {
-      "id": "plugin:buildin-security_compliance-vibe_decision_audit",
+    "plugin:buildin-security_compliance-policy_enforcer": {
+      "id": "plugin:buildin-security_compliance-policy_enforcer",
       "type": "plugin",
-      "name": "Vibe Decision Audit",
-      "version": "1.0.0",
+      "name": "Policy Enforcer",
+      "version": "0.1.0",
       "author": "Anthropic PBC",
       "license": "Apache-2.0",
-      "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "buildin",
       "category": "security_compliance",
-      "description": "Audit trail for Vibe session decisions, routing, and state changes",
-      "boot_layer": "bundled",
-      "security_audit": {
-        "last_audit_date": "2026-09-05",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-      },
+      "description": "Security policy enforcement",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/policy_enforcer/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/vibe_decision_audit/src"
-      },
-      "tags": [
-        "compliance"
-      ]
-    },
-    "plugin:buildin-security_compliance-context_audit_trail": {
-      "id": "plugin:buildin-security_compliance-context_audit_trail",
-      "type": "plugin",
-      "name": "Context Audit Trail",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "security_compliance",
-      "description": "Detailed audit trail for context engineering (preservation, truncation, re-injection)",
-      "boot_layer": "bundled",
-      "security_audit": {
-        "last_audit_date": "2026-09-05",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-      },
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/context_audit_trail/src"
-      },
-      "tags": [
-        "compliance"
-      ]
-    },
-    "plugin:buildin-security_compliance-path_gate": {
-      "id": "plugin:buildin-security_compliance-path_gate",
-      "type": "plugin",
-      "name": "Path Gate",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "security_compliance",
-      "description": "L10 filesystem write protection",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#path_gate",
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/path_gate.py"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/policy_enforcer"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
+      "boot_layer": "installed",
       "sla_level": "buildin",
       "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+        "audited": false
       },
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
@@ -1717,38 +1485,89 @@
         "compliance"
       ]
     },
-    "plugin:buildin-security_compliance-audit_chain": {
-      "id": "plugin:buildin-security_compliance-audit_chain",
+    "plugin:buildin-security_compliance-compliance_reporter": {
+      "id": "plugin:buildin-security_compliance-compliance_reporter",
       "type": "plugin",
-      "name": "Audit Chain",
-      "version": "1.0.0",
+      "name": "Compliance Reporter",
+      "version": "0.1.0",
       "author": "Anthropic PBC",
       "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "buildin",
       "category": "security_compliance",
-      "description": "L16 hash-chained audit logging",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#audit_chain",
+      "description": "Compliance report generation",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/compliance_reporter/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/audit_chain.py"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/compliance_reporter"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
+      "boot_layer": "installed",
       "sla_level": "buildin",
       "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+        "audited": false
+      },
+      "maintainer_url": "mailto:plugins@anthropic.com",
+      "tags": [
+        "security",
+        "compliance"
+      ]
+    },
+    "plugin:buildin-security_compliance-consent_manager": {
+      "id": "plugin:buildin-security_compliance-consent_manager",
+      "type": "plugin",
+      "name": "Consent Manager",
+      "version": "0.1.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "buildin",
+      "category": "security_compliance",
+      "description": "Consent gate enforcement",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/consent_manager/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/consent_manager"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "buildin",
+      "security_audit": {
+        "audited": false
+      },
+      "maintainer_url": "mailto:plugins@anthropic.com",
+      "tags": [
+        "security",
+        "compliance"
+      ]
+    },
+    "plugin:buildin-security_compliance-audit_logger": {
+      "id": "plugin:buildin-security_compliance-audit_logger",
+      "type": "plugin",
+      "name": "Audit Logger",
+      "version": "0.1.0",
+      "author": "Anthropic PBC",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "buildin",
+      "category": "security_compliance",
+      "description": "Audit trail persistence",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/audit_logger/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/audit_logger"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "buildin",
+      "security_audit": {
+        "audited": false
       },
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
@@ -2083,72 +1902,6 @@
         "observability"
       ]
     },
-    "plugin:buildin-observability-vibe_session_tracer": {
-      "id": "plugin:buildin-observability-vibe_session_tracer",
-      "type": "plugin",
-      "name": "Vibe Session Tracer",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "observability",
-      "description": "Distributed tracing for Vibe session lifecycle and decision points",
-      "boot_layer": "bundled",
-      "security_audit": {
-        "last_audit_date": "2026-09-05",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-      },
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_session_tracer/src"
-      },
-      "tags": [
-        "observability"
-      ]
-    },
-    "plugin:buildin-observability-vibe_context_telemetry": {
-      "id": "plugin:buildin-observability-vibe_context_telemetry",
-      "type": "plugin",
-      "name": "Vibe Context Telemetry",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "observability",
-      "description": "Collects Vibe context engineering metrics (preservation, additive model)",
-      "boot_layer": "bundled",
-      "security_audit": {
-        "last_audit_date": "2026-09-05",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-      },
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_context_telemetry/src"
-      },
-      "tags": [
-        "observability"
-      ]
-    },
     "plugin:buildin-observability-diagnostics_dashboard": {
       "id": "plugin:buildin-observability-diagnostics_dashboard",
       "type": "plugin",
@@ -2253,115 +2006,6 @@
         "observability"
       ]
     },
-    "plugin:buildin-observability-vibe_health_monitor": {
-      "id": "plugin:buildin-observability-vibe_health_monitor",
-      "type": "plugin",
-      "name": "Vibe Health Monitor",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "observability",
-      "description": "Monitors Vibe session health metrics, latency, and state transitions",
-      "boot_layer": "bundled",
-      "security_audit": {
-        "last_audit_date": "2026-09-05",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-      },
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_health_monitor/src"
-      },
-      "tags": [
-        "observability"
-      ]
-    },
-    "plugin:buildin-observability-self_repair_engine": {
-      "id": "plugin:buildin-observability-self_repair_engine",
-      "type": "plugin",
-      "name": "Self Repair Engine",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "observability",
-      "description": "ACO self-healing",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#self_repair_engine",
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/self_repair_engine.py"
-      },
-      "dependencies": [],
-      "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
-      "sla_level": "buildin",
-      "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-      },
-      "maintainer_url": "mailto:plugins@anthropic.com",
-      "tags": [
-        "observability"
-      ]
-    },
-    "plugin:buildin-observability-telemetry_client": {
-      "id": "plugin:buildin-observability-telemetry_client",
-      "type": "plugin",
-      "name": "Telemetry Client",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "observability",
-      "description": "ACO telemetry collection",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#telemetry_client",
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/telemetry_client.py"
-      },
-      "dependencies": [],
-      "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
-      "sla_level": "buildin",
-      "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-      },
-      "maintainer_url": "mailto:plugins@anthropic.com",
-      "tags": [
-        "observability"
-      ]
-    },
     "plugin:buildin-data_processing-wheel_content_inspector": {
       "id": "plugin:buildin-data_processing-wheel_content_inspector",
       "type": "plugin",
@@ -2416,44 +2060,6 @@
         "supports_source": true,
         "supports_wheel": false,
         "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/data_classification.py"
-      },
-      "dependencies": [],
-      "requires_version": ">=1.0.0",
-      "boot_layer": "bundled",
-      "sla_level": "buildin",
-      "security_audit": {
-        "last_audit_date": "2026-08-31",
-        "auditor": "CorvinOS Security Team",
-        "findings": 0,
-        "findings_by_severity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 0
-        },
-        "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-      },
-      "maintainer_url": "mailto:plugins@anthropic.com",
-      "tags": [
-        "data"
-      ]
-    },
-    "plugin:buildin-data_processing-pii_detector": {
-      "id": "plugin:buildin-data_processing-pii_detector",
-      "type": "plugin",
-      "name": "PII Detector",
-      "version": "1.0.0",
-      "author": "Anthropic PBC",
-      "license": "Apache-2.0",
-      "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-      "tier": "buildin",
-      "category": "data_processing",
-      "description": "L34 personally identifiable information detection",
-      "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#pii_detector",
-      "distribution": {
-        "supports_source": true,
-        "supports_wheel": false,
-        "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/pii_detector.py"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
@@ -2643,6 +2249,64 @@
         "boot_layer": "installed",
         "sla_level": "contributor",
         "maintainer_url": "mailto:maintainer@example.com",
+        "tags": [
+          "integration"
+        ]
+      },
+      {
+        "id": "plugin:buildin-integration-hook_system",
+        "type": "plugin",
+        "name": "Hook System",
+        "version": "0.1.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "buildin",
+        "category": "integration",
+        "description": "Hook registry and dispatch",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/integration/hook_system/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/hook_system"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "buildin",
+        "security_audit": {
+          "audited": false
+        },
+        "maintainer_url": "mailto:plugins@anthropic.com",
+        "tags": [
+          "integration"
+        ]
+      },
+      {
+        "id": "plugin:buildin-integration-event_emitter",
+        "type": "plugin",
+        "name": "Event Emitter",
+        "version": "0.1.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "buildin",
+        "category": "integration",
+        "description": "Event bus system",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/integration/event_emitter/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/event_emitter"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "buildin",
+        "security_audit": {
+          "audited": false
+        },
+        "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "integration"
         ]
@@ -3142,44 +2806,6 @@
         ]
       },
       {
-        "id": "plugin:buildin-data_processing-pii_detector",
-        "type": "plugin",
-        "name": "PII Detector",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "data_processing",
-        "description": "L34 personally identifiable information detection",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#pii_detector",
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/pii_detector.py"
-        },
-        "dependencies": [],
-        "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
-        "sla_level": "buildin",
-        "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-        },
-        "maintainer_url": "mailto:plugins@anthropic.com",
-        "tags": [
-          "data"
-        ]
-      },
-      {
         "id": "plugin:buildin-data_processing-artifact_extraction",
         "type": "plugin",
         "name": "Artifact Extraction",
@@ -3324,37 +2950,28 @@
     ],
     "security_compliance": [
       {
-        "id": "plugin:buildin-security_compliance-consent_gate",
+        "id": "plugin:buildin-security_compliance-secret_scanner",
         "type": "plugin",
-        "name": "Consent Gate",
-        "version": "1.0.0",
+        "name": "Secret Scanner",
+        "version": "0.1.0",
         "author": "Anthropic PBC",
         "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "buildin",
         "category": "security_compliance",
-        "description": "L16 user consent enforcement",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#consent_gate",
+        "description": "Detect leaked secrets",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/secret_scanner/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/consent_gate.py"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/secret_scanner"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
+        "boot_layer": "installed",
         "sla_level": "buildin",
         "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+          "audited": false
         },
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
@@ -3363,37 +2980,28 @@
         ]
       },
       {
-        "id": "plugin:buildin-security_compliance-flow_guard",
+        "id": "plugin:buildin-security_compliance-threat_detector",
         "type": "plugin",
-        "name": "Flow Guard",
-        "version": "1.0.0",
+        "name": "Threat Detector",
+        "version": "0.1.0",
         "author": "Anthropic PBC",
         "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "buildin",
         "category": "security_compliance",
-        "description": "L34 data flow guard",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#flow_guard",
+        "description": "Security threat detection",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/threat_detector/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/flow_guard.py"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/threat_detector"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
+        "boot_layer": "installed",
         "sla_level": "buildin",
         "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+          "audited": false
         },
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
@@ -3402,103 +3010,28 @@
         ]
       },
       {
-        "id": "plugin:buildin-security_compliance-vibe_decision_audit",
+        "id": "plugin:buildin-security_compliance-policy_enforcer",
         "type": "plugin",
-        "name": "Vibe Decision Audit",
-        "version": "1.0.0",
+        "name": "Policy Enforcer",
+        "version": "0.1.0",
         "author": "Anthropic PBC",
         "license": "Apache-2.0",
-        "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "buildin",
         "category": "security_compliance",
-        "description": "Audit trail for Vibe session decisions, routing, and state changes",
-        "boot_layer": "bundled",
-        "security_audit": {
-          "last_audit_date": "2026-09-05",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-        },
+        "description": "Security policy enforcement",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/policy_enforcer/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/vibe_decision_audit/src"
-        },
-        "tags": [
-          "compliance"
-        ]
-      },
-      {
-        "id": "plugin:buildin-security_compliance-context_audit_trail",
-        "type": "plugin",
-        "name": "Context Audit Trail",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "security_compliance",
-        "description": "Detailed audit trail for context engineering (preservation, truncation, re-injection)",
-        "boot_layer": "bundled",
-        "security_audit": {
-          "last_audit_date": "2026-09-05",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-        },
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/context_audit_trail/src"
-        },
-        "tags": [
-          "compliance"
-        ]
-      },
-      {
-        "id": "plugin:buildin-security_compliance-path_gate",
-        "type": "plugin",
-        "name": "Path Gate",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "security_compliance",
-        "description": "L10 filesystem write protection",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#path_gate",
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/path_gate.py"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/policy_enforcer"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
+        "boot_layer": "installed",
         "sla_level": "buildin",
         "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+          "audited": false
         },
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
@@ -3507,37 +3040,88 @@
         ]
       },
       {
-        "id": "plugin:buildin-security_compliance-audit_chain",
+        "id": "plugin:buildin-security_compliance-compliance_reporter",
         "type": "plugin",
-        "name": "Audit Chain",
-        "version": "1.0.0",
+        "name": "Compliance Reporter",
+        "version": "0.1.0",
         "author": "Anthropic PBC",
         "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "buildin",
         "category": "security_compliance",
-        "description": "L16 hash-chained audit logging",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#audit_chain",
+        "description": "Compliance report generation",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/compliance_reporter/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/audit_chain.py"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/compliance_reporter"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
+        "boot_layer": "installed",
         "sla_level": "buildin",
         "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+          "audited": false
+        },
+        "maintainer_url": "mailto:plugins@anthropic.com",
+        "tags": [
+          "security",
+          "compliance"
+        ]
+      },
+      {
+        "id": "plugin:buildin-security_compliance-consent_manager",
+        "type": "plugin",
+        "name": "Consent Manager",
+        "version": "0.1.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "buildin",
+        "category": "security_compliance",
+        "description": "Consent gate enforcement",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/consent_manager/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/consent_manager"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "buildin",
+        "security_audit": {
+          "audited": false
+        },
+        "maintainer_url": "mailto:plugins@anthropic.com",
+        "tags": [
+          "security",
+          "compliance"
+        ]
+      },
+      {
+        "id": "plugin:buildin-security_compliance-audit_logger",
+        "type": "plugin",
+        "name": "Audit Logger",
+        "version": "0.1.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "buildin",
+        "category": "security_compliance",
+        "description": "Audit trail persistence",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/audit_logger/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/audit_logger"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "buildin",
+        "security_audit": {
+          "audited": false
         },
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
@@ -3657,72 +3241,6 @@
         ]
       },
       {
-        "id": "plugin:buildin-observability-vibe_session_tracer",
-        "type": "plugin",
-        "name": "Vibe Session Tracer",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "observability",
-        "description": "Distributed tracing for Vibe session lifecycle and decision points",
-        "boot_layer": "bundled",
-        "security_audit": {
-          "last_audit_date": "2026-09-05",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-        },
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_session_tracer/src"
-        },
-        "tags": [
-          "observability"
-        ]
-      },
-      {
-        "id": "plugin:buildin-observability-vibe_context_telemetry",
-        "type": "plugin",
-        "name": "Vibe Context Telemetry",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "observability",
-        "description": "Collects Vibe context engineering metrics (preservation, additive model)",
-        "boot_layer": "bundled",
-        "security_audit": {
-          "last_audit_date": "2026-09-05",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-        },
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_context_telemetry/src"
-        },
-        "tags": [
-          "observability"
-        ]
-      },
-      {
         "id": "plugin:buildin-observability-diagnostics_dashboard",
         "type": "plugin",
         "name": "Diagnostics Dashboard",
@@ -3825,115 +3343,6 @@
         "tags": [
           "observability"
         ]
-      },
-      {
-        "id": "plugin:buildin-observability-vibe_health_monitor",
-        "type": "plugin",
-        "name": "Vibe Health Monitor",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "observability",
-        "description": "Monitors Vibe session health metrics, latency, and state transitions",
-        "boot_layer": "bundled",
-        "security_audit": {
-          "last_audit_date": "2026-09-05",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-        },
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_health_monitor/src"
-        },
-        "tags": [
-          "observability"
-        ]
-      },
-      {
-        "id": "plugin:buildin-observability-self_repair_engine",
-        "type": "plugin",
-        "name": "Self Repair Engine",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "observability",
-        "description": "ACO self-healing",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#self_repair_engine",
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/self_repair_engine.py"
-        },
-        "dependencies": [],
-        "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
-        "sla_level": "buildin",
-        "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-        },
-        "maintainer_url": "mailto:plugins@anthropic.com",
-        "tags": [
-          "observability"
-        ]
-      },
-      {
-        "id": "plugin:buildin-observability-telemetry_client",
-        "type": "plugin",
-        "name": "Telemetry Client",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "observability",
-        "description": "ACO telemetry collection",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#telemetry_client",
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/telemetry_client.py"
-        },
-        "dependencies": [],
-        "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
-        "sla_level": "buildin",
-        "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-        },
-        "maintainer_url": "mailto:plugins@anthropic.com",
-        "tags": [
-          "observability"
-        ]
       }
     ]
   },
@@ -4021,6 +3430,64 @@
       }
     ],
     "buildin": [
+      {
+        "id": "plugin:buildin-integration-hook_system",
+        "type": "plugin",
+        "name": "Hook System",
+        "version": "0.1.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "buildin",
+        "category": "integration",
+        "description": "Hook registry and dispatch",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/integration/hook_system/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/hook_system"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "buildin",
+        "security_audit": {
+          "audited": false
+        },
+        "maintainer_url": "mailto:plugins@anthropic.com",
+        "tags": [
+          "integration"
+        ]
+      },
+      {
+        "id": "plugin:buildin-integration-event_emitter",
+        "type": "plugin",
+        "name": "Event Emitter",
+        "version": "0.1.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "buildin",
+        "category": "integration",
+        "description": "Event bus system",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/integration/event_emitter/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/event_emitter"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "buildin",
+        "security_audit": {
+          "audited": false
+        },
+        "maintainer_url": "mailto:plugins@anthropic.com",
+        "tags": [
+          "integration"
+        ]
+      },
       {
         "id": "plugin:buildin-integration-cowork_hub",
         "type": "plugin",
@@ -4164,37 +3631,28 @@
         ]
       },
       {
-        "id": "plugin:buildin-security_compliance-consent_gate",
+        "id": "plugin:buildin-security_compliance-secret_scanner",
         "type": "plugin",
-        "name": "Consent Gate",
-        "version": "1.0.0",
+        "name": "Secret Scanner",
+        "version": "0.1.0",
         "author": "Anthropic PBC",
         "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "buildin",
         "category": "security_compliance",
-        "description": "L16 user consent enforcement",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#consent_gate",
+        "description": "Detect leaked secrets",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/secret_scanner/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/consent_gate.py"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/secret_scanner"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
+        "boot_layer": "installed",
         "sla_level": "buildin",
         "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+          "audited": false
         },
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
@@ -4203,37 +3661,28 @@
         ]
       },
       {
-        "id": "plugin:buildin-security_compliance-flow_guard",
+        "id": "plugin:buildin-security_compliance-threat_detector",
         "type": "plugin",
-        "name": "Flow Guard",
-        "version": "1.0.0",
+        "name": "Threat Detector",
+        "version": "0.1.0",
         "author": "Anthropic PBC",
         "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "buildin",
         "category": "security_compliance",
-        "description": "L34 data flow guard",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#flow_guard",
+        "description": "Security threat detection",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/threat_detector/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/flow_guard.py"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/threat_detector"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
+        "boot_layer": "installed",
         "sla_level": "buildin",
         "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+          "audited": false
         },
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
@@ -4242,103 +3691,28 @@
         ]
       },
       {
-        "id": "plugin:buildin-security_compliance-vibe_decision_audit",
+        "id": "plugin:buildin-security_compliance-policy_enforcer",
         "type": "plugin",
-        "name": "Vibe Decision Audit",
-        "version": "1.0.0",
+        "name": "Policy Enforcer",
+        "version": "0.1.0",
         "author": "Anthropic PBC",
         "license": "Apache-2.0",
-        "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "buildin",
         "category": "security_compliance",
-        "description": "Audit trail for Vibe session decisions, routing, and state changes",
-        "boot_layer": "bundled",
-        "security_audit": {
-          "last_audit_date": "2026-09-05",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-        },
+        "description": "Security policy enforcement",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/policy_enforcer/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/vibe_decision_audit/src"
-        },
-        "tags": [
-          "compliance"
-        ]
-      },
-      {
-        "id": "plugin:buildin-security_compliance-context_audit_trail",
-        "type": "plugin",
-        "name": "Context Audit Trail",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "security_compliance",
-        "description": "Detailed audit trail for context engineering (preservation, truncation, re-injection)",
-        "boot_layer": "bundled",
-        "security_audit": {
-          "last_audit_date": "2026-09-05",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-        },
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/context_audit_trail/src"
-        },
-        "tags": [
-          "compliance"
-        ]
-      },
-      {
-        "id": "plugin:buildin-security_compliance-path_gate",
-        "type": "plugin",
-        "name": "Path Gate",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "security_compliance",
-        "description": "L10 filesystem write protection",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#path_gate",
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/path_gate.py"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/policy_enforcer"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
+        "boot_layer": "installed",
         "sla_level": "buildin",
         "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+          "audited": false
         },
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
@@ -4347,37 +3721,88 @@
         ]
       },
       {
-        "id": "plugin:buildin-security_compliance-audit_chain",
+        "id": "plugin:buildin-security_compliance-compliance_reporter",
         "type": "plugin",
-        "name": "Audit Chain",
-        "version": "1.0.0",
+        "name": "Compliance Reporter",
+        "version": "0.1.0",
         "author": "Anthropic PBC",
         "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "buildin",
         "category": "security_compliance",
-        "description": "L16 hash-chained audit logging",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#audit_chain",
+        "description": "Compliance report generation",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/compliance_reporter/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/audit_chain.py"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/compliance_reporter"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
+        "boot_layer": "installed",
         "sla_level": "buildin",
         "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
+          "audited": false
+        },
+        "maintainer_url": "mailto:plugins@anthropic.com",
+        "tags": [
+          "security",
+          "compliance"
+        ]
+      },
+      {
+        "id": "plugin:buildin-security_compliance-consent_manager",
+        "type": "plugin",
+        "name": "Consent Manager",
+        "version": "0.1.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "buildin",
+        "category": "security_compliance",
+        "description": "Consent gate enforcement",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/consent_manager/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/consent_manager"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "buildin",
+        "security_audit": {
+          "audited": false
+        },
+        "maintainer_url": "mailto:plugins@anthropic.com",
+        "tags": [
+          "security",
+          "compliance"
+        ]
+      },
+      {
+        "id": "plugin:buildin-security_compliance-audit_logger",
+        "type": "plugin",
+        "name": "Audit Logger",
+        "version": "0.1.0",
+        "author": "Anthropic PBC",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "buildin",
+        "category": "security_compliance",
+        "description": "Audit trail persistence",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/security_compliance/audit_logger/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/security_compliance/audit_logger"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "buildin",
+        "security_audit": {
+          "audited": false
         },
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
@@ -4713,72 +4138,6 @@
         ]
       },
       {
-        "id": "plugin:buildin-observability-vibe_session_tracer",
-        "type": "plugin",
-        "name": "Vibe Session Tracer",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "observability",
-        "description": "Distributed tracing for Vibe session lifecycle and decision points",
-        "boot_layer": "bundled",
-        "security_audit": {
-          "last_audit_date": "2026-09-05",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-        },
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_session_tracer/src"
-        },
-        "tags": [
-          "observability"
-        ]
-      },
-      {
-        "id": "plugin:buildin-observability-vibe_context_telemetry",
-        "type": "plugin",
-        "name": "Vibe Context Telemetry",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "observability",
-        "description": "Collects Vibe context engineering metrics (preservation, additive model)",
-        "boot_layer": "bundled",
-        "security_audit": {
-          "last_audit_date": "2026-09-05",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-        },
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_context_telemetry/src"
-        },
-        "tags": [
-          "observability"
-        ]
-      },
-      {
         "id": "plugin:buildin-observability-diagnostics_dashboard",
         "type": "plugin",
         "name": "Diagnostics Dashboard",
@@ -4883,115 +4242,6 @@
         ]
       },
       {
-        "id": "plugin:buildin-observability-vibe_health_monitor",
-        "type": "plugin",
-        "name": "Vibe Health Monitor",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "observability",
-        "description": "Monitors Vibe session health metrics, latency, and state transitions",
-        "boot_layer": "bundled",
-        "security_audit": {
-          "last_audit_date": "2026-09-05",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/CorvinLabs/CorvinOS/security/advisories"
-        },
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/observability/vibe_health_monitor/src"
-        },
-        "tags": [
-          "observability"
-        ]
-      },
-      {
-        "id": "plugin:buildin-observability-self_repair_engine",
-        "type": "plugin",
-        "name": "Self Repair Engine",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "observability",
-        "description": "ACO self-healing",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#self_repair_engine",
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/self_repair_engine.py"
-        },
-        "dependencies": [],
-        "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
-        "sla_level": "buildin",
-        "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-        },
-        "maintainer_url": "mailto:plugins@anthropic.com",
-        "tags": [
-          "observability"
-        ]
-      },
-      {
-        "id": "plugin:buildin-observability-telemetry_client",
-        "type": "plugin",
-        "name": "Telemetry Client",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "observability",
-        "description": "ACO telemetry collection",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#telemetry_client",
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/telemetry_client.py"
-        },
-        "dependencies": [],
-        "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
-        "sla_level": "buildin",
-        "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-        },
-        "maintainer_url": "mailto:plugins@anthropic.com",
-        "tags": [
-          "observability"
-        ]
-      },
-      {
         "id": "plugin:buildin-data_processing-wheel_content_inspector",
         "type": "plugin",
         "name": "Wheel Content Inspector",
@@ -5045,44 +4295,6 @@
           "supports_source": true,
           "supports_wheel": false,
           "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/data_classification.py"
-        },
-        "dependencies": [],
-        "requires_version": ">=1.0.0",
-        "boot_layer": "bundled",
-        "sla_level": "buildin",
-        "security_audit": {
-          "last_audit_date": "2026-08-31",
-          "auditor": "CorvinOS Security Team",
-          "findings": 0,
-          "findings_by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "audit_report_url": "https://github.com/anthropics/CorvinOS/security/advisories"
-        },
-        "maintainer_url": "mailto:plugins@anthropic.com",
-        "tags": [
-          "data"
-        ]
-      },
-      {
-        "id": "plugin:buildin-data_processing-pii_detector",
-        "type": "plugin",
-        "name": "PII Detector",
-        "version": "1.0.0",
-        "author": "Anthropic PBC",
-        "license": "Apache-2.0",
-        "license_url": "https://github.com/anthropics/CorvinOS/blob/main/LICENSE",
-        "tier": "buildin",
-        "category": "data_processing",
-        "description": "L34 personally identifiable information detection",
-        "readme_url": "https://github.com/anthropics/CorvinOS/blob/main/docs/plugin-developer-guide.md#pii_detector",
-        "distribution": {
-          "supports_source": true,
-          "supports_wheel": false,
-          "source_url": "https://github.com/anthropics/CorvinOS/tree/main/core/plugins/corvin_plugins/providers/pii_detector.py"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",

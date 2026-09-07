@@ -27,7 +27,9 @@
     },
     "type": {
       "type": "string",
-      "enum": ["plugin"],
+      "enum": [
+        "plugin"
+      ],
       "description": "Always 'plugin' (reserved for future extension types)"
     },
     "name": {
@@ -35,7 +37,10 @@
       "minLength": 3,
       "maxLength": 100,
       "description": "Human-readable plugin name",
-      "examples": ["CEL Session Memory", "Custom Auth Provider"]
+      "examples": [
+        "CEL Session Memory",
+        "Custom Auth Provider"
+      ]
     },
     "version": {
       "type": "string",
@@ -47,11 +52,17 @@
       "minLength": 1,
       "maxLength": 100,
       "description": "Plugin author/maintainer name",
-      "examples": ["Anthropic PBC", "Jane Doe"]
+      "examples": [
+        "Anthropic PBC",
+        "Jane Doe"
+      ]
     },
     "license": {
       "type": "string",
-      "enum": ["Apache-2.0", "MIT"],
+      "enum": [
+        "Apache-2.0",
+        "MIT"
+      ],
       "description": "SPDX license identifier. Buildin: Apache-2.0. Contributor: MIT or Apache-2.0."
     },
     "license_url": {
@@ -65,7 +76,10 @@
     },
     "tier": {
       "type": "string",
-      "enum": ["buildin", "contributor"],
+      "enum": [
+        "buildin",
+        "contributor"
+      ],
       "description": "Plugin tier determines SLA, support, audit requirements"
     },
     "category": {
@@ -92,7 +106,10 @@
     },
     "distribution": {
       "type": "object",
-      "required": ["supports_source", "supports_wheel"],
+      "required": [
+        "supports_source",
+        "supports_wheel"
+      ],
       "properties": {
         "supports_source": {
           "type": "boolean",
@@ -140,12 +157,20 @@
     },
     "boot_layer": {
       "type": "string",
-      "enum": ["compliance", "core", "bundled", "installed"],
+      "enum": [
+        "compliance",
+        "core",
+        "bundled",
+        "installed"
+      ],
       "description": "Boot layer (ADR-0243): controls load order and disableability"
     },
     "sla_level": {
       "type": "string",
-      "enum": ["buildin", "contributor"],
+      "enum": [
+        "buildin",
+        "contributor"
+      ],
       "description": "SLA tier. Buildin: 48h bugfix, 24h security patch. Contributor: no SLA."
     },
     "security_audit": {
@@ -168,19 +193,35 @@
         "findings_by_severity": {
           "type": "object",
           "properties": {
-            "critical": { "type": "integer", "minimum": 0 },
-            "high": { "type": "integer", "minimum": 0 },
-            "medium": { "type": "integer", "minimum": 0 },
-            "low": { "type": "integer", "minimum": 0 }
+            "critical": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "high": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "medium": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "low": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "audit_report_url": {
           "type": "string",
           "format": "uri",
           "description": "URL to full audit report (if public)"
+        },
+        "audited": {
+          "type": "boolean",
+          "description": "Whether a security audit has actually been performed. Honesty guard (2026-09-07, same class as the supports_wheel guard below): the buildin conditional makes `security_audit` required, which pressures an author into inventing a last_audit_date/auditor for a plugin nobody audited. Set `audited: false` and omit the other fields instead."
         }
       },
-      "description": "Security audit metadata (buildin plugins: required; contributor plugins: optional)"
+      "description": "Security audit metadata (buildin plugins: required; contributor plugins: optional) A plugin that has NOT been audited sets `audited: false` and omits last_audit_date/auditor/findings rather than fabricating them."
     },
     "maintainer_url": {
       "type": "string",
@@ -219,15 +260,31 @@
   "additionalProperties": false,
   "allOf": [
     {
-      "if": { "properties": { "tier": { "const": "buildin" } } },
-      "then": {
-        "required": ["license_url", "security_audit", "boot_layer"],
+      "if": {
         "properties": {
-          "license": { "const": "Apache-2.0" },
-          "sla_level": { "const": "buildin" },
+          "tier": {
+            "const": "buildin"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "license_url",
+          "security_audit",
+          "boot_layer"
+        ],
+        "properties": {
+          "license": {
+            "const": "Apache-2.0"
+          },
+          "sla_level": {
+            "const": "buildin"
+          },
           "distribution": {
             "properties": {
-              "supports_source": { "const": true }
+              "supports_source": {
+                "const": true
+              }
             }
           }
         }
@@ -238,29 +295,55 @@
       "if": {
         "properties": {
           "distribution": {
-            "properties": { "supports_wheel": { "const": true } },
-            "required": ["supports_wheel"]
+            "properties": {
+              "supports_wheel": {
+                "const": true
+              }
+            },
+            "required": [
+              "supports_wheel"
+            ]
           }
         },
-        "required": ["distribution"]
+        "required": [
+          "distribution"
+        ]
       },
       "then": {
         "properties": {
           "distribution": {
-            "required": ["wheel_url", "wheel_checksum"],
+            "required": [
+              "wheel_url",
+              "wheel_checksum"
+            ],
             "properties": {
-              "wheel_url": { "type": "string", "minLength": 1, "format": "uri" },
-              "wheel_checksum": { "type": "string", "pattern": "^(sha256|sha512):[a-f0-9]{64,128}$" }
+              "wheel_url": {
+                "type": "string",
+                "minLength": 1,
+                "format": "uri"
+              },
+              "wheel_checksum": {
+                "type": "string",
+                "pattern": "^(sha256|sha512):[a-f0-9]{64,128}$"
+              }
             }
           }
         }
       }
     },
     {
-      "if": { "properties": { "tier": { "const": "contributor" } } },
+      "if": {
+        "properties": {
+          "tier": {
+            "const": "contributor"
+          }
+        }
+      },
       "then": {
         "properties": {
-          "sla_level": { "const": "contributor" }
+          "sla_level": {
+            "const": "contributor"
+          }
         }
       }
     }
