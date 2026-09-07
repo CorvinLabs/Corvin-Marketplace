@@ -99,18 +99,20 @@ class EventEmitter:
         """
         try:
             with self._lock:
-                try:
-                    self._queue.append(event)
-                    _logger.debug(f"Event emitted: {event.event_type.value}")
-                    return True
-                except IndexError:
-                    # Queue full: fire-and-forget (backpressure)
+                # A bounded deque never raises on append — it silently EVICTS the
+                # oldest event, so the old ``except IndexError`` branch was dead
+                # and emit() reported True for events that were lost. Backpressure
+                # must drop the NEW event (and say so), never rewrite history.
+                if len(self._queue) >= self.max_queue_size:
                     self._dropped_count += 1
                     if self._dropped_count % 100 == 0:
                         _logger.warning(
                             f"EventEmitter queue full: dropped {self._dropped_count} events total"
                         )
                     return False
+                self._queue.append(event)
+                _logger.debug(f"Event emitted: {event.event_type.value}")
+                return True
         except Exception as e:
             _logger.error(f"Event emission failed: {e}")
             return False
