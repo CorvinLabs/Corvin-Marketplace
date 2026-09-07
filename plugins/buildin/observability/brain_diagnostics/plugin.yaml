@@ -1,4 +1,5 @@
 plugin_id: brain_diagnostics
+plugin_type: audit_backend
 version: 0.1.0
 display_name: Brain Diagnostics
 description: Brain system diagnostics

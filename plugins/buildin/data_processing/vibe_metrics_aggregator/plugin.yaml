@@ -1,4 +1,5 @@
 plugin_id: vibe_metrics_aggregator
+plugin_type: data_connector
 version: 0.1.0
 display_name: Vibe Metrics Aggregator
 origin: builtin
