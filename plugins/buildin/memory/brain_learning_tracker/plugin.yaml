@@ -1,4 +1,5 @@
 plugin_id: brain_learning_tracker
+plugin_type: recall_backend
 version: 0.1.0
 display_name: Brain Learning Tracker
 origin: builtin

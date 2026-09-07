@@ -1,4 +1,5 @@
 plugin_id: diagnostics_dashboard
+plugin_type: audit_backend
 version: 0.1.0
 display_name: Diagnostics Dashboard
 origin: builtin

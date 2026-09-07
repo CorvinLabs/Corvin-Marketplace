@@ -1,4 +1,5 @@
 plugin_id: bridge_adapter
+plugin_type: bridge_channel
 version: 0.1.0
 display_name: Bridge Adapter
 description: Bridge to Discord/Slack

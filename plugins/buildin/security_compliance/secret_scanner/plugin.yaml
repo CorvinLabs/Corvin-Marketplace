@@ -1,4 +1,5 @@
 plugin_id: secret_scanner
+plugin_type: audit_backend
 version: 0.1.0
 display_name: Secret Scanner
 description: Detect leaked secrets
