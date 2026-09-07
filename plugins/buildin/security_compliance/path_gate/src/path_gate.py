@@ -60,13 +60,15 @@ class PathGate:
             ValueError: If path traversal detected
         """
         try:
-            # Expand home directory and resolve symlinks
-            path = Path(path_str).expanduser().resolve()
-
-            # Prevent directory traversal attacks
-            # Check for suspicious patterns
-            if ".." in path.parts or path.parts[0] == "..":
+            # Traversal is checked on the RAW parts, before resolve(): resolve()
+            # collapses every ``..`` so a check after it can never fire, and
+            # ``~/../../etc/passwd`` normalised to ``/etc/passwd`` in silence.
+            raw = Path(path_str).expanduser()
+            if ".." in raw.parts:
                 raise ValueError(f"Directory traversal detected: {path_str}")
+
+            # Expand home directory and resolve symlinks
+            path = raw.resolve()
 
             # Ensure path is absolute
             if not path.is_absolute():
