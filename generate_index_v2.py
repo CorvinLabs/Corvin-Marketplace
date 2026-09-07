@@ -5,6 +5,19 @@ Marketplace Index Generator v2 — ADR-0511 compliant.
 Generates index.json from plugin.json manifests in operator/marketplace/plugins/.
 
 **Source of Truth:** plugin.json (JSON Schema validation)
+
+**Buildin plugins additionally require a sibling ``plugin.yaml``** — the manifest
+CorvinOS actually loads (``bootstrap._builtin_plugin_dirs`` globs ``plugin.yaml``;
+``routes/marketplace_resolve.resolve_builtin_dir`` refuses to install a directory
+without one). Until 2026-09-07 the index was generated from ``plugin.json`` alone
+and the two sets diverged in BOTH directions (round-4 adversarial review, F5):
+12 indexed buildin ids had no ``plugin.yaml`` and could never load — the console
+advertised ``path_gate``, ``flow_guard``, ``consent_gate`` and ``audit_chain`` as
+installable builtins that CorvinOS cannot resolve — while 8 plugins registered at
+every boot and appeared nowhere in the marketplace surface. Indexing is now bound
+to loadability: a buildin without ``plugin.yaml`` is SKIPPED (warning), and a
+loadable ``plugin.yaml`` without a ``plugin.json`` is a hard ERROR, so neither
+direction can drift silently again.
 **Structure:** operator/marketplace/plugins/{buildin,contributor}/[category]/[plugin_id]/plugin.json
 **Output:** operator/marketplace/index/plugins.json (validated against index-schema.json)
 
@@ -62,6 +75,10 @@ class MarketplaceIndexGenerator:
 
         self.plugins: List[Dict[str, Any]] = []
         self.errors: List[str] = []
+        self.skipped: List[str] = []
+        #: Directories whose plugin.json made it into the index — the exact set
+        #: ``check_loadable_are_indexed`` compares the loadable dirs against.
+        self.indexed_dirs: set = set()
 
     def discover_plugins(self) -> List[Path]:
         """
@@ -81,6 +98,50 @@ class MarketplaceIndexGenerator:
 
         logger.info(f"Discovered {len(found)} plugin.json files")
         return found
+
+    def loadable_buildin_dirs(self) -> List[Path]:
+        """Buildin dirs CorvinOS can actually load — the ``plugin.yaml`` glob.
+
+        Mirrors ``corvin_plugins.bootstrap._builtin_plugin_dirs``. This is the
+        set the index must agree with.
+        """
+        buildin = self.plugins_dir / "buildin"
+        if not buildin.exists():
+            return []
+        return sorted(p.parent for p in buildin.rglob("plugin.yaml"))
+
+    def check_loadability(self, plugin_path: Path) -> bool:
+        """A buildin entry may only be indexed if CorvinOS can load it.
+
+        Contributor plugins are installed from their own ``source_url`` and are
+        not resolved through ``resolve_builtin_dir``, so they are exempt.
+        """
+        parts = plugin_path.relative_to(self.plugins_dir).parts
+        if not parts or parts[0] != "buildin":
+            return True
+        if (plugin_path.parent / "plugin.yaml").exists():
+            return True
+        logger.warning(
+            "⏭️  %s: SKIPPED — no plugin.yaml, so CorvinOS cannot load or install "
+            "it (bootstrap._builtin_plugin_dirs globs plugin.yaml). Indexing it "
+            "would advertise an uninstallable builtin (round-4 review, F5).",
+            plugin_path,
+        )
+        self.skipped.append(str(plugin_path.parent.relative_to(self.plugins_dir)))
+        return False
+
+    def check_loadable_are_indexed(self) -> None:
+        """The other direction: everything loadable must carry a plugin.json."""
+        for d in self.loadable_buildin_dirs():
+            if d in self.indexed_dirs:
+                continue
+            error = (
+                f"❌ {d.relative_to(self.plugins_dir)}: loadable (has plugin.yaml) "
+                f"but NOT indexed — it registers at every boot and is invisible in "
+                f"the marketplace surface the operator inspects. Add a plugin.json."
+            )
+            logger.error(error)
+            self.errors.append(error)
 
     def validate_plugin(self, plugin_path: Path) -> Optional[Dict[str, Any]]:
         """
@@ -185,9 +246,15 @@ class MarketplaceIndexGenerator:
 
         # Validate each
         for plugin_path in plugin_paths:
+            if not self.check_loadability(plugin_path):
+                continue
             plugin = self.validate_plugin(plugin_path)
             if plugin and self.verify_directory_structure(plugin_path, plugin):
                 self.plugins.append(plugin)
+                self.indexed_dirs.add(plugin_path.parent)
+
+        # …and the reverse direction.
+        self.check_loadable_are_indexed()
 
         # Build index
         index = {
@@ -217,6 +284,11 @@ class MarketplaceIndexGenerator:
                 logger.error(err)
         else:
             logger.info(f"✅ Generated index with {len(self.plugins)} plugins")
+        if self.skipped:
+            logger.warning(
+                "⏭️  %d buildin dir(s) skipped for having no plugin.yaml: %s",
+                len(self.skipped), ", ".join(self.skipped),
+            )
         logger.info("=" * 60)
 
         return index

@@ -1,0 +1,29 @@
+{
+  "id": "plugin:buildin-integration-event_emitter",
+  "type": "plugin",
+  "name": "Event Emitter",
+  "version": "0.1.0",
+  "author": "Anthropic PBC",
+  "license": "Apache-2.0",
+  "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+  "tier": "buildin",
+  "category": "integration",
+  "description": "Event bus system",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/integration/event_emitter/README.md",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": false,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/integration/event_emitter"
+  },
+  "dependencies": [],
+  "requires_version": ">=1.0.0",
+  "boot_layer": "installed",
+  "sla_level": "buildin",
+  "security_audit": {
+    "audited": false
+  },
+  "maintainer_url": "mailto:plugins@anthropic.com",
+  "tags": [
+    "integration"
+  ]
+}
