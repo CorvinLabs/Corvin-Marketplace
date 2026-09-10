@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-memory-cel_session_memory",
+  "id": "memory/cel_session_memory",
   "type": "plugin",
   "name": "CEL Session Memory",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "memory"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.memory.cel_session_memory.CelSessionMemory",
+  "origin": "builtin"
 }

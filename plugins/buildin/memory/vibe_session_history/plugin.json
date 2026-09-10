@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-memory-vibe_session_history",
+  "id": "memory/vibe_session_history",
   "type": "plugin",
   "name": "Vibe Session History",
   "version": "1.0.0",
@@ -29,5 +29,7 @@
   },
   "tags": [
     "memory"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.memory.vibe_session_history.VibeSessionHistory",
+  "origin": "builtin"
 }

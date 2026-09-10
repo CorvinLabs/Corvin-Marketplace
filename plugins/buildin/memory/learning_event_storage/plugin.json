@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-memory-learning_event_storage",
+  "id": "memory/learning_event_storage",
   "type": "plugin",
   "name": "Learning Event Storage",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "memory"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.memory.learning_event_storage.LearningEventStorage",
+  "origin": "builtin"
 }

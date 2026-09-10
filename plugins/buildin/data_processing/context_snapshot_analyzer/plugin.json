@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-data_processing-context_snapshot_analyzer",
+  "id": "data_processing/context_snapshot_analyzer",
   "type": "plugin",
   "name": "Context Snapshot Analyzer",
   "version": "1.0.0",
@@ -29,5 +29,7 @@
   },
   "tags": [
     "data"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.data_processing.context_snapshot_analyzer.ContextSnapshotAnalyzer",
+  "origin": "builtin"
 }

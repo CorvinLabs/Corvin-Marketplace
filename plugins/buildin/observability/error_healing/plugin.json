@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-observability-error_healing",
+  "id": "observability/error_healing",
   "type": "plugin",
   "name": "Error Healing",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "observability"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.observability.error_healing.ErrorHealing",
+  "origin": "builtin"
 }

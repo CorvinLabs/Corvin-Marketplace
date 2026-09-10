@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-security_compliance-policy_enforcer",
+  "id": "security_compliance/policy_enforcer",
   "type": "plugin",
   "name": "Policy Enforcer",
   "version": "0.1.0",
@@ -26,5 +26,7 @@
   "tags": [
     "security",
     "compliance"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.security_compliance.policy_enforcer.PolicyEnforcer",
+  "origin": "builtin"
 }

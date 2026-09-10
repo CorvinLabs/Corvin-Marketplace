@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-security_compliance-consent_gate",
+  "id": "security_compliance/consent_gate",
   "type": "plugin",
   "name": "Consent Gate",
   "version": "1.0.0",
@@ -35,5 +35,7 @@
   "tags": [
     "security",
     "compliance"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.security_compliance.consent_gate.ConsentGate",
+  "origin": "builtin"
 }

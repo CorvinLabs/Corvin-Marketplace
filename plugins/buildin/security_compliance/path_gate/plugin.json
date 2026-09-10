@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-security_compliance-path_gate",
+  "id": "security_compliance/path_gate",
   "type": "plugin",
   "name": "Path Gate",
   "version": "1.0.0",
@@ -35,5 +35,7 @@
   "tags": [
     "security",
     "compliance"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.security_compliance.path_gate.PathGate",
+  "origin": "builtin"
 }

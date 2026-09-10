@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-memory-user_model_learner",
+  "id": "memory/user_model_learner",
   "type": "plugin",
   "name": "User Model Learner",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "memory"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.memory.user_model_learner.UserModelLearner",
+  "origin": "builtin"
 }

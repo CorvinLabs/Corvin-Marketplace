@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-data_processing-pii_detector",
+  "id": "data_processing/pii_detector",
   "type": "plugin",
   "name": "PII Detector",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "data"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.data_processing.pii_detector.PiiDetector",
+  "origin": "builtin"
 }

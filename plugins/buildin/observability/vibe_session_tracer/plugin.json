@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-observability-vibe_session_tracer",
+  "id": "observability/vibe_session_tracer",
   "type": "plugin",
   "name": "Vibe Session Tracer",
   "version": "1.0.0",
@@ -29,5 +29,7 @@
   },
   "tags": [
     "observability"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.observability.vibe_session_tracer.VibeSessionTracer",
+  "origin": "builtin"
 }

@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-integration-vibe_webhook_dispatcher",
+  "id": "integration/vibe_webhook_dispatcher",
   "type": "plugin",
   "name": "Vibe Webhook Dispatcher",
   "version": "1.0.0",
@@ -29,5 +29,7 @@
   },
   "tags": [
     "integration"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.integration.vibe_webhook_dispatcher.VibeWebhookDispatcher",
+  "origin": "builtin"
 }

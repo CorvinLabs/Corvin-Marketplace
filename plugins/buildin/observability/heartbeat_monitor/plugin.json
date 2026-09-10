@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-observability-heartbeat_monitor",
+  "id": "observability/heartbeat_monitor",
   "type": "plugin",
   "name": "Heartbeat Monitor",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "observability"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.observability.heartbeat_monitor.HeartbeatMonitor",
+  "origin": "builtin"
 }

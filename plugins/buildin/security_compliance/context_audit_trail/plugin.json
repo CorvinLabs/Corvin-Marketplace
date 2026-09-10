@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-security_compliance-context_audit_trail",
+  "id": "security_compliance/context_audit_trail",
   "type": "plugin",
   "name": "Context Audit Trail",
   "version": "1.0.0",
@@ -29,5 +29,7 @@
   },
   "tags": [
     "compliance"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.security_compliance.context_audit_trail.ContextAuditTrail",
+  "origin": "builtin"
 }

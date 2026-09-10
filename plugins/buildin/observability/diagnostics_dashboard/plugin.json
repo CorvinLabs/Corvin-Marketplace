@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-observability-diagnostics_dashboard",
+  "id": "observability/diagnostics_dashboard",
   "type": "plugin",
   "name": "Diagnostics Dashboard",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "observability"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.observability.diagnostics_dashboard.DiagnosticsDashboard",
+  "origin": "builtin"
 }

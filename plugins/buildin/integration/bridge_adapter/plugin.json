@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-integration-bridge_adapter",
+  "id": "integration/bridge_adapter",
   "type": "plugin",
   "name": "Bridge Adapter",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "integration"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.integration.bridge_adapter.BridgeAdapter",
+  "origin": "builtin"
 }

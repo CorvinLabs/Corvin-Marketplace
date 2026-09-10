@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-integration-hook_system",
+  "id": "integration/hook_system",
   "type": "plugin",
   "name": "Hook System",
   "version": "0.1.0",
@@ -25,5 +25,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "integration"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.integration.hook_system.HookSystem",
+  "origin": "builtin"
 }

@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-security_compliance-flow_guard",
+  "id": "security_compliance/flow_guard",
   "type": "plugin",
   "name": "Flow Guard",
   "version": "1.0.0",
@@ -35,5 +35,7 @@
   "tags": [
     "security",
     "compliance"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.security_compliance.flow_guard.FlowGuard",
+  "origin": "builtin"
 }

@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-security_compliance-audit_chain",
+  "id": "security_compliance/audit_chain",
   "type": "plugin",
   "name": "Audit Chain",
   "version": "1.0.0",
@@ -35,5 +35,7 @@
   "tags": [
     "security",
     "compliance"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.security_compliance.audit_chain.AuditChain",
+  "origin": "builtin"
 }

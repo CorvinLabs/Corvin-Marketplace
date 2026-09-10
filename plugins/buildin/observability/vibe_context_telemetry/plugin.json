@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-observability-vibe_context_telemetry",
+  "id": "observability/vibe_context_telemetry",
   "type": "plugin",
   "name": "Vibe Context Telemetry",
   "version": "1.0.0",
@@ -29,5 +29,7 @@
   },
   "tags": [
     "observability"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.observability.vibe_context_telemetry.VibeContextTelemetry",
+  "origin": "builtin"
 }

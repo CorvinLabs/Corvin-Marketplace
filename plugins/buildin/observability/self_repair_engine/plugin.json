@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-observability-self_repair_engine",
+  "id": "observability/self_repair_engine",
   "type": "plugin",
   "name": "Self Repair Engine",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "observability"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.observability.self_repair_engine.SelfRepairEngine",
+  "origin": "builtin"
 }
