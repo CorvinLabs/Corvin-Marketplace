@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-security_compliance-compliance_reporter",
+  "id": "security_compliance/compliance_reporter",
   "type": "plugin",
   "name": "Compliance Reporter",
   "version": "0.1.0",
@@ -26,5 +26,7 @@
   "tags": [
     "security",
     "compliance"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.security_compliance.compliance_reporter.ComplianceReporter",
+  "origin": "builtin"
 }

@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-data_processing-wheel_content_inspector",
+  "id": "data_processing/wheel_content_inspector",
   "type": "plugin",
   "name": "Wheel Content Inspector",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "data"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.data_processing.wheel_content_inspector.WheelContentInspector",
+  "origin": "builtin"
 }

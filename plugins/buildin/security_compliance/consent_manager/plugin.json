@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-security_compliance-consent_manager",
+  "id": "security_compliance/consent_manager",
   "type": "plugin",
   "name": "Consent Manager",
   "version": "0.1.0",
@@ -26,5 +26,7 @@
   "tags": [
     "security",
     "compliance"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.security_compliance.consent_manager.ConsentManager",
+  "origin": "builtin"
 }

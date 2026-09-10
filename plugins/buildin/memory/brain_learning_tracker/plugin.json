@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-memory-brain_learning_tracker",
+  "id": "memory/brain_learning_tracker",
   "type": "plugin",
   "name": "Brain Learning Tracker",
   "version": "1.0.0",
@@ -29,5 +29,7 @@
   },
   "tags": [
     "memory"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.memory.brain_learning_tracker.BrainLearningTracker",
+  "origin": "builtin"
 }

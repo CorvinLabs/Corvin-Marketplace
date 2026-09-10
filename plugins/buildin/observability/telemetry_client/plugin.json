@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-observability-telemetry_client",
+  "id": "observability/telemetry_client",
   "type": "plugin",
   "name": "Telemetry Client",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "observability"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.observability.telemetry_client.TelemetryClient",
+  "origin": "builtin"
 }

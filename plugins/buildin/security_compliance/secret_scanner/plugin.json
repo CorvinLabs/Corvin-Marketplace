@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-security_compliance-secret_scanner",
+  "id": "security_compliance/secret_scanner",
   "type": "plugin",
   "name": "Secret Scanner",
   "version": "0.1.0",
@@ -26,5 +26,7 @@
   "tags": [
     "security",
     "compliance"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.security_compliance.secret_scanner.SecretScanner",
+  "origin": "builtin"
 }

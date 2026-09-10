@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-observability-brain_layer_monitor",
+  "id": "observability/brain_layer_monitor",
   "type": "plugin",
   "name": "Brain Layer Monitor",
   "version": "1.0.0",
@@ -29,5 +29,7 @@
   },
   "tags": [
     "observability"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.observability.brain_layer_monitor.BrainLayerMonitor",
+  "origin": "builtin"
 }

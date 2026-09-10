@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-integration-cowork_hub",
+  "id": "integration/cowork_hub",
   "type": "plugin",
   "name": "Cowork Hub",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "integration"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.integration.cowork_hub.CoworkHub",
+  "origin": "builtin"
 }

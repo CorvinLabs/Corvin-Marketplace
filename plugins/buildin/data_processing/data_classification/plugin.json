@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-data_processing-data_classification",
+  "id": "data_processing/data_classification",
   "type": "plugin",
   "name": "Data Classification",
   "version": "1.0.0",
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "data"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.data_processing.data_classification.DataClassification",
+  "origin": "builtin"
 }

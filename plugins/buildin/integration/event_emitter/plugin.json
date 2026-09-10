@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-integration-event_emitter",
+  "id": "integration/event_emitter",
   "type": "plugin",
   "name": "Event Emitter",
   "version": "0.1.0",
@@ -25,5 +25,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "integration"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.integration.event_emitter.EventEmitter",
+  "origin": "builtin"
 }

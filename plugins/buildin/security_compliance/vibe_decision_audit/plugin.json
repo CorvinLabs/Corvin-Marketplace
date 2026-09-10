@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-security_compliance-vibe_decision_audit",
+  "id": "security_compliance/vibe_decision_audit",
   "type": "plugin",
   "name": "Vibe Decision Audit",
   "version": "1.0.0",
@@ -29,5 +29,7 @@
   },
   "tags": [
     "compliance"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.security_compliance.vibe_decision_audit.VibeDecisionAudit",
+  "origin": "builtin"
 }

@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-memory-semantic_context_retriever",
+  "id": "memory/semantic_context_retriever",
   "type": "plugin",
   "name": "Semantic Context Retriever",
   "version": "0.1.0",
@@ -8,7 +8,7 @@
   "license_url": "https://github.com/CorvinLabs/CorvinOS/blob/main/LICENSE",
   "tier": "buildin",
   "category": "memory",
-  "description": "BM25 context-selection provider (ADR-0599 context_retriever). Narrows/reorders already-gated CEL memory and TDE step candidates by relevance to the query — never adds content. Torch-free, local, no network egress.",
+  "description": "BM25 context-selection provider (ADR-0599 context_retriever). Narrows/reorders already-gated CEL memory and TDE step candidates by relevance to the query \u2014 never adds content. Torch-free, local, no network egress.",
   "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/memory/semantic_context_retriever/README.md",
   "distribution": {
     "supports_source": true,
@@ -34,5 +34,7 @@
   "maintainer_url": "mailto:plugins@anthropic.com",
   "tags": [
     "memory"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.memory.semantic_context_retriever.SemanticContextRetriever",
+  "origin": "builtin"
 }

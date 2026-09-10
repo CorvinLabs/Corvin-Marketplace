@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-data_processing-vibe_metrics_aggregator",
+  "id": "data_processing/vibe_metrics_aggregator",
   "type": "plugin",
   "name": "Vibe Metrics Aggregator",
   "version": "1.0.0",
@@ -29,5 +29,7 @@
   },
   "tags": [
     "data"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.data_processing.vibe_metrics_aggregator.VibeMetricsAggregator",
+  "origin": "builtin"
 }

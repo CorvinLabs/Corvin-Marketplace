@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-integration-brain_event_emitter",
+  "id": "integration/brain_event_emitter",
   "type": "plugin",
   "name": "Brain Event Emitter",
   "version": "1.0.0",
@@ -29,5 +29,7 @@
   },
   "tags": [
     "integration"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.integration.brain_event_emitter.BrainEventEmitter",
+  "origin": "builtin"
 }

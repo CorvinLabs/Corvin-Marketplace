@@ -1,5 +1,5 @@
 {
-  "id": "plugin:buildin-security_compliance-threat_detector",
+  "id": "security_compliance/threat_detector",
   "type": "plugin",
   "name": "Threat Detector",
   "version": "0.1.0",
@@ -26,5 +26,7 @@
   "tags": [
     "security",
     "compliance"
-  ]
+  ],
+  "entry_point": "core.plugins.buildin.security_compliance.threat_detector.ThreatDetector",
+  "origin": "builtin"
 }
