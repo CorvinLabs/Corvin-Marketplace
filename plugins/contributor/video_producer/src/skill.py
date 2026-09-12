@@ -9,8 +9,13 @@ import uuid
 
 import anthropic
 
-from .models import VideoJob, Storyboard, Scene, VideoOutput
-from .storage import get_storage
+# Support both relative and absolute imports
+try:
+    from models import VideoJob, Storyboard, Scene, VideoOutput
+    from storage import get_storage
+except ImportError:
+    from .models import VideoJob, Storyboard, Scene, VideoOutput
+    from .storage import get_storage
 
 logger = logging.getLogger(__name__)
 

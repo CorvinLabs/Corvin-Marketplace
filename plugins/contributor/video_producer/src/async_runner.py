@@ -7,7 +7,11 @@ from datetime import datetime
 from typing import Dict, Any, Optional, Callable
 import threading
 
-from .skill import start_video_production
+# Support both relative and absolute imports
+try:
+    from skill import start_video_production
+except ImportError:
+    from .skill import start_video_production
 
 logger = logging.getLogger(__name__)
 
