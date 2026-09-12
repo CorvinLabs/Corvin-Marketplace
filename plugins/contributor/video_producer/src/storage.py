@@ -6,7 +6,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from .models import VideoJob, VideoOutput
+# Support both relative and absolute imports
+try:
+    from models import VideoJob, VideoOutput
+except ImportError:
+    from .models import VideoJob, VideoOutput
 
 
 class VideoStorage:
