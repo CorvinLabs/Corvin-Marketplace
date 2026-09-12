@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Marketplace Index v3",
+  "description": "Unified marketplace index aggregating all 5 artifact types (ADR-0678)",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "3.0",
+      "description": "Schema version (must be 3.0)"
+    },
+    "schema": {
+      "type": "string",
+      "const": "ADR-0678",
+      "description": "ADR reference for this schema"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when index was generated"
+    },
+    "artifacts": {
+      "type": "object",
+      "properties": {
+        "plugins": {
+          "type": "object",
+          "properties": {
+            "count": {"type": "integer", "minimum": 0},
+            "schema_ref": {"type": "string"},
+            "items": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/plugin"}
+            }
+          },
+          "required": ["count", "schema_ref", "items"]
+        },
+        "skills": {
+          "type": "object",
+          "properties": {
+            "count": {"type": "integer", "minimum": 0},
+            "schema_ref": {"type": "string"},
+            "items": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/skill"}
+            }
+          },
+          "required": ["count", "schema_ref", "items"]
+        },
+        "tools": {
+          "type": "object",
+          "properties": {
+            "count": {"type": "integer", "minimum": 0},
+            "schema_ref": {"type": "string"},
+            "items": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/tool"}
+            }
+          },
+          "required": ["count", "schema_ref", "items"]
+        },
+        "connectors": {
+          "type": "object",
+          "properties": {
+            "count": {"type": "integer", "minimum": 0},
+            "schema_ref": {"type": "string"},
+            "items": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/connector"}
+            }
+          },
+          "required": ["count", "schema_ref", "items"]
+        },
+        "layers": {
+          "type": "object",
+          "properties": {
+            "count": {"type": "integer", "minimum": 0},
+            "schema_ref": {"type": "string"},
+            "items": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/layer"}
+            }
+          },
+          "required": ["count", "schema_ref", "items"]
+        }
+      },
+      "required": ["plugins", "skills", "tools", "connectors", "layers"]
+    }
+  },
+  "required": ["version", "schema", "generated_at", "artifacts"],
+  "definitions": {
+    "plugin": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "tier": {"type": "string"},
+        "category": {"type": "string"},
+        "description": {"type": "string"},
+        "license": {"type": "string"},
+        "author": {"type": "string"}
+      },
+      "required": ["id", "name", "version"]
+    },
+    "skill": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "tier": {"type": "string"},
+        "category": {"type": "string"},
+        "description": {"type": "string"},
+        "author": {"type": "string"},
+        "confidence_score": {"type": "number", "minimum": 0, "maximum": 1},
+        "learning_enabled": {"type": "boolean"}
+      },
+      "required": ["id", "name", "version"]
+    },
+    "tool": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "protocol": {"type": "string", "enum": ["stdio", "sse", "http"]},
+        "description": {"type": "string"}
+      },
+      "required": ["id", "name", "version", "protocol"]
+    },
+    "connector": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "category": {"type": "string"},
+        "auth_method": {"type": "string"},
+        "description": {"type": "string"}
+      },
+      "required": ["id", "name", "category"]
+    },
+    "layer": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "immutable": {"type": "boolean"},
+        "tier": {"type": "string"}
+      },
+      "required": ["id", "name"]
+    }
+  }
+}
