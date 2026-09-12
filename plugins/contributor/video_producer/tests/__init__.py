@@ -1,1 +1,1 @@
-"""Tests for Video Producer plugin."""
+"""Tests for Video Producer Plugin."""
