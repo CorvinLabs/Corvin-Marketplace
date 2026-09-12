@@ -1,0 +1,72 @@
+{
+  "id": "plugin:contributor-media-video_producer",
+  "type": "plugin",
+  "name": "Video Producer",
+  "version": "1.0.0",
+  "author": "CorvinOS Contributors",
+  "license": "Apache-2.0",
+  "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+  "tier": "contributor",
+  "category": "media",
+  "description": "Create CorvinOS marketing and explainer videos from PowerPoints, screenshots, and voice narration. Orchestrated multi-skill system with deep asset analysis, per-scene feedback, and learning loops.",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/video_producer/README.md",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": false,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/video_producer"
+  },
+  "dependencies": [],
+  "requires_version": ">=1.0.0",
+  "boot_layer": "installed",
+  "sla_level": "contributor",
+  "maintainer_url": "mailto:corvinOS-team@anthropic.com",
+  "tags": [
+    "video",
+    "media",
+    "marketing",
+    "education",
+    "skill-orchestration"
+  ],
+  "capabilities": [
+    "video-production",
+    "asset-analysis",
+    "voice-narration",
+    "screenshot-capture",
+    "slide-rendering",
+    "video-assembly",
+    "youtube-export"
+  ],
+  "entry_points": {
+    "console_panels": [
+      {
+        "id": "video-producer-panel",
+        "title": "Video Producer",
+        "icon": "film",
+        "route": "/video-producer",
+        "component": "VideoProducerPanel",
+        "category": "media"
+      }
+    ],
+    "skills": [
+      {
+        "id": "os.video_producer",
+        "name": "Video Producer Orchestrator",
+        "description": "Main orchestrator for video production workflow using multi-skill architecture"
+      }
+    ]
+  },
+  "config": {
+    "tts_engine": "azure",
+    "youtube_oauth_required": true,
+    "max_video_length_minutes": 60,
+    "enable_learning": true
+  },
+  "permissions": [
+    "console:read",
+    "console:write",
+    "skills:execute",
+    "tasks:manage",
+    "learning:write",
+    "audit:read"
+  ]
+}
