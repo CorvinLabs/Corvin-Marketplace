@@ -17,6 +17,10 @@ setup(
         "openai>=1.0.0",
         "pydantic>=2.0.0",
         "requests>=2.31.0",
+        "anthropic>=0.40.0",
+        "gTTS>=2.5.0",
+        "python-dotenv>=1.0.0",
+        "Pillow>=10.0.0",
     ],
     extras_require={
         "dev": [

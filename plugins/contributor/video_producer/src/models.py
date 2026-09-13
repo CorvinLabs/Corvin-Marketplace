@@ -73,6 +73,10 @@ class VideoJob:
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
     video_output_path: Optional[str] = None
+    percent: int = 0
+    current_step: Optional[str] = None
+    current_scene: Optional[int] = None
+    total_scenes: Optional[int] = None
 
     def to_dict(self):
         return {
@@ -85,6 +89,10 @@ class VideoJob:
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "error_message": self.error_message,
             "video_output_path": self.video_output_path,
+            "percent": self.percent,
+            "current_step": self.current_step,
+            "current_scene": self.current_scene,
+            "total_scenes": self.total_scenes,
         }
 
     @classmethod
@@ -99,6 +107,10 @@ class VideoJob:
             completed_at=datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None,
             error_message=data.get("error_message"),
             video_output_path=data.get("video_output_path"),
+            percent=data.get("percent", 0),
+            current_step=data.get("current_step"),
+            current_scene=data.get("current_scene"),
+            total_scenes=data.get("total_scenes"),
         )
 
 
