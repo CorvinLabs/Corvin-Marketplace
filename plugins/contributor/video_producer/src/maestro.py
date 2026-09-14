@@ -1,330 +1,301 @@
-"""Maestro Orchestrator — Unified Video Production Workflow
+"""Maestro Orchestrator for Video Producer Skill 2.0 (WAVE 1)
 
-Orchestrates the complete video production pipeline:
-1. Asset validation
-2. Voice synthesis (narration)
-3. Voice-sync mapping
-4. Animation rendering (with tier fallback)
-5. Video composition
-6. Quality metrics + audit logging
+Orchestrates 5 Worker Skills with phase gates and feedback loops.
 
-ADR-0740: Director Mode Advanced (Maestro Orchestrator)
+Load-bearing constraints:
+- Phase 2 (asset analysis) is mandatory
+- Preconditions are hard (enforce sequential phases)
+- Per-scene feedback drives learning (ADR-0314)
+- YouTube async (non-blocking, separate Skill)
+
+ADR-0692: Video Producer Orchestration Architecture
 """
 
-import hashlib
 import json
-import time
-from dataclasses import dataclass
-from pathlib import Path
-from typing import List, Optional
+import logging
+from dataclasses import dataclass, asdict
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
-class Storyboard:
-    """Storyboard specification for video"""
-    title: str
-    concept_id: str
-    didactic_level: str         # "beginner", "technical"
-    duration_seconds: int
-    narration: str              # Full narration text
-    keyframes: List[dict]       # [{frame: 0, event: "start"}, ...]
-    output_format: str = "mp4"
+class Precondition:
+    """Worker precondition (file must exist, max age, etc.)"""
+    path: str
+    must_exist: bool = True
+    max_age_hours: Optional[int] = None
 
 
 @dataclass
-class VideoMetadata:
-    """Metadata for generated video"""
-    storyboard_hash: str
-    output_path: Optional[Path]
-    duration_seconds: float
-    audio_duration_sec: float
-    video_hash: str
-    tier_used: int
-    render_time_ms: int
-    generation_timestamp: str
-    narration_hash: str
+class WorkerConfig:
+    """Configuration for a Worker Skill."""
+    name: str
+    module: str
+    preconditions: List[Precondition]
+    depends_on: List[str]  # e.g., ["asset_analyzer"] means analyze before voice
 
 
-class Maestro:
-    """Video production orchestrator
+@dataclass
+class SceneRenderedEvent:
+    """Per-scene feedback event (ADR-0314 compatible)."""
+    timestamp: str
+    scene_id: str
+    worker: str
+    feedback: str  # e.g., "screenshot_cropped_too_tight"
+    quality_score: float  # 0.0–1.0
+    metadata: Dict = None
 
-    Manages the complete workflow: storyboard → audio → animation → video.
-    Ensures reproducibility via hashing and deterministic tier selection.
+    def to_dict(self):
+        return asdict(self)
+
+
+class MaestroOrchestrator:
+    """Coordinates Video Producer Workers with phase gates and feedback (WAVE 1).
+
+    Enforces:
+    - Phase 2 (asset analysis) mandatory
+    - Preconditions hard (phase gates)
+    - Per-scene feedback for learning
     """
 
-    def __init__(self, tier_dispatcher, voice_synthesizer):
-        """Initialize Maestro
+    def __init__(self, project_dir: str = "."):
+        self.project_dir = Path(project_dir)
+        self.state_dir = self.project_dir / ".video-producer-state"
+        self.state_dir.mkdir(exist_ok=True)
 
-        Args:
-            tier_dispatcher: TierDispatcher instance for animation rendering
-            voice_synthesizer: VoiceSynthesizer instance for narration
-        """
-        self.name = "maestro"
-        self.version = "5.1.0"
-        self.dispatcher = tier_dispatcher
-        self.synth = voice_synthesizer
+        # Worker registry
+        self.workers: Dict[str, WorkerConfig] = {}
+        self.feedback_log = self.state_dir / "feedback.jsonl"
+        self.execution_log = self.state_dir / "execution.jsonl"
 
-        # Setup directories (relative to plugin)
-        plugin_root = Path(__file__).parent
-        self.output_dir = plugin_root / "outputs" / "videos"
-        self.metadata_dir = plugin_root / "outputs" / "metadata"
-        self.audit_dir = plugin_root / "outputs" / "audit"
+    def register_worker(
+        self,
+        name: str,
+        module: str,
+        preconditions: List[Precondition],
+        depends_on: List[str],
+    ):
+        """Register a Worker Skill with preconditions."""
+        self.workers[name] = WorkerConfig(
+            name=name,
+            module=module,
+            preconditions=preconditions,
+            depends_on=depends_on,
+        )
+        logger.info(f"Registered Worker: {name}")
 
-        for d in [self.output_dir, self.metadata_dir, self.audit_dir]:
-            d.mkdir(parents=True, exist_ok=True)
+    def _check_preconditions(self, worker_name: str) -> bool:
+        """Verify all preconditions for a Worker."""
+        worker = self.workers.get(worker_name)
+        if not worker:
+            raise ValueError(f"Worker {worker_name} not registered")
 
-    def produce(self, storyboard: Storyboard) -> dict:
-        """Produce video from storyboard
+        for precond in worker.preconditions:
+            path = self.project_dir / precond.path
+            if precond.must_exist and not path.exists():
+                raise PreconditionNotMetError(
+                    f"Precondition failed for {worker_name}: {precond.path} does not exist"
+                )
 
-        Args:
-            storyboard: Storyboard specification
+            # Check age if specified
+            if precond.max_age_hours and path.exists():
+                age_hours = (datetime.utcnow().timestamp() - path.stat().st_mtime) / 3600
+                if age_hours > precond.max_age_hours:
+                    raise PreconditionNotMetError(
+                        f"Precondition failed for {worker_name}: {precond.path} is {age_hours:.1f}h old (max {precond.max_age_hours}h)"
+                    )
 
-        Returns:
-            Result dict with video path, metadata, and audit trail
-        """
-        start_time = time.time()
-        audit_events = []
+        return True
 
-        try:
-            # Step 1: Validate storyboard
-            audit_events.append(self._emit_audit(
-                event_type="storyboard_validated",
-                concept_id=storyboard.concept_id,
-                status="ok"
-            ))
+    def _check_phase_gates(self) -> bool:
+        """Gate 1: Asset analysis must be complete before proceeding."""
+        analysis_file = self.state_dir / "analysis.json"
 
-            # Step 2: Synthesize narration
-            syn_result = self.synth.synthesize(
-                type("SynthRequest", (), {
-                    "text": storyboard.narration,
-                    "voice": "nova",
-                    "model": "tts-1-hd",
-                    "format": "mp3"
-                })()
+        if not analysis_file.exists():
+            raise AnalysisIncompleteError(
+                "Phase 2 (Asset Analysis) not complete. "
+                "Run asset_analyzer first."
             )
 
-            if not syn_result.success:
-                audit_events.append(self._emit_audit(
-                    event_type="synthesis_failed",
-                    concept_id=storyboard.concept_id,
-                    error=syn_result.error
-                ))
-                return {
-                    "success": False,
-                    "error": f"Voice synthesis failed: {syn_result.error}",
-                    "audit_events": audit_events
-                }
-
-            audio_duration = syn_result.duration_sec
-            narration_hash = syn_result.text_hash
-
-            audit_events.append(self._emit_audit(
-                event_type="narration_synthesized",
-                concept_id=storyboard.concept_id,
-                audio_duration=audio_duration,
-                text_hash=narration_hash
-            ))
-
-            # Step 3: Dispatch animation rendering
-            anim_request = type("AnimRequest", (), {
-                "animation_id": storyboard.concept_id,
-                "didactic_level": storyboard.didactic_level,
-                "duration_seconds": storyboard.duration_seconds,
-                "assets": [],
-                "output_format": storyboard.output_format
-            })()
-
-            dispatch_result = self.dispatcher.dispatch(anim_request)
-
-            if not dispatch_result["success"]:
-                audit_events.append(self._emit_audit(
-                    event_type="animation_failed",
-                    concept_id=storyboard.concept_id,
-                    error=dispatch_result.get("error")
-                ))
-                return {
-                    "success": False,
-                    "error": f"Animation rendering failed: {dispatch_result.get('error')}",
-                    "audit_events": audit_events
-                }
-
-            video_path = Path(dispatch_result.get("output_path"))
-            tier_used = self._parse_tier_name(dispatch_result.get("tier"))
-            render_time = dispatch_result.get("render_time_ms", 0)
-
-            audit_events.append(self._emit_audit(
-                event_type="animation_rendered",
-                concept_id=storyboard.concept_id,
-                tier=dispatch_result.get("tier"),
-                render_time_ms=render_time
-            ))
-
-            # Step 4: Calculate hashes
-            storyboard_hash = self._hash_storyboard(storyboard)
-            video_hash = self._hash_file(video_path) if video_path.exists() else ""
-
-            # Step 5: Emit completion audit event
-            audit_events.append(self._emit_audit(
-                event_type="video_production_complete",
-                concept_id=storyboard.concept_id,
-                storyboard_hash=storyboard_hash,
-                video_hash=video_hash,
-                tier=tier_used
-            ))
-
-            # Step 6: Save metadata
-            metadata = VideoMetadata(
-                storyboard_hash=storyboard_hash,
-                output_path=video_path,
-                duration_seconds=storyboard.duration_seconds,
-                audio_duration_sec=audio_duration,
-                video_hash=video_hash,
-                tier_used=tier_used,
-                render_time_ms=render_time,
-                generation_timestamp=datetime.now().isoformat(),
-                narration_hash=narration_hash
-            )
-
-            self._save_metadata(storyboard.concept_id, metadata)
-            self._save_audit_events(storyboard.concept_id, audit_events)
-
-            total_time_ms = int((time.time() - start_time) * 1000)
-
-            return {
-                "success": True,
-                "output_path": str(video_path),
-                "duration_seconds": storyboard.duration_seconds,
-                "audio_duration_sec": audio_duration,
-                "tier_used": tier_used,
-                "render_time_ms": render_time,
-                "total_time_ms": total_time_ms,
-                "storyboard_hash": storyboard_hash,
-                "video_hash": video_hash,
-                "audit_events": audit_events
-            }
-
-        except Exception as e:
-            audit_events.append(self._emit_audit(
-                event_type="production_error",
-                concept_id=storyboard.concept_id,
-                error=str(e)
-            ))
-            return {
-                "success": False,
-                "error": f"Exception: {str(e)}",
-                "audit_events": audit_events
-            }
-
-    def _hash_storyboard(self, storyboard: Storyboard) -> str:
-        """Hash storyboard for reproducibility
-
-        Args:
-            storyboard: Storyboard to hash
-
-        Returns:
-            SHA256 hash
-        """
-        data = {
-            "title": storyboard.title,
-            "concept_id": storyboard.concept_id,
-            "didactic_level": storyboard.didactic_level,
-            "duration_seconds": storyboard.duration_seconds,
-            "narration": storyboard.narration,
-            "keyframes": storyboard.keyframes
-        }
-        json_str = json.dumps(data, sort_keys=True)
-        return hashlib.sha256(json_str.encode()).hexdigest()
-
-    def _hash_file(self, path: Path) -> str:
-        """Hash file content
-
-        Args:
-            path: Path to file
-
-        Returns:
-            SHA256 hash
-        """
         try:
-            sha = hashlib.sha256()
-            with open(path, "rb") as f:
-                sha.update(f.read())
-            return sha.hexdigest()
-        except Exception as e:
-            print(f"[MAESTRO] Hash error: {e}")
-            return ""
+            with open(analysis_file) as f:
+                analysis = json.load(f)
 
-    def _parse_tier_name(self, tier_name: str) -> int:
-        """Parse tier name to number
+            if not analysis.get("ready_for_narration", False):
+                raise AnalysisIncompleteError(
+                    "Asset analysis incomplete: ready_for_narration != true"
+                )
 
-        Args:
-            tier_name: Tier name (e.g., "TIER_2_RICH")
+            return True
+        except json.JSONDecodeError as e:
+            raise AnalysisIncompleteError(f"Invalid analysis.json: {e}")
 
-        Returns:
-            Tier number (1, 2, or 3)
-        """
-        if "TIER_3" in tier_name or "TIER_3" in str(tier_name):
-            return 3
-        elif "TIER_2" in tier_name or "TIER_2" in str(tier_name):
-            return 2
-        else:
-            return 1
+    def call_worker(
+        self,
+        worker_name: str,
+        input_data: Dict,
+    ) -> Dict:
+        """Call a Worker Skill with precondition checks."""
+        logger.info(f"Calling Worker: {worker_name}")
 
-    def _emit_audit(self, event_type: str, concept_id: str, **kwargs) -> dict:
-        """Emit audit event
+        # Check preconditions
+        self._check_preconditions(worker_name)
 
-        Args:
-            event_type: Type of audit event
-            concept_id: Concept ID
-            **kwargs: Additional event data
-
-        Returns:
-            Audit event dict
-        """
-        event = {
-            "event_type": event_type,
-            "concept_id": concept_id,
-            "timestamp": datetime.now().isoformat(),
-            **kwargs
+        # Log execution
+        execution_event = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "worker": worker_name,
+            "input_hash": hash(json.dumps(input_data, sort_keys=True)),
+            "status": "started",
         }
-        return event
+        self._log_execution(execution_event)
 
-    def _save_metadata(self, concept_id: str, metadata: VideoMetadata):
-        """Save video metadata
+        # For now, workers are imported and called directly
+        # In production, these would be async via Skill 2.0 runtime
+        worker = self.workers[worker_name]
 
-        Args:
-            concept_id: Concept ID
-            metadata: VideoMetadata to save
+        # Try importing as module name directly (for stubs)
+        try:
+            worker_module = __import__(worker.module)
+        except ImportError:
+            # If not found, try with video_producer prefix
+            worker_module = __import__(f"video_producer.{worker.module}", fromlist=[worker.module])
+
+        try:
+            result = worker_module.execute(input_data, self.state_dir)
+            execution_event["status"] = "success"
+            self._log_execution(execution_event)
+            return result
+        except Exception as e:
+            execution_event["status"] = "failed"
+            execution_event["error"] = str(e)
+            self._log_execution(execution_event)
+            raise
+
+    def emit_feedback(
+        self,
+        scene_id: str,
+        worker: str,
+        feedback: str,
+        quality_score: float,
+    ):
+        """Emit per-scene feedback event (ADR-0314)."""
+        event = SceneRenderedEvent(
+            timestamp=datetime.utcnow().isoformat() + "Z",
+            scene_id=scene_id,
+            worker=worker,
+            feedback=feedback,
+            quality_score=quality_score,
+        )
+        self._log_feedback(event)
+        logger.info(f"Feedback: {scene_id} ({worker}) = {quality_score:.2f}")
+
+    def _log_feedback(self, event: SceneRenderedEvent):
+        """Append feedback to audit trail."""
+        with open(self.feedback_log, "a") as f:
+            f.write(json.dumps(event.to_dict()) + "\n")
+
+    def _log_execution(self, event: Dict):
+        """Append execution to audit trail."""
+        with open(self.execution_log, "a") as f:
+            f.write(json.dumps(event) + "\n")
+
+    def orchestrate_video_production(
+        self,
+        ppt_file: str,
+        console_url: str,
+        output_dir: str,
+    ) -> str:
         """
-        metadata_file = self.metadata_dir / f"{concept_id}_metadata.json"
-        data = {
-            "storyboard_hash": metadata.storyboard_hash,
-            "output_path": str(metadata.output_path),
-            "duration_seconds": metadata.duration_seconds,
-            "audio_duration_sec": metadata.audio_duration_sec,
-            "video_hash": metadata.video_hash,
-            "tier_used": metadata.tier_used,
-            "render_time_ms": metadata.render_time_ms,
-            "generation_timestamp": metadata.generation_timestamp,
-            "narration_hash": metadata.narration_hash
+        Full video production pipeline (WAVE 1: orchestrator + stub workers).
+
+        Phases:
+        1. Asset Analysis (deep-read, no invention)
+        2. Storyboard generation (LLM, constrained to analysis.json)
+        3. Voice Synthesis (Phase 4)
+        4. Screenshot Capture (Phase 4)
+        5. Slide Rendering (Phase 5)
+        6. Video Assembly (Phase 6–7)
+        7. (Optional, async) YouTube Upload
+
+        Returns: path to output.mp4
+        """
+        logger.info(f"Starting video production: {ppt_file}")
+
+        # Phase 1: Call asset_analyzer
+        logger.info("Phase 1: Asset Analysis")
+        analysis = self.call_worker(
+            "asset_analyzer",
+            {
+                "ppt_file": ppt_file,
+                "output_dir": str(self.state_dir),
+            },
+        )
+
+        # Gate check: analysis must be ready
+        self._check_phase_gates()
+
+        # Phase 2: Storyboard generation (LLM, constrained to analysis.json)
+        logger.info("Phase 2: Storyboard Generation (constrained to analysis.json)")
+        storyboard = self._generate_storyboard(analysis)
+
+        # Phase 3–5: Parallel workers (voice, screenshots, slides)
+        logger.info("Phase 3–5: Parallel worker execution")
+        voice_result = self.call_worker("voice_synthesizer", storyboard)
+        screenshot_result = self.call_worker(
+            "screenshot_capturer",
+            {"console_url": console_url, "storyboard": storyboard},
+        )
+        slides_result = self.call_worker(
+            "slide_renderer",
+            {"ppt_file": ppt_file, "storyboard": storyboard},
+        )
+
+        # Phase 6–7: Video assembly
+        logger.info("Phase 6–7: Video Assembly")
+        output_mp4 = self.call_worker(
+            "video_assembler",
+            {
+                "storyboard": storyboard,
+                "audio_file": voice_result.get("audio_path"),
+                "screenshots_dir": screenshot_result.get("dir"),
+                "slides_dir": slides_result.get("dir"),
+                "output_dir": output_dir,
+            },
+        )
+
+        logger.info(f"Video production complete: {output_mp4}")
+        return output_mp4
+
+    def _generate_storyboard(self, analysis: Dict) -> Dict:
+        """
+        Generate storyboard from analysis.json (LLM constrained).
+
+        Load-bearing constraint: ONLY source from analysis.json, never invent.
+        In production, this calls Claude with a constrained prompt.
+        """
+        # Stub: return fixed storyboard for k=1
+        return {
+            "title": "CorvinOS Overview",
+            "scenes": [
+                {
+                    "id": "s1",
+                    "title": "What is CorvinOS?",
+                    "narration": analysis.get("sections", [{}])[0].get("title", "Introduction"),
+                    "duration_sec": 10,
+                },
+            ],
         }
-        try:
-            with open(metadata_file, "w") as f:
-                json.dump(data, f, indent=2)
-        except Exception as e:
-            print(f"[MAESTRO] Metadata save error: {e}")
 
-    def _save_audit_events(self, concept_id: str, events: List[dict]):
-        """Save audit events
 
-        Args:
-            concept_id: Concept ID
-            events: List of audit events
-        """
-        audit_file = self.audit_dir / f"{concept_id}_audit.jsonl"
-        try:
-            with open(audit_file, "w") as f:
-                for event in events:
-                    f.write(json.dumps(event) + "\n")
-        except Exception as e:
-            print(f"[MAESTRO] Audit save error: {e}")
+class PreconditionNotMetError(Exception):
+    """Raised when a Worker precondition is not met."""
+    pass
+
+
+class AnalysisIncompleteError(Exception):
+    """Raised when Phase 2 analysis is incomplete or missing."""
+    pass
