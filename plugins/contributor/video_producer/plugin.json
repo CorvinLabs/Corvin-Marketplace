@@ -10,6 +10,11 @@
   "category": "media",
   "description": "Create CorvinOS marketing and explainer videos from PowerPoints, screenshots, and voice narration. Orchestrated multi-skill system with deep asset analysis, per-scene feedback, and learning loops.",
   "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/video_producer/README.md",
+  "documentation": "docs/README.md",
+  "adr_prefix": "video-producer",
+  "docs_location": "docs/",
+  "development_guide": "docs/PLUGIN-DEVELOPMENT-GUIDE.md",
+  "adr_graph": "docs/ADR-GRAPH.md",
   "distribution": {
     "supports_source": true,
     "supports_wheel": false,
