@@ -29,14 +29,33 @@ npm install puppeteer
 
 ## Quick Start
 
-```python
-from video_producer.maestro import MaestroOrchestrator
+**CLI Usage:**
+```bash
+# Health check
+python3 -m video_producer health --verbose
 
-orch = MaestroOrchestrator(project_dir="/tmp")
-analysis = orch.call_worker("asset_analyzer", {"ppt_file": "demo.pptx", "output_dir": "/tmp"})
-storyboard = orch._generate_storyboard(analysis)
-video_result = orch.call_worker("voice_openai", {"storyboard": storyboard})
-print(f"✅ Video: {video_result['audio_path']}")
+# Run full orchestration pipeline
+python3 -m video_producer orchestrate \
+  --assets "path/to/demo.pptx" \
+  --project-dir "/tmp/video_project" \
+  --output "result.json"
+```
+
+**Python API:**
+```python
+import asyncio
+from video_producer import VideoProducerOrchestrator
+
+async def main():
+    orch = VideoProducerOrchestrator(project_dir="/tmp")
+    result = await orch.orchestrate(
+        asset_paths=["demo.pptx"],
+        instructions={"style": "professional"}
+    )
+    print(f"Status: {result['status']}")
+    print(f"Analysis: {result['analysis']}")
+
+asyncio.run(main())
 ```
 
 ## Configuration
@@ -47,7 +66,11 @@ print(f"✅ Video: {video_result['audio_path']}")
 ## Testing
 
 ```bash
-pytest tests/test_orchestration_e2e_stub.py -v
+# E2E test: Full orchestration pipeline
+python3 tests/test_orchestrator_e2e.py
+
+# All tests
+python3 -m pytest tests/ -v
 ```
 
 ## Documentation

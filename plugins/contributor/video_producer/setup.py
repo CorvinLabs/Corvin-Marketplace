@@ -21,6 +21,9 @@ setup(
         "dev": ["pytest>=7.0", "pytest-cov>=4.0"],
     },
     entry_points={
+        "console_scripts": [
+            "video-producer = video_producer.__main__:main",
+        ],
         "corvin.skills": [
             "video_producer = video_producer.plugin:VideoProducerPlugin",
         ],
