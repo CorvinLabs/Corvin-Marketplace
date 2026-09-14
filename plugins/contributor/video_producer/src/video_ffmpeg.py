@@ -53,8 +53,9 @@ def execute(input_data: Dict, state_dir: Path) -> Dict:
         raise ValueError(f"No scene_*.png files found in {screenshots_dir}")
 
     # Write concat demuxer file (explicit frame ordering, prevents accidental inclusion of other PNGs)
+    # FIX: Use absolute paths so FFmpeg can find PNGs regardless of cwd
     concat_file = state_dir / "concat_frames.txt"
-    concat_content = "\n".join([f"file '{f.name}'" for f in png_files])
+    concat_content = "\n".join([f"file '{f.absolute()}'" for f in png_files])
     concat_file.write_text(concat_content)
 
     cmd = [
