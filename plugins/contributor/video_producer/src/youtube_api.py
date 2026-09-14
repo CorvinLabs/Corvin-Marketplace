@@ -1,32 +1,36 @@
 """Week 12: Real YouTube API v3 Integration
 
 Uploads videos to YouTube with Service Account authentication.
-Non-blocking async enqueue (Task API integration).
+BLOCKING synchronous upload (use Task API wrapper for async enqueue).
 """
 
 import os
 import logging
+import time
+import hashlib
 from pathlib import Path
 from typing import Dict, Optional
 import json
-import hashlib
 
 logger = logging.getLogger(__name__)
 
 
 def execute(input_data: Dict, state_dir: Path) -> Dict:
     """Upload video to YouTube via API v3 (Service Account).
-    
+
+    WARNING: This is BLOCKING (synchronous). Caller thread freezes until upload completes.
+    Use a Task wrapper (ADR-0695, Phase 4) for async non-blocking enqueue.
+
     Preconditions:
     - YouTube credentials JSON exists (~/.corvin/youtube-credentials.json)
     - Video file exists
     - google-api-python-client installed
-    
+
     Returns:
         {
             "task_id": str,
-            "video_id": str or None,  # None until upload completes
-            "status": "enqueued" | "uploading" | "success" | "failed",
+            "video_id": str or None,  # None on failure
+            "status": "success" | "failed",  # BLOCKING call completes with final status
             "youtube_url": str or None,
             "upload_progress_percent": float
         }
@@ -40,10 +44,19 @@ def execute(input_data: Dict, state_dir: Path) -> Dict:
     
     if not Path(credentials_path).exists():
         raise ValueError(f"YouTube credentials not found: {credentials_path}")
-    
-    # Generate task ID (SHA256 based, stable)
-    video_hash = hashlib.sha256(Path(video_path).read_bytes()).hexdigest()[:8]
-    task_id = f"yt_upload_{video_hash}_{int(__import__('time').time())}"
+
+    # Generate task ID (SHA256-based, stable, with streaming hash for large files)
+    video_file = Path(video_path)
+
+    # FIX: Stream hash instead of reading entire file into memory
+    hasher = hashlib.sha256()
+    with open(video_file, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            hasher.update(chunk)
+    video_hash = hasher.hexdigest()[:8]
+
+    # FIX: Use proper import instead of __import__('time')
+    task_id = f"yt_upload_{video_hash}_{int(time.time())}"
     
     try:
         from google.oauth2 import service_account
