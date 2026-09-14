@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-31T09:30:48.029136Z",
+  "generated_at": "2026-09-14T20:15:00Z",
   "plugins": {
     "com.corvinlabs.slack-notifier": {
       "author": "CorvinOS Team",
@@ -181,6 +181,69 @@
       "registered_at": "2026-08-31T09:30:48.029129Z",
       "depends_on": [
         "com.corvinlabs.slack-notifier>=1.0.0"
+      ]
+    },
+    "plugin:contributor-media-video_producer": {
+      "id": "plugin:contributor-media-video_producer",
+      "type": "plugin",
+      "name": "Video Producer",
+      "version": "1.0.0",
+      "plugin_type": "orchestrator",
+      "boot_layer": "installed",
+      "origin": "contributor",
+      "author": "CorvinOS Contributors",
+      "email": "corvinOS-team@anthropic.com",
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/CorvinLabs/Corvin-Marketplace",
+      "repository": "https://github.com/CorvinLabs/Corvin-Marketplace",
+      "directory": "plugins/contributor/video_producer",
+      "entry_point": "plugin.py::VideoProducerPlugin",
+      "description": "Create CorvinOS marketing and explainer videos from PowerPoints, screenshots, and voice narration. Orchestrated multi-skill system with deep asset analysis, per-scene feedback, and learning loops.",
+      "categories": [
+        "media",
+        "marketing",
+        "education"
+      ],
+      "keywords": [
+        "video",
+        "media",
+        "marketing",
+        "education",
+        "skill-orchestration",
+        "video-production",
+        "voice-narration"
+      ],
+      "requires": [
+        "openai>=0.28.0",
+        "google-api-python-client>=2.100.0",
+        "google-auth-oauthlib>=1.1.0"
+      ],
+      "min_corvin_version": "1.0.0",
+      "permissions": {
+        "network_egress": [
+          "api.openai.com",
+          "www.googleapis.com",
+          "youtube.com"
+        ],
+        "pii_risk": "low",
+        "data_locality": "local",
+        "audit_logging": true
+      },
+      "health_check_interval": 10,
+      "supports_auto_update": true,
+      "rating_average": 0.0,
+      "rating_count": 0,
+      "download_count": 0,
+      "listed": true,
+      "registered_at": "2026-09-14T20:15:00Z",
+      "capabilities": [
+        "video-production",
+        "asset-analysis",
+        "voice-narration",
+        "screenshot-capture",
+        "slide-rendering",
+        "video-assembly",
+        "youtube-export"
       ]
     }
   },
