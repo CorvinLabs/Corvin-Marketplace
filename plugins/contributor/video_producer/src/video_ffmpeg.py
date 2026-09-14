@@ -42,14 +42,27 @@ def execute(input_data: Dict, state_dir: Path) -> Dict:
         raise ValueError(f"Screenshots directory not found: {screenshots_dir}")
     
     output_path = Path(output_dir) / "video_output.mp4"
-    
+
     # FFmpeg command: PNG sequence + MP3 → H.264 MP4
     # Settings: CRF 18 (quality), slow preset (best quality)
+    # FIX: Use concat demuxer for precise frame ordering (no glob pattern regression)
+    screenshots_dir_path = Path(screenshots_dir)
+    png_files = sorted(screenshots_dir_path.glob("scene_*.png"))
+
+    if not png_files:
+        raise ValueError(f"No scene_*.png files found in {screenshots_dir}")
+
+    # Write concat demuxer file (explicit frame ordering, prevents accidental inclusion of other PNGs)
+    concat_file = state_dir / "concat_frames.txt"
+    concat_content = "\n".join([f"file '{f.name}'" for f in png_files])
+    concat_file.write_text(concat_content)
+
     cmd = [
         "ffmpeg",
         "-framerate", "30",           # 30 fps
-        "-pattern_type", "glob",      # Glob pattern for PNGs
-        "-i", f"{screenshots_dir}/*.png",  # PNG sequence
+        "-f", "concat",               # Concat demuxer (precise ordering)
+        "-safe", "0",                 # Allow absolute paths in concat file
+        "-i", str(concat_file),       # Concat file (replaces glob pattern)
         "-i", audio_file,             # Audio track
         "-c:v", "libx264",            # H.264 codec
         "-crf", "18",                 # Quality (0-51, lower=better)
