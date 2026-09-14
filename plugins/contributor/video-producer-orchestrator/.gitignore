@@ -1,0 +1,120 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# C extensions
+*.c
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Video/media files (large)
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.flv
+*.wav
+*.mp3
+*.aac
+
+# Generated files
+/tmp/
+/temp/
+*.pid
+*.log
+
+# Design exports
+*.psd
+*.sketch
+*.xd
+
+# Credentials
+.env
+.env.local
+credentials.json
+oauth_tokens.json
+secrets.yaml
+
+# Generated videos (Phase 2+)
+outputs/example_videos/*.mp4
+outputs/design_system/exports/
+
+# Build artifacts
+dist/
+build/
+*.whl
+
+# Documentation builds
+docs/_build/
+site/

@@ -1,0 +1,52 @@
+{
+  "colors": {
+    "primary": "#2D5F8D",
+    "secondary": "#E67E22",
+    "accent": "#27AE60",
+    "text_dark": "#2C3E50",
+    "text_light": "#ECF0F1",
+    "bg_light": "#F8F9FA",
+    "bg_dark": "#1A1A1A",
+    "error": "#E74C3C",
+    "warning": "#F39C12",
+    "success": "#27AE60",
+    "info": "#3498DB"
+  },
+  "typography": {
+    "heading_font": "Inter Bold",
+    "body_font": "Inter Regular",
+    "monospace_font": "Monaco",
+    "heading_size": 48,
+    "body_size": 24,
+    "caption_size": 16,
+    "line_spacing": 1.5
+  },
+  "layout": {
+    "slide_width": 1920,
+    "slide_height": 1080,
+    "margin": 60,
+    "padding": 40,
+    "corner_radius": 8,
+    "shadow_blur": 12,
+    "shadow_opacity": 0.1
+  },
+  "animation": {
+    "fade_duration_ms": 300,
+    "slide_duration_ms": 500,
+    "ease": "cubic-bezier(0.4, 0, 0.2, 1)"
+  },
+  "accessibility": {
+    "min_contrast_ratio": 4.5,
+    "min_touch_target_size": 44,
+    "font_scale_min": 1.0,
+    "font_scale_max": 2.0
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "created": "2026-09-13",
+    "updated": "2026-09-13",
+    "author": "CorvinOS Contributors",
+    "description": "CorvinOS brand design system for video generation",
+    "note": "This file is the source of truth for all visual branding. Changes require version bump + review."
+  }
+}
