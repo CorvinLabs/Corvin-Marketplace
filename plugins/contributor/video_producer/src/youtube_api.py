@@ -74,16 +74,15 @@ def execute(input_data: Dict, state_dir: Path) -> Dict:
     
     # Build YouTube API client
     youtube = build('youtube', 'v3', credentials=credentials)
-    
-    # Prepare upload
-    video_file = Path(video_path)
+
+    # Prepare upload (reuse video_file from line 49, already defined)
     media_upload = MediaFileUpload(
         str(video_file),
         mimetype='video/mp4',
         resumable=True,
         chunksize=1024 * 1024  # 1 MB chunks
     )
-    
+
     # Video metadata
     body = {
         'snippet': {
@@ -97,18 +96,18 @@ def execute(input_data: Dict, state_dir: Path) -> Dict:
             'embeddable': True
         }
     }
-    
+
     try:
-        # Initiate upload (non-blocking, async)
+        # Initiate upload (WARNING: BLOCKING synchronous call — thread freezes until upload completes)
         request = youtube.videos().insert(
             part='snippet,status',
             body=body,
             media_body=media_upload
         )
-        
+
         logger.info(f"Initiating YouTube upload: {task_id}")
-        
-        # Execute upload (can be monitored via resumable protocol)
+
+        # Execute upload (BLOCKING: request.execute() blocks until upload completes)
         response = request.execute()
         
         video_id = response.get('id')

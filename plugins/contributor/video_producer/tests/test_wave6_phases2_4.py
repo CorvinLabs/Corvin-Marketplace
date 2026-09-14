@@ -138,41 +138,46 @@ class TestFFmpegAssembly:
     def test_execute_ffmpeg_success(self, mock_run):
         """Successful FFmpeg execution."""
         mock_run.return_value = MagicMock(returncode=0)
-        
+
         from video_ffmpeg import execute
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             state_dir = Path(tmpdir)
-            
+
             # Create dummy files
             audio_file = state_dir / "audio.mp3"
             audio_file.write_bytes(b"fake audio")
-            
+
             screenshots_dir = state_dir / "screenshots"
             screenshots_dir.mkdir()
-            
+
+            # FIX: Create PNG files with correct naming (scene_*.png) to pass precondition
+            (screenshots_dir / "scene_s1_frame_0.png").write_bytes(b"PNG_DATA_S1")
+            (screenshots_dir / "scene_s2_frame_0.png").write_bytes(b"PNG_DATA_S2")
+
             # Create dummy output
             output_dir = state_dir / "output"
             output_dir.mkdir()
             output_mp4 = output_dir / "video_output.mp4"
             output_mp4.write_bytes(b"fake video" * 1000)  # ~10 KB
-            
+
             input_data = {
                 "audio_file": str(audio_file),
                 "screenshots_dir": str(screenshots_dir),
                 "output_dir": str(output_dir),
                 "storyboard": {
                     "scenes": [
-                        {"id": "s1", "duration_sec": 10}
+                        {"id": "s1", "duration_sec": 10},
+                        {"id": "s2", "duration_sec": 10}
                     ]
                 }
             }
-            
+
             result = execute(input_data, state_dir)
-            
+
             assert result["status"] == "success"
             assert result["codec"] == "h.264"
-            assert result["duration_sec"] == 10
+            assert result["duration_sec"] == 20  # 10 + 10 from 2 scenes
 
 
 class TestYouTubeAPI:
