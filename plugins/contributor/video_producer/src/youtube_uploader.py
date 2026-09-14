@@ -13,7 +13,7 @@ def execute(input_data: Dict, state_dir: Path) -> Dict:
     
     # In k=18, will call Task API to enqueue upload
     # For now, return task_id for polling
-    task_id = f"youtube_upload_{hash(video_path) % 10000}"
+    task_id = f"youtube_upload_{hashlib.sha256(str(video_path).encode()).hexdigest() % 10000}"
     
     return {
         "task_id": task_id,

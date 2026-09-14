@@ -13,6 +13,7 @@ ADR-0692: Video Producer Orchestration Architecture
 
 import json
 import logging
+import hashlib
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
@@ -144,11 +145,14 @@ class MaestroOrchestrator:
         # Check preconditions
         self._check_preconditions(worker_name)
 
-        # Log execution
+        # Log execution (use SHA256 for stable hashing, not Python's hash())
+        input_json = json.dumps(input_data, sort_keys=True)
+        input_hash = hashlib.sha256(input_json.encode()).hexdigest()[:16]
+
         execution_event = {
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "worker": worker_name,
-            "input_hash": hash(json.dumps(input_data, sort_keys=True)),
+            "input_hash": input_hash,
             "status": "started",
         }
         self._log_execution(execution_event)
