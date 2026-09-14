@@ -75,15 +75,22 @@ class BlenderAsyncExecutor:
 
         job_id = str(uuid.uuid4())
 
-        # Blender Python script
+        # Blender Python script (CYCLES rendering, video-optimized)
         blend_script = f"""
 import bpy
 import sys
 
+# Use CYCLES engine (EEVEE fails in headless mode)
 bpy.context.scene.render.engine = 'CYCLES'
-bpy.context.scene.render.samples = 128
-bpy.context.scene.render.use_denoising = True
-bpy.ops.render.render(write_still=True)
+
+# Video optimization: lower samples = faster per-frame
+# For 2-minute @ 30fps = 3600 frames; use adaptive sampling
+bpy.context.scene.cycles.samples = 32  # 16-32 for video
+bpy.context.scene.cycles.use_denoising = True  # OptiX if available
+bpy.context.scene.cycles.denoiser = 'OPTIХ' if bpy.app.version >= (3, 2) else 'NLM'
+
+# Render animation sequence (not single frame)
+bpy.ops.render.render(animation=True)
 print(f"BLENDER_SUCCESS: {{job_id}}")
 sys.exit(0)
         """
