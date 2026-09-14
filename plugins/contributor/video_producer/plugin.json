@@ -20,7 +20,23 @@
     "supports_wheel": false,
     "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/video_producer"
   },
-  "dependencies": [],
+  "dependencies": [
+    {
+      "name": "openai",
+      "version": ">=1.0",
+      "description": "OpenAI API for text-to-speech (TTS) voice synthesis"
+    },
+    {
+      "name": "google-api-python-client",
+      "version": ">=2.0",
+      "description": "Google YouTube API v3 for video upload"
+    },
+    {
+      "name": "google-auth-oauthlib",
+      "version": ">=1.0",
+      "description": "Google OAuth authentication for YouTube"
+    }
+  ],
   "requires_version": ">=1.0.0",
   "boot_layer": "installed",
   "sla_level": "contributor",
@@ -61,10 +77,13 @@
     ]
   },
   "config": {
-    "tts_engine": "azure",
-    "youtube_oauth_required": true,
+    "tts_engine": "openai",
+    "tts_model": "tts-1-hd",
+    "tts_voice": "nova",
+    "youtube_upload_supported": true,
     "max_video_length_minutes": 60,
-    "enable_learning": true
+    "enable_learning_loops": true,
+    "audit_enabled": true
   },
   "permissions": [
     "console:read",
