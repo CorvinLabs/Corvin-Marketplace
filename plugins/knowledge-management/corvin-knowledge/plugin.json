@@ -89,28 +89,30 @@
   },
 
   "installation": {
-    "method": "package",
-    "url": "https://github.com/CorvinLabs/Corvin-Knowledge/releases/download/v1.0.0/corvin-knowledge-plugin.zip",
+    "method": "marketplace",
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/knowledge-management/corvin-knowledge",
+    "marketplace_package": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.0.0/corvin-knowledge-1.0.0.zip",
     "checksum_sha256": "auto_computed_at_release"
   },
 
   "documentation": {
-    "readme": "https://github.com/CorvinLabs/Corvin-Knowledge/blob/main/sync/README.md",
-    "installation": "https://github.com/CorvinLabs/Corvin-Knowledge/blob/main/sync/INSTALLATION.md",
-    "user_guide": "https://github.com/CorvinLabs/Corvin-Knowledge/blob/main/sync/README.md#quick-start"
+    "readme": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/knowledge-management/corvin-knowledge/README.md",
+    "installation": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/knowledge-management/corvin-knowledge/docs/INSTALLATION.md",
+    "console_integration": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/knowledge-management/corvin-knowledge/docs/CONSOLE_INTEGRATION.md",
+    "user_guide": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/knowledge-management/corvin-knowledge/README.md#quick-start"
   },
 
   "support": {
-    "issues": "https://github.com/CorvinLabs/Corvin-Knowledge/issues",
-    "discussions": "https://github.com/CorvinLabs/Corvin-Knowledge/discussions",
+    "issues": "https://github.com/CorvinLabs/Corvin-Marketplace/issues",
+    "discussions": "https://github.com/CorvinLabs/Corvin-Marketplace/discussions",
     "contact": "support@corvin-labs.com"
   },
 
   "repository": {
     "type": "git",
-    "url": "https://github.com/CorvinLabs/Corvin-Knowledge.git",
+    "url": "https://github.com/CorvinLabs/Corvin-Marketplace.git",
     "branch": "main",
-    "directory": "sync"
+    "directory": "plugins/knowledge-management/corvin-knowledge"
   },
 
   "related_adrs": [
@@ -136,6 +138,39 @@
   "status": "production-ready",
   "release_date": "2026-09-18",
   "updated_date": "2026-09-18",
+
+  "marketplace": {
+    "auto_discover": true,
+    "auto_register": true,
+    "category_path": "knowledge-management",
+    "plugin_display": {
+      "card_title": "Corvin-Knowledge",
+      "card_description": "Query, sync, and propose knowledge across distributed teams",
+      "card_icon": "database",
+      "card_tags": ["knowledge", "agentic", "distributed"],
+      "featured": true,
+      "feature_priority": 1
+    },
+    "console_panels": [
+      {
+        "id": "corvin-knowledge-graph",
+        "name": "Knowledge Graph Explorer",
+        "description": "Interactive visualization and navigation of knowledge graph",
+        "panel_type": "react-component",
+        "route": "/console/plugins/corvin-knowledge/graph",
+        "icon": "network",
+        "display_order": 1,
+        "requires_config": true,
+        "config_panel": {
+          "id": "corvin-knowledge-settings",
+          "name": "Settings",
+          "description": "Configure repository and sync settings",
+          "icon": "settings",
+          "display_order": 2
+        }
+      }
+    ]
+  },
 
   "roadmap": {
     "v1.1": [
