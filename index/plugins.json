@@ -1,8 +1,8 @@
 {
   "version": "2.0",
   "schema": "ADR-0511",
-  "generated_at": "2026-09-19T20:33:47.356934Z",
-  "plugin_count": 34,
+  "generated_at": "2026-09-19T21:09:13.367479Z",
+  "plugin_count": 35,
   "plugins": [
     {
       "id": "plugin:contributor-integration-slack_notifier",
@@ -134,6 +134,51 @@
         "learning:write",
         "audit:read"
       ]
+    },
+    {
+      "id": "plugin:contributor-knowledge_management-corvin_knowledge",
+      "type": "plugin",
+      "name": "Corvin-Knowledge: Knowledge Graph",
+      "version": "1.0.0",
+      "author": "CorvinLabs (Shumway + Claude)",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "contributor",
+      "category": "knowledge_management",
+      "description": "Query, sync and propose knowledge across distributed teams \u2014 ADRs, concepts and ideas as a Git-backed graph with fail-closed validation. Adds the Knowledge Graph panel to the console.",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/knowledge_management/corvin_knowledge/src/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/knowledge_management/corvin_knowledge"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "contributor",
+      "maintainer_url": "https://github.com/CorvinLabs/Corvin-Knowledge",
+      "tags": [
+        "memory",
+        "integration",
+        "ai-learning"
+      ],
+      "capabilities": [
+        "query_entities",
+        "get_graph",
+        "sync_repository",
+        "propose_entity",
+        "validate_consistency"
+      ],
+      "entry_points": {
+        "console_panels": [
+          {
+            "id": "corvin-knowledge-graph",
+            "title": "Knowledge Graph",
+            "route": "corvin-knowledge",
+            "component": "CorvinKnowledgePage"
+          }
+        ]
+      }
     },
     {
       "id": "plugin:contributor-data_processing-sql_expert",
@@ -1383,6 +1428,51 @@
         "learning:write",
         "audit:read"
       ]
+    },
+    "plugin:contributor-knowledge_management-corvin_knowledge": {
+      "id": "plugin:contributor-knowledge_management-corvin_knowledge",
+      "type": "plugin",
+      "name": "Corvin-Knowledge: Knowledge Graph",
+      "version": "1.0.0",
+      "author": "CorvinLabs (Shumway + Claude)",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "contributor",
+      "category": "knowledge_management",
+      "description": "Query, sync and propose knowledge across distributed teams \u2014 ADRs, concepts and ideas as a Git-backed graph with fail-closed validation. Adds the Knowledge Graph panel to the console.",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/knowledge_management/corvin_knowledge/src/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/knowledge_management/corvin_knowledge"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "contributor",
+      "maintainer_url": "https://github.com/CorvinLabs/Corvin-Knowledge",
+      "tags": [
+        "memory",
+        "integration",
+        "ai-learning"
+      ],
+      "capabilities": [
+        "query_entities",
+        "get_graph",
+        "sync_repository",
+        "propose_entity",
+        "validate_consistency"
+      ],
+      "entry_points": {
+        "console_panels": [
+          {
+            "id": "corvin-knowledge-graph",
+            "title": "Knowledge Graph",
+            "route": "corvin-knowledge",
+            "component": "CorvinKnowledgePage"
+          }
+        ]
+      }
     },
     "plugin:contributor-data_processing-sql_expert": {
       "id": "plugin:contributor-data_processing-sql_expert",
@@ -3081,6 +3171,53 @@
         ]
       }
     ],
+    "knowledge_management": [
+      {
+        "id": "plugin:contributor-knowledge_management-corvin_knowledge",
+        "type": "plugin",
+        "name": "Corvin-Knowledge: Knowledge Graph",
+        "version": "1.0.0",
+        "author": "CorvinLabs (Shumway + Claude)",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "contributor",
+        "category": "knowledge_management",
+        "description": "Query, sync and propose knowledge across distributed teams \u2014 ADRs, concepts and ideas as a Git-backed graph with fail-closed validation. Adds the Knowledge Graph panel to the console.",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/knowledge_management/corvin_knowledge/src/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/knowledge_management/corvin_knowledge"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "contributor",
+        "maintainer_url": "https://github.com/CorvinLabs/Corvin-Knowledge",
+        "tags": [
+          "memory",
+          "integration",
+          "ai-learning"
+        ],
+        "capabilities": [
+          "query_entities",
+          "get_graph",
+          "sync_repository",
+          "propose_entity",
+          "validate_consistency"
+        ],
+        "entry_points": {
+          "console_panels": [
+            {
+              "id": "corvin-knowledge-graph",
+              "title": "Knowledge Graph",
+              "route": "corvin-knowledge",
+              "component": "CorvinKnowledgePage"
+            }
+          ]
+        }
+      }
+    ],
     "data_processing": [
       {
         "id": "plugin:contributor-data_processing-sql_expert",
@@ -3894,6 +4031,51 @@
           "learning:write",
           "audit:read"
         ]
+      },
+      {
+        "id": "plugin:contributor-knowledge_management-corvin_knowledge",
+        "type": "plugin",
+        "name": "Corvin-Knowledge: Knowledge Graph",
+        "version": "1.0.0",
+        "author": "CorvinLabs (Shumway + Claude)",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "contributor",
+        "category": "knowledge_management",
+        "description": "Query, sync and propose knowledge across distributed teams \u2014 ADRs, concepts and ideas as a Git-backed graph with fail-closed validation. Adds the Knowledge Graph panel to the console.",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/knowledge_management/corvin_knowledge/src/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/knowledge_management/corvin_knowledge"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "contributor",
+        "maintainer_url": "https://github.com/CorvinLabs/Corvin-Knowledge",
+        "tags": [
+          "memory",
+          "integration",
+          "ai-learning"
+        ],
+        "capabilities": [
+          "query_entities",
+          "get_graph",
+          "sync_repository",
+          "propose_entity",
+          "validate_consistency"
+        ],
+        "entry_points": {
+          "console_panels": [
+            {
+              "id": "corvin-knowledge-graph",
+              "title": "Knowledge Graph",
+              "route": "corvin-knowledge",
+              "component": "CorvinKnowledgePage"
+            }
+          ]
+        }
       },
       {
         "id": "plugin:contributor-data_processing-sql_expert",

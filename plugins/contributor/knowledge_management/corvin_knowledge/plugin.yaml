@@ -1,0 +1,46 @@
+plugin_id: corvin_knowledge
+plugin_type: context_retriever
+version: 1.0.0
+display_name: Knowledge Graph
+description: "Corvin-Knowledge — query, sync and propose knowledge across distributed teams:
+  ADRs, concepts and ideas as a Git-backed graph with fail-closed validation. Adds the
+  Knowledge Graph panel to the console. Contributor plugin: installs from this checkout,
+  enabling records the operator's consent."
+origin: community
+boot_layer: installed
+locality: local
+network_egress: external
+egress_hosts:
+  - github.com
+pii_risk: low
+requires_consent: true
+audit_required: true
+infrastructure_plugin: false
+orchestration_support: true
+settings_schema:
+  type: object
+  properties:
+    repo_path:
+      type: string
+      default: ~/.corvin-knowledge/
+      description: Local checkout of the knowledge repository the graph is read from
+    remote_url:
+      type: string
+      default: https://github.com/CorvinLabs/Corvin-Knowledge.git
+      description: Git remote the sync pulls from and pushes to
+    auto_sync_on_query:
+      type: boolean
+      default: true
+      description: Pull the remote before a query
+    consistency_level:
+      type: string
+      enum: [strict, warn, ignore]
+      default: warn
+      description: What a validation error does to a sync (abort, log, skip)
+console_panel:
+  label: Knowledge Graph
+  route: corvin-knowledge
+  icon: Network
+  group: marketplace
+  element_kind: react-component
+  component: CorvinKnowledgePage

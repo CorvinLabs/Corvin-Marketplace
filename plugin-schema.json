@@ -90,7 +90,8 @@
         "integration",
         "data_processing",
         "observability",
-        "media"
+        "media",
+        "knowledge_management"
       ],
       "description": "Plugin category for discovery and browsing"
     },
@@ -247,7 +248,8 @@
           "data",
           "performance",
           "experimental",
-          "media"
+          "media",
+          "knowledge_management"
         ]
       },
       "maxItems": 5,

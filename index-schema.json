@@ -118,7 +118,8 @@
               "security",
               "performance",
               "experimental",
-              "media"
+              "media",
+              "knowledge_management"
             ]
           },
           "minItems": 1,
