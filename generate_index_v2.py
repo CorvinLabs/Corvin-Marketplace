@@ -50,6 +50,7 @@ class MarketplaceIndexGenerator:
         "integration",
         "data_processing",
         "observability",
+        "media",  # 2026-09-20: contributor/media/video_producer
     }
 
     def __init__(
@@ -161,6 +162,23 @@ class MarketplaceIndexGenerator:
             error = f"❌ {plugin_path}: Read failed — {e}"
             logger.error(error)
             self.errors.append(error)
+            return None
+
+        # A plugin.json that is not an ADR-0511 manifest (no ``plugin:`` id —
+        # e.g. contributor/video-producer-orchestrator's own package descriptor)
+        # is skipped with a warning, not a hard error: it is not marketplace
+        # content until it carries the schema (2026-09-20).
+        # The 2026-09-10 manifest sweep (14228e85) wrote the short id form
+        # ``<category>/<name>`` into every buildin plugin.json; the index id
+        # (what CorvinOS resolves, ``plugin:<tier>-<category>-<name>``) is
+        # composed from the directory here, so neither form has to be hand-kept.
+        rel = plugin_path.relative_to(self.plugins_dir).parts
+        if len(rel) == 4 and not str(plugin.get("id", "")).startswith("plugin:"):
+            plugin["id"] = f"plugin:{rel[0]}-{rel[1]}-{rel[2]}"
+        if not ({"tier", "category", "distribution"} <= set(plugin)):
+            logger.warning("⏭️  %s: SKIPPED — not an ADR-0511 manifest (no tier/category/distribution)",
+                           plugin_path)
+            self.skipped.append(str(plugin_path.parent.relative_to(self.plugins_dir)))
             return None
 
         # Validate against schema

@@ -1,0 +1,33 @@
+plugin_id: slack_notifier
+plugin_type: notification_backend
+version: 1.0.0
+display_name: Slack Notifier
+description: 'Send notifications to Slack channels from Corvin tasks and workflows (rich formatting, mentions,
+  threading). Contributor plugin: installs from this checkout, enabling records the operator''s consent.'
+origin: community
+boot_layer: installed
+locality: local
+network_egress: external
+egress_hosts:
+- hooks.slack.com
+- slack.com
+pii_risk: low
+requires_consent: true
+audit_required: true
+infrastructure_plugin: false
+orchestration_support: true
+settings_schema:
+  type: object
+  properties:
+    webhook_url:
+      type: string
+      default: ''
+      description: Slack incoming webhook URL
+    default_channel:
+      type: string
+      default: '#general'
+      description: Channel when a message names none
+    mention_on_error:
+      type: boolean
+      default: true
+      description: Mention @channel on error-severity events

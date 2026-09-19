@@ -5,15 +5,15 @@
   "version": "1.0.0",
   "author": "Community Contributor (example.com)",
   "license": "MIT",
-  "license_url": "https://github.com/community-plugin/slack-notifier/blob/main/LICENSE",
+  "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
   "tier": "contributor",
   "category": "integration",
   "description": "Send notifications to Slack channels from Corvin tasks and workflows. Supports rich formatting, mentions, and threading.",
-  "readme_url": "https://github.com/community-plugin/slack-notifier/blob/main/README.md",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/integration/slack_notifier/README.md",
   "distribution": {
     "supports_source": true,
     "supports_wheel": false,
-    "source_url": "https://github.com/community-plugin/slack-notifier"
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/integration/slack_notifier"
   },
   "dependencies": [],
   "requires_version": ">=1.0.0",

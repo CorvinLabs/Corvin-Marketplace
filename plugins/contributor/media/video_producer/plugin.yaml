@@ -1,0 +1,63 @@
+plugin_id: video_producer
+plugin_type: web_surface
+version: 1.0.0
+display_name: Video Producer
+description: "Create CorvinOS marketing and explainer videos from PowerPoints, screenshots
+  and voice narration — orchestrated multi-skill production with asset analysis, per-scene
+  feedback and learning loops. Contributor plugin: installs from this checkout, enabling
+  records the operator's consent."
+
+origin: community
+boot_layer: installed
+locality: local
+network_egress: external
+egress_hosts:
+  - api.openai.com
+  - www.googleapis.com
+  - oauth2.googleapis.com
+pii_risk: low
+requires_consent: true
+audit_required: true
+infrastructure_plugin: false
+orchestration_support: true
+settings_schema:
+  type: object
+  properties:
+    tts_engine:
+      type: string
+      enum: [openai, piper]
+      default: openai
+      description: Text-to-speech engine for narration
+    tts_model:
+      type: string
+      default: tts-1-hd
+      description: TTS model id (OpenAI)
+    tts_voice:
+      type: string
+      default: nova
+      description: TTS voice
+    youtube_upload_supported:
+      type: boolean
+      default: true
+      description: Offer YouTube export (needs Google OAuth credentials)
+    max_video_length_minutes:
+      type: integer
+      default: 60
+      minimum: 1
+      maximum: 240
+      description: Upper bound for a produced video
+    enable_learning_loops:
+      type: boolean
+      default: true
+      description: Feed per-scene feedback into the learning loop (ADR-0314)
+    audit_enabled:
+      type: boolean
+      default: true
+      description: Hash-chain every production step
+console_panel:
+  label: Video Producer
+  route: video-producer
+  icon: Video
+  group: marketplace
+  element_kind: react-component
+  component: VideoProducerPage
