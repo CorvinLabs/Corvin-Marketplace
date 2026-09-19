@@ -5,15 +5,15 @@
   "version": "1.1.0",
   "author": "Community Contributor (db-community.org)",
   "license": "MIT",
-  "license_url": "https://github.com/community-plugin/sql-expert/blob/main/LICENSE",
+  "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
   "tier": "contributor",
   "category": "data_processing",
   "description": "Advanced SQL query optimization and debugging. Analyzes execution plans, suggests indexes, and refactors complex queries for performance.",
-  "readme_url": "https://github.com/community-plugin/sql-expert/blob/main/README.md",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/data_processing/sql_expert/README.md",
   "distribution": {
     "supports_source": true,
     "supports_wheel": false,
-    "source_url": "https://github.com/community-plugin/sql-expert"
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/data_processing/sql_expert"
   },
   "dependencies": [],
   "requires_version": ">=1.0.0",

@@ -9,7 +9,7 @@
   "tier": "contributor",
   "category": "media",
   "description": "Create CorvinOS marketing and explainer videos from PowerPoints, screenshots, and voice narration. Orchestrated multi-skill system with deep asset analysis, per-scene feedback, and learning loops.",
-  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/video_producer/README.md",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/media/video_producer/README.md",
   "documentation": "docs/README.md",
   "adr_prefix": "video-producer",
   "docs_location": "docs/",
@@ -18,35 +18,17 @@
   "distribution": {
     "supports_source": true,
     "supports_wheel": false,
-    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/video_producer"
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/media/video_producer"
   },
-  "dependencies": [
-    {
-      "name": "openai",
-      "version": ">=1.0",
-      "description": "OpenAI API for text-to-speech (TTS) voice synthesis"
-    },
-    {
-      "name": "google-api-python-client",
-      "version": ">=2.0",
-      "description": "Google YouTube API v3 for video upload"
-    },
-    {
-      "name": "google-auth-oauthlib",
-      "version": ">=1.0",
-      "description": "Google OAuth authentication for YouTube"
-    }
-  ],
+  "dependencies": [],
   "requires_version": ">=1.0.0",
   "boot_layer": "installed",
   "sla_level": "contributor",
   "maintainer_url": "mailto:corvinOS-team@anthropic.com",
   "tags": [
-    "video",
     "media",
-    "marketing",
-    "education",
-    "skill-orchestration"
+    "integration",
+    "ai-learning"
   ],
   "capabilities": [
     "video-production",

@@ -5,15 +5,15 @@
   "version": "2.0.0",
   "author": "Community Contributor (nlp-collective.io)",
   "license": "MIT",
-  "license_url": "https://github.com/community-plugin/nlp-toolkit/blob/main/LICENSE",
+  "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
   "tier": "contributor",
   "category": "memory",
   "description": "Natural Language Processing utilities for text analysis, named entity recognition, sentiment analysis, and semantic similarity. Plugs into session memory for context enhancement.",
-  "readme_url": "https://github.com/community-plugin/nlp-toolkit/blob/main/README.md",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/memory/nlp_toolkit/README.md",
   "distribution": {
     "supports_source": true,
     "supports_wheel": false,
-    "source_url": "https://github.com/community-plugin/nlp-toolkit"
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/memory/nlp_toolkit"
   },
   "dependencies": [],
   "requires_version": ">=1.0.0",

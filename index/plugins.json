@@ -1,8 +1,8 @@
 {
   "version": "2.0",
   "schema": "ADR-0511",
-  "generated_at": "2026-09-07T16:14:31.476784Z",
-  "plugin_count": 33,
+  "generated_at": "2026-09-19T20:33:47.356934Z",
+  "plugin_count": 34,
   "plugins": [
     {
       "id": "plugin:contributor-integration-slack_notifier",
@@ -11,15 +11,15 @@
       "version": "1.0.0",
       "author": "Community Contributor (example.com)",
       "license": "MIT",
-      "license_url": "https://github.com/community-plugin/slack-notifier/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "contributor",
       "category": "integration",
       "description": "Send notifications to Slack channels from Corvin tasks and workflows. Supports rich formatting, mentions, and threading.",
-      "readme_url": "https://github.com/community-plugin/slack-notifier/blob/main/README.md",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/integration/slack_notifier/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/community-plugin/slack-notifier"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/integration/slack_notifier"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
@@ -37,15 +37,15 @@
       "version": "2.0.0",
       "author": "Community Contributor (nlp-collective.io)",
       "license": "MIT",
-      "license_url": "https://github.com/community-plugin/nlp-toolkit/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "contributor",
       "category": "memory",
       "description": "Natural Language Processing utilities for text analysis, named entity recognition, sentiment analysis, and semantic similarity. Plugs into session memory for context enhancement.",
-      "readme_url": "https://github.com/community-plugin/nlp-toolkit/blob/main/README.md",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/memory/nlp_toolkit/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/community-plugin/nlp-toolkit"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/memory/nlp_toolkit"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
@@ -58,21 +58,99 @@
       ]
     },
     {
+      "id": "plugin:contributor-media-video_producer",
+      "type": "plugin",
+      "name": "Video Producer",
+      "version": "1.0.0",
+      "author": "CorvinOS Contributors",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "contributor",
+      "category": "media",
+      "description": "Create CorvinOS marketing and explainer videos from PowerPoints, screenshots, and voice narration. Orchestrated multi-skill system with deep asset analysis, per-scene feedback, and learning loops.",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/media/video_producer/README.md",
+      "documentation": "docs/README.md",
+      "adr_prefix": "video-producer",
+      "docs_location": "docs/",
+      "development_guide": "docs/PLUGIN-DEVELOPMENT-GUIDE.md",
+      "adr_graph": "docs/ADR-GRAPH.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/media/video_producer"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "contributor",
+      "maintainer_url": "mailto:corvinOS-team@anthropic.com",
+      "tags": [
+        "media",
+        "integration",
+        "ai-learning"
+      ],
+      "capabilities": [
+        "video-production",
+        "asset-analysis",
+        "voice-narration",
+        "screenshot-capture",
+        "slide-rendering",
+        "video-assembly",
+        "youtube-export"
+      ],
+      "entry_points": {
+        "console_panels": [
+          {
+            "id": "video-producer-panel",
+            "title": "Video Producer",
+            "icon": "film",
+            "route": "/video-producer",
+            "component": "VideoProducerPanel",
+            "category": "media"
+          }
+        ],
+        "skills": [
+          {
+            "id": "os.video_producer",
+            "name": "Video Producer Orchestrator",
+            "description": "Main orchestrator for video production workflow using multi-skill architecture"
+          }
+        ]
+      },
+      "config": {
+        "tts_engine": "openai",
+        "tts_model": "tts-1-hd",
+        "tts_voice": "nova",
+        "youtube_upload_supported": true,
+        "max_video_length_minutes": 60,
+        "enable_learning_loops": true,
+        "audit_enabled": true
+      },
+      "permissions": [
+        "console:read",
+        "console:write",
+        "skills:execute",
+        "tasks:manage",
+        "learning:write",
+        "audit:read"
+      ]
+    },
+    {
       "id": "plugin:contributor-data_processing-sql_expert",
       "type": "plugin",
       "name": "SQL Expert Assistant",
       "version": "1.1.0",
       "author": "Community Contributor (db-community.org)",
       "license": "MIT",
-      "license_url": "https://github.com/community-plugin/sql-expert/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "contributor",
       "category": "data_processing",
       "description": "Advanced SQL query optimization and debugging. Analyzes execution plans, suggests indexes, and refactors complex queries for performance.",
-      "readme_url": "https://github.com/community-plugin/sql-expert/blob/main/README.md",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/data_processing/sql_expert/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/community-plugin/sql-expert"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/data_processing/sql_expert"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
@@ -111,7 +189,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "integration"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.integration.hook_system.HookSystem",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-integration-event_emitter",
@@ -140,7 +220,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "integration"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.integration.event_emitter.EventEmitter",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-integration-cowork_hub",
@@ -178,7 +260,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "integration"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.integration.cowork_hub.CoworkHub",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-integration-brain_event_emitter",
@@ -211,7 +295,9 @@
       },
       "tags": [
         "integration"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.integration.brain_event_emitter.BrainEventEmitter",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-integration-bridge_adapter",
@@ -249,7 +335,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "integration"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.integration.bridge_adapter.BridgeAdapter",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-integration-vibe_webhook_dispatcher",
@@ -282,7 +370,9 @@
       },
       "tags": [
         "integration"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.integration.vibe_webhook_dispatcher.VibeWebhookDispatcher",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-security_compliance-secret_scanner",
@@ -312,7 +402,9 @@
       "tags": [
         "security",
         "compliance"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.security_compliance.secret_scanner.SecretScanner",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-security_compliance-threat_detector",
@@ -342,7 +434,9 @@
       "tags": [
         "security",
         "compliance"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.security_compliance.threat_detector.ThreatDetector",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-security_compliance-policy_enforcer",
@@ -372,7 +466,9 @@
       "tags": [
         "security",
         "compliance"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.security_compliance.policy_enforcer.PolicyEnforcer",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-security_compliance-compliance_reporter",
@@ -402,7 +498,9 @@
       "tags": [
         "security",
         "compliance"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.security_compliance.compliance_reporter.ComplianceReporter",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-security_compliance-consent_manager",
@@ -432,7 +530,9 @@
       "tags": [
         "security",
         "compliance"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.security_compliance.consent_manager.ConsentManager",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-security_compliance-audit_logger",
@@ -462,7 +562,9 @@
       "tags": [
         "security",
         "compliance"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.security_compliance.audit_logger.AuditLogger",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-memory-learning_event_storage",
@@ -500,7 +602,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "memory"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.memory.learning_event_storage.LearningEventStorage",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-memory-brain_learning_tracker",
@@ -533,7 +637,9 @@
       },
       "tags": [
         "memory"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.memory.brain_learning_tracker.BrainLearningTracker",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-memory-user_model_learner",
@@ -571,7 +677,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "memory"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.memory.user_model_learner.UserModelLearner",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-memory-cel_session_memory",
@@ -609,7 +717,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "memory"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.memory.cel_session_memory.CelSessionMemory",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-memory-vibe_session_history",
@@ -642,7 +752,9 @@
       },
       "tags": [
         "memory"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.memory.vibe_session_history.VibeSessionHistory",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-memory-semantic_context_retriever",
@@ -680,7 +792,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "memory"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.memory.semantic_context_retriever.SemanticContextRetriever",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-observability-heartbeat_monitor",
@@ -718,7 +832,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "observability"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.observability.heartbeat_monitor.HeartbeatMonitor",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-observability-brain_diagnostics",
@@ -751,7 +867,9 @@
       },
       "tags": [
         "observability"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.observability.brain_diagnostics.BrainDiagnostics",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-observability-error_healing",
@@ -789,7 +907,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "observability"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.observability.error_healing.ErrorHealing",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-observability-diagnostics_dashboard",
@@ -827,7 +947,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "observability"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.observability.diagnostics_dashboard.DiagnosticsDashboard",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-observability-autonomy_status_tracker",
@@ -860,7 +982,9 @@
       },
       "tags": [
         "observability"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.observability.autonomy_status_tracker.AutonomyStatusTracker",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-observability-brain_layer_monitor",
@@ -893,7 +1017,9 @@
       },
       "tags": [
         "observability"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.observability.brain_layer_monitor.BrainLayerMonitor",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-data_processing-wheel_content_inspector",
@@ -931,7 +1057,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "data"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.data_processing.wheel_content_inspector.WheelContentInspector",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-data_processing-data_classification",
@@ -969,7 +1097,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "data"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.data_processing.data_classification.DataClassification",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-data_processing-artifact_extraction",
@@ -1007,7 +1137,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "data"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.data_processing.artifact_extraction.ArtifactExtraction",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-data_processing-vibe_metrics_aggregator",
@@ -1040,7 +1172,9 @@
       },
       "tags": [
         "data"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.data_processing.vibe_metrics_aggregator.VibeMetricsAggregator",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-data_processing-anonymization_engine",
@@ -1078,7 +1212,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "data"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.data_processing.anonymization_engine.AnonymizationEngine",
+      "origin": "builtin"
     },
     {
       "id": "plugin:buildin-data_processing-context_snapshot_analyzer",
@@ -1111,7 +1247,9 @@
       },
       "tags": [
         "data"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.data_processing.context_snapshot_analyzer.ContextSnapshotAnalyzer",
+      "origin": "builtin"
     }
   ],
   "by_id": {
@@ -1122,15 +1260,15 @@
       "version": "1.0.0",
       "author": "Community Contributor (example.com)",
       "license": "MIT",
-      "license_url": "https://github.com/community-plugin/slack-notifier/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "contributor",
       "category": "integration",
       "description": "Send notifications to Slack channels from Corvin tasks and workflows. Supports rich formatting, mentions, and threading.",
-      "readme_url": "https://github.com/community-plugin/slack-notifier/blob/main/README.md",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/integration/slack_notifier/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/community-plugin/slack-notifier"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/integration/slack_notifier"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
@@ -1148,15 +1286,15 @@
       "version": "2.0.0",
       "author": "Community Contributor (nlp-collective.io)",
       "license": "MIT",
-      "license_url": "https://github.com/community-plugin/nlp-toolkit/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "contributor",
       "category": "memory",
       "description": "Natural Language Processing utilities for text analysis, named entity recognition, sentiment analysis, and semantic similarity. Plugs into session memory for context enhancement.",
-      "readme_url": "https://github.com/community-plugin/nlp-toolkit/blob/main/README.md",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/memory/nlp_toolkit/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/community-plugin/nlp-toolkit"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/memory/nlp_toolkit"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
@@ -1168,6 +1306,84 @@
         "ai-learning"
       ]
     },
+    "plugin:contributor-media-video_producer": {
+      "id": "plugin:contributor-media-video_producer",
+      "type": "plugin",
+      "name": "Video Producer",
+      "version": "1.0.0",
+      "author": "CorvinOS Contributors",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "contributor",
+      "category": "media",
+      "description": "Create CorvinOS marketing and explainer videos from PowerPoints, screenshots, and voice narration. Orchestrated multi-skill system with deep asset analysis, per-scene feedback, and learning loops.",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/media/video_producer/README.md",
+      "documentation": "docs/README.md",
+      "adr_prefix": "video-producer",
+      "docs_location": "docs/",
+      "development_guide": "docs/PLUGIN-DEVELOPMENT-GUIDE.md",
+      "adr_graph": "docs/ADR-GRAPH.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/media/video_producer"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "contributor",
+      "maintainer_url": "mailto:corvinOS-team@anthropic.com",
+      "tags": [
+        "media",
+        "integration",
+        "ai-learning"
+      ],
+      "capabilities": [
+        "video-production",
+        "asset-analysis",
+        "voice-narration",
+        "screenshot-capture",
+        "slide-rendering",
+        "video-assembly",
+        "youtube-export"
+      ],
+      "entry_points": {
+        "console_panels": [
+          {
+            "id": "video-producer-panel",
+            "title": "Video Producer",
+            "icon": "film",
+            "route": "/video-producer",
+            "component": "VideoProducerPanel",
+            "category": "media"
+          }
+        ],
+        "skills": [
+          {
+            "id": "os.video_producer",
+            "name": "Video Producer Orchestrator",
+            "description": "Main orchestrator for video production workflow using multi-skill architecture"
+          }
+        ]
+      },
+      "config": {
+        "tts_engine": "openai",
+        "tts_model": "tts-1-hd",
+        "tts_voice": "nova",
+        "youtube_upload_supported": true,
+        "max_video_length_minutes": 60,
+        "enable_learning_loops": true,
+        "audit_enabled": true
+      },
+      "permissions": [
+        "console:read",
+        "console:write",
+        "skills:execute",
+        "tasks:manage",
+        "learning:write",
+        "audit:read"
+      ]
+    },
     "plugin:contributor-data_processing-sql_expert": {
       "id": "plugin:contributor-data_processing-sql_expert",
       "type": "plugin",
@@ -1175,15 +1391,15 @@
       "version": "1.1.0",
       "author": "Community Contributor (db-community.org)",
       "license": "MIT",
-      "license_url": "https://github.com/community-plugin/sql-expert/blob/main/LICENSE",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "contributor",
       "category": "data_processing",
       "description": "Advanced SQL query optimization and debugging. Analyzes execution plans, suggests indexes, and refactors complex queries for performance.",
-      "readme_url": "https://github.com/community-plugin/sql-expert/blob/main/README.md",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/data_processing/sql_expert/README.md",
       "distribution": {
         "supports_source": true,
         "supports_wheel": false,
-        "source_url": "https://github.com/community-plugin/sql-expert"
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/data_processing/sql_expert"
       },
       "dependencies": [],
       "requires_version": ">=1.0.0",
@@ -1222,7 +1438,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "integration"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.integration.hook_system.HookSystem",
+      "origin": "builtin"
     },
     "plugin:buildin-integration-event_emitter": {
       "id": "plugin:buildin-integration-event_emitter",
@@ -1251,7 +1469,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "integration"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.integration.event_emitter.EventEmitter",
+      "origin": "builtin"
     },
     "plugin:buildin-integration-cowork_hub": {
       "id": "plugin:buildin-integration-cowork_hub",
@@ -1289,7 +1509,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "integration"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.integration.cowork_hub.CoworkHub",
+      "origin": "builtin"
     },
     "plugin:buildin-integration-brain_event_emitter": {
       "id": "plugin:buildin-integration-brain_event_emitter",
@@ -1322,7 +1544,9 @@
       },
       "tags": [
         "integration"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.integration.brain_event_emitter.BrainEventEmitter",
+      "origin": "builtin"
     },
     "plugin:buildin-integration-bridge_adapter": {
       "id": "plugin:buildin-integration-bridge_adapter",
@@ -1360,7 +1584,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "integration"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.integration.bridge_adapter.BridgeAdapter",
+      "origin": "builtin"
     },
     "plugin:buildin-integration-vibe_webhook_dispatcher": {
       "id": "plugin:buildin-integration-vibe_webhook_dispatcher",
@@ -1393,7 +1619,9 @@
       },
       "tags": [
         "integration"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.integration.vibe_webhook_dispatcher.VibeWebhookDispatcher",
+      "origin": "builtin"
     },
     "plugin:buildin-security_compliance-secret_scanner": {
       "id": "plugin:buildin-security_compliance-secret_scanner",
@@ -1423,7 +1651,9 @@
       "tags": [
         "security",
         "compliance"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.security_compliance.secret_scanner.SecretScanner",
+      "origin": "builtin"
     },
     "plugin:buildin-security_compliance-threat_detector": {
       "id": "plugin:buildin-security_compliance-threat_detector",
@@ -1453,7 +1683,9 @@
       "tags": [
         "security",
         "compliance"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.security_compliance.threat_detector.ThreatDetector",
+      "origin": "builtin"
     },
     "plugin:buildin-security_compliance-policy_enforcer": {
       "id": "plugin:buildin-security_compliance-policy_enforcer",
@@ -1483,7 +1715,9 @@
       "tags": [
         "security",
         "compliance"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.security_compliance.policy_enforcer.PolicyEnforcer",
+      "origin": "builtin"
     },
     "plugin:buildin-security_compliance-compliance_reporter": {
       "id": "plugin:buildin-security_compliance-compliance_reporter",
@@ -1513,7 +1747,9 @@
       "tags": [
         "security",
         "compliance"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.security_compliance.compliance_reporter.ComplianceReporter",
+      "origin": "builtin"
     },
     "plugin:buildin-security_compliance-consent_manager": {
       "id": "plugin:buildin-security_compliance-consent_manager",
@@ -1543,7 +1779,9 @@
       "tags": [
         "security",
         "compliance"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.security_compliance.consent_manager.ConsentManager",
+      "origin": "builtin"
     },
     "plugin:buildin-security_compliance-audit_logger": {
       "id": "plugin:buildin-security_compliance-audit_logger",
@@ -1573,7 +1811,9 @@
       "tags": [
         "security",
         "compliance"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.security_compliance.audit_logger.AuditLogger",
+      "origin": "builtin"
     },
     "plugin:buildin-memory-learning_event_storage": {
       "id": "plugin:buildin-memory-learning_event_storage",
@@ -1611,7 +1851,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "memory"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.memory.learning_event_storage.LearningEventStorage",
+      "origin": "builtin"
     },
     "plugin:buildin-memory-brain_learning_tracker": {
       "id": "plugin:buildin-memory-brain_learning_tracker",
@@ -1644,7 +1886,9 @@
       },
       "tags": [
         "memory"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.memory.brain_learning_tracker.BrainLearningTracker",
+      "origin": "builtin"
     },
     "plugin:buildin-memory-user_model_learner": {
       "id": "plugin:buildin-memory-user_model_learner",
@@ -1682,7 +1926,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "memory"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.memory.user_model_learner.UserModelLearner",
+      "origin": "builtin"
     },
     "plugin:buildin-memory-cel_session_memory": {
       "id": "plugin:buildin-memory-cel_session_memory",
@@ -1720,7 +1966,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "memory"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.memory.cel_session_memory.CelSessionMemory",
+      "origin": "builtin"
     },
     "plugin:buildin-memory-vibe_session_history": {
       "id": "plugin:buildin-memory-vibe_session_history",
@@ -1753,7 +2001,9 @@
       },
       "tags": [
         "memory"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.memory.vibe_session_history.VibeSessionHistory",
+      "origin": "builtin"
     },
     "plugin:buildin-memory-semantic_context_retriever": {
       "id": "plugin:buildin-memory-semantic_context_retriever",
@@ -1791,7 +2041,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "memory"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.memory.semantic_context_retriever.SemanticContextRetriever",
+      "origin": "builtin"
     },
     "plugin:buildin-observability-heartbeat_monitor": {
       "id": "plugin:buildin-observability-heartbeat_monitor",
@@ -1829,7 +2081,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "observability"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.observability.heartbeat_monitor.HeartbeatMonitor",
+      "origin": "builtin"
     },
     "plugin:buildin-observability-brain_diagnostics": {
       "id": "plugin:buildin-observability-brain_diagnostics",
@@ -1862,7 +2116,9 @@
       },
       "tags": [
         "observability"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.observability.brain_diagnostics.BrainDiagnostics",
+      "origin": "builtin"
     },
     "plugin:buildin-observability-error_healing": {
       "id": "plugin:buildin-observability-error_healing",
@@ -1900,7 +2156,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "observability"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.observability.error_healing.ErrorHealing",
+      "origin": "builtin"
     },
     "plugin:buildin-observability-diagnostics_dashboard": {
       "id": "plugin:buildin-observability-diagnostics_dashboard",
@@ -1938,7 +2196,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "observability"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.observability.diagnostics_dashboard.DiagnosticsDashboard",
+      "origin": "builtin"
     },
     "plugin:buildin-observability-autonomy_status_tracker": {
       "id": "plugin:buildin-observability-autonomy_status_tracker",
@@ -1971,7 +2231,9 @@
       },
       "tags": [
         "observability"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.observability.autonomy_status_tracker.AutonomyStatusTracker",
+      "origin": "builtin"
     },
     "plugin:buildin-observability-brain_layer_monitor": {
       "id": "plugin:buildin-observability-brain_layer_monitor",
@@ -2004,7 +2266,9 @@
       },
       "tags": [
         "observability"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.observability.brain_layer_monitor.BrainLayerMonitor",
+      "origin": "builtin"
     },
     "plugin:buildin-data_processing-wheel_content_inspector": {
       "id": "plugin:buildin-data_processing-wheel_content_inspector",
@@ -2042,7 +2306,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "data"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.data_processing.wheel_content_inspector.WheelContentInspector",
+      "origin": "builtin"
     },
     "plugin:buildin-data_processing-data_classification": {
       "id": "plugin:buildin-data_processing-data_classification",
@@ -2080,7 +2346,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "data"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.data_processing.data_classification.DataClassification",
+      "origin": "builtin"
     },
     "plugin:buildin-data_processing-artifact_extraction": {
       "id": "plugin:buildin-data_processing-artifact_extraction",
@@ -2118,7 +2386,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "data"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.data_processing.artifact_extraction.ArtifactExtraction",
+      "origin": "builtin"
     },
     "plugin:buildin-data_processing-vibe_metrics_aggregator": {
       "id": "plugin:buildin-data_processing-vibe_metrics_aggregator",
@@ -2151,7 +2421,9 @@
       },
       "tags": [
         "data"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.data_processing.vibe_metrics_aggregator.VibeMetricsAggregator",
+      "origin": "builtin"
     },
     "plugin:buildin-data_processing-anonymization_engine": {
       "id": "plugin:buildin-data_processing-anonymization_engine",
@@ -2189,7 +2461,9 @@
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
         "data"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.data_processing.anonymization_engine.AnonymizationEngine",
+      "origin": "builtin"
     },
     "plugin:buildin-data_processing-context_snapshot_analyzer": {
       "id": "plugin:buildin-data_processing-context_snapshot_analyzer",
@@ -2222,7 +2496,9 @@
       },
       "tags": [
         "data"
-      ]
+      ],
+      "entry_point": "core.plugins.buildin.data_processing.context_snapshot_analyzer.ContextSnapshotAnalyzer",
+      "origin": "builtin"
     }
   },
   "by_category": {
@@ -2234,15 +2510,15 @@
         "version": "1.0.0",
         "author": "Community Contributor (example.com)",
         "license": "MIT",
-        "license_url": "https://github.com/community-plugin/slack-notifier/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "contributor",
         "category": "integration",
         "description": "Send notifications to Slack channels from Corvin tasks and workflows. Supports rich formatting, mentions, and threading.",
-        "readme_url": "https://github.com/community-plugin/slack-notifier/blob/main/README.md",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/integration/slack_notifier/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/community-plugin/slack-notifier"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/integration/slack_notifier"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
@@ -2280,7 +2556,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "integration"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.integration.hook_system.HookSystem",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-integration-event_emitter",
@@ -2309,7 +2587,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "integration"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.integration.event_emitter.EventEmitter",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-integration-cowork_hub",
@@ -2347,7 +2627,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "integration"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.integration.cowork_hub.CoworkHub",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-integration-brain_event_emitter",
@@ -2380,7 +2662,9 @@
         },
         "tags": [
           "integration"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.integration.brain_event_emitter.BrainEventEmitter",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-integration-bridge_adapter",
@@ -2418,7 +2702,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "integration"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.integration.bridge_adapter.BridgeAdapter",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-integration-vibe_webhook_dispatcher",
@@ -2451,7 +2737,9 @@
         },
         "tags": [
           "integration"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.integration.vibe_webhook_dispatcher.VibeWebhookDispatcher",
+        "origin": "builtin"
       }
     ],
     "memory": [
@@ -2462,15 +2750,15 @@
         "version": "2.0.0",
         "author": "Community Contributor (nlp-collective.io)",
         "license": "MIT",
-        "license_url": "https://github.com/community-plugin/nlp-toolkit/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "contributor",
         "category": "memory",
         "description": "Natural Language Processing utilities for text analysis, named entity recognition, sentiment analysis, and semantic similarity. Plugs into session memory for context enhancement.",
-        "readme_url": "https://github.com/community-plugin/nlp-toolkit/blob/main/README.md",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/memory/nlp_toolkit/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/community-plugin/nlp-toolkit"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/memory/nlp_toolkit"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
@@ -2518,7 +2806,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "memory"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.memory.learning_event_storage.LearningEventStorage",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-memory-brain_learning_tracker",
@@ -2551,7 +2841,9 @@
         },
         "tags": [
           "memory"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.memory.brain_learning_tracker.BrainLearningTracker",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-memory-user_model_learner",
@@ -2589,7 +2881,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "memory"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.memory.user_model_learner.UserModelLearner",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-memory-cel_session_memory",
@@ -2627,7 +2921,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "memory"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.memory.cel_session_memory.CelSessionMemory",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-memory-vibe_session_history",
@@ -2660,7 +2956,9 @@
         },
         "tags": [
           "memory"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.memory.vibe_session_history.VibeSessionHistory",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-memory-semantic_context_retriever",
@@ -2698,6 +2996,88 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "memory"
+        ],
+        "entry_point": "core.plugins.buildin.memory.semantic_context_retriever.SemanticContextRetriever",
+        "origin": "builtin"
+      }
+    ],
+    "media": [
+      {
+        "id": "plugin:contributor-media-video_producer",
+        "type": "plugin",
+        "name": "Video Producer",
+        "version": "1.0.0",
+        "author": "CorvinOS Contributors",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "contributor",
+        "category": "media",
+        "description": "Create CorvinOS marketing and explainer videos from PowerPoints, screenshots, and voice narration. Orchestrated multi-skill system with deep asset analysis, per-scene feedback, and learning loops.",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/media/video_producer/README.md",
+        "documentation": "docs/README.md",
+        "adr_prefix": "video-producer",
+        "docs_location": "docs/",
+        "development_guide": "docs/PLUGIN-DEVELOPMENT-GUIDE.md",
+        "adr_graph": "docs/ADR-GRAPH.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/media/video_producer"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "contributor",
+        "maintainer_url": "mailto:corvinOS-team@anthropic.com",
+        "tags": [
+          "media",
+          "integration",
+          "ai-learning"
+        ],
+        "capabilities": [
+          "video-production",
+          "asset-analysis",
+          "voice-narration",
+          "screenshot-capture",
+          "slide-rendering",
+          "video-assembly",
+          "youtube-export"
+        ],
+        "entry_points": {
+          "console_panels": [
+            {
+              "id": "video-producer-panel",
+              "title": "Video Producer",
+              "icon": "film",
+              "route": "/video-producer",
+              "component": "VideoProducerPanel",
+              "category": "media"
+            }
+          ],
+          "skills": [
+            {
+              "id": "os.video_producer",
+              "name": "Video Producer Orchestrator",
+              "description": "Main orchestrator for video production workflow using multi-skill architecture"
+            }
+          ]
+        },
+        "config": {
+          "tts_engine": "openai",
+          "tts_model": "tts-1-hd",
+          "tts_voice": "nova",
+          "youtube_upload_supported": true,
+          "max_video_length_minutes": 60,
+          "enable_learning_loops": true,
+          "audit_enabled": true
+        },
+        "permissions": [
+          "console:read",
+          "console:write",
+          "skills:execute",
+          "tasks:manage",
+          "learning:write",
+          "audit:read"
         ]
       }
     ],
@@ -2709,15 +3089,15 @@
         "version": "1.1.0",
         "author": "Community Contributor (db-community.org)",
         "license": "MIT",
-        "license_url": "https://github.com/community-plugin/sql-expert/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "contributor",
         "category": "data_processing",
         "description": "Advanced SQL query optimization and debugging. Analyzes execution plans, suggests indexes, and refactors complex queries for performance.",
-        "readme_url": "https://github.com/community-plugin/sql-expert/blob/main/README.md",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/data_processing/sql_expert/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/community-plugin/sql-expert"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/data_processing/sql_expert"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
@@ -2765,7 +3145,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "data"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.data_processing.wheel_content_inspector.WheelContentInspector",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-data_processing-data_classification",
@@ -2803,7 +3185,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "data"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.data_processing.data_classification.DataClassification",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-data_processing-artifact_extraction",
@@ -2841,7 +3225,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "data"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.data_processing.artifact_extraction.ArtifactExtraction",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-data_processing-vibe_metrics_aggregator",
@@ -2874,7 +3260,9 @@
         },
         "tags": [
           "data"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.data_processing.vibe_metrics_aggregator.VibeMetricsAggregator",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-data_processing-anonymization_engine",
@@ -2912,7 +3300,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "data"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.data_processing.anonymization_engine.AnonymizationEngine",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-data_processing-context_snapshot_analyzer",
@@ -2945,7 +3335,9 @@
         },
         "tags": [
           "data"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.data_processing.context_snapshot_analyzer.ContextSnapshotAnalyzer",
+        "origin": "builtin"
       }
     ],
     "security_compliance": [
@@ -2977,7 +3369,9 @@
         "tags": [
           "security",
           "compliance"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.security_compliance.secret_scanner.SecretScanner",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-security_compliance-threat_detector",
@@ -3007,7 +3401,9 @@
         "tags": [
           "security",
           "compliance"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.security_compliance.threat_detector.ThreatDetector",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-security_compliance-policy_enforcer",
@@ -3037,7 +3433,9 @@
         "tags": [
           "security",
           "compliance"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.security_compliance.policy_enforcer.PolicyEnforcer",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-security_compliance-compliance_reporter",
@@ -3067,7 +3465,9 @@
         "tags": [
           "security",
           "compliance"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.security_compliance.compliance_reporter.ComplianceReporter",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-security_compliance-consent_manager",
@@ -3097,7 +3497,9 @@
         "tags": [
           "security",
           "compliance"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.security_compliance.consent_manager.ConsentManager",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-security_compliance-audit_logger",
@@ -3127,7 +3529,9 @@
         "tags": [
           "security",
           "compliance"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.security_compliance.audit_logger.AuditLogger",
+        "origin": "builtin"
       }
     ],
     "observability": [
@@ -3167,7 +3571,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "observability"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.observability.heartbeat_monitor.HeartbeatMonitor",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-observability-brain_diagnostics",
@@ -3200,7 +3606,9 @@
         },
         "tags": [
           "observability"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.observability.brain_diagnostics.BrainDiagnostics",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-observability-error_healing",
@@ -3238,7 +3646,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "observability"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.observability.error_healing.ErrorHealing",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-observability-diagnostics_dashboard",
@@ -3276,7 +3686,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "observability"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.observability.diagnostics_dashboard.DiagnosticsDashboard",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-observability-autonomy_status_tracker",
@@ -3309,7 +3721,9 @@
         },
         "tags": [
           "observability"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.observability.autonomy_status_tracker.AutonomyStatusTracker",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-observability-brain_layer_monitor",
@@ -3342,7 +3756,9 @@
         },
         "tags": [
           "observability"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.observability.brain_layer_monitor.BrainLayerMonitor",
+        "origin": "builtin"
       }
     ]
   },
@@ -3355,15 +3771,15 @@
         "version": "1.0.0",
         "author": "Community Contributor (example.com)",
         "license": "MIT",
-        "license_url": "https://github.com/community-plugin/slack-notifier/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "contributor",
         "category": "integration",
         "description": "Send notifications to Slack channels from Corvin tasks and workflows. Supports rich formatting, mentions, and threading.",
-        "readme_url": "https://github.com/community-plugin/slack-notifier/blob/main/README.md",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/integration/slack_notifier/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/community-plugin/slack-notifier"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/integration/slack_notifier"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
@@ -3381,15 +3797,15 @@
         "version": "2.0.0",
         "author": "Community Contributor (nlp-collective.io)",
         "license": "MIT",
-        "license_url": "https://github.com/community-plugin/nlp-toolkit/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "contributor",
         "category": "memory",
         "description": "Natural Language Processing utilities for text analysis, named entity recognition, sentiment analysis, and semantic similarity. Plugs into session memory for context enhancement.",
-        "readme_url": "https://github.com/community-plugin/nlp-toolkit/blob/main/README.md",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/memory/nlp_toolkit/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/community-plugin/nlp-toolkit"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/memory/nlp_toolkit"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
@@ -3402,21 +3818,99 @@
         ]
       },
       {
+        "id": "plugin:contributor-media-video_producer",
+        "type": "plugin",
+        "name": "Video Producer",
+        "version": "1.0.0",
+        "author": "CorvinOS Contributors",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "contributor",
+        "category": "media",
+        "description": "Create CorvinOS marketing and explainer videos from PowerPoints, screenshots, and voice narration. Orchestrated multi-skill system with deep asset analysis, per-scene feedback, and learning loops.",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/media/video_producer/README.md",
+        "documentation": "docs/README.md",
+        "adr_prefix": "video-producer",
+        "docs_location": "docs/",
+        "development_guide": "docs/PLUGIN-DEVELOPMENT-GUIDE.md",
+        "adr_graph": "docs/ADR-GRAPH.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/media/video_producer"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "contributor",
+        "maintainer_url": "mailto:corvinOS-team@anthropic.com",
+        "tags": [
+          "media",
+          "integration",
+          "ai-learning"
+        ],
+        "capabilities": [
+          "video-production",
+          "asset-analysis",
+          "voice-narration",
+          "screenshot-capture",
+          "slide-rendering",
+          "video-assembly",
+          "youtube-export"
+        ],
+        "entry_points": {
+          "console_panels": [
+            {
+              "id": "video-producer-panel",
+              "title": "Video Producer",
+              "icon": "film",
+              "route": "/video-producer",
+              "component": "VideoProducerPanel",
+              "category": "media"
+            }
+          ],
+          "skills": [
+            {
+              "id": "os.video_producer",
+              "name": "Video Producer Orchestrator",
+              "description": "Main orchestrator for video production workflow using multi-skill architecture"
+            }
+          ]
+        },
+        "config": {
+          "tts_engine": "openai",
+          "tts_model": "tts-1-hd",
+          "tts_voice": "nova",
+          "youtube_upload_supported": true,
+          "max_video_length_minutes": 60,
+          "enable_learning_loops": true,
+          "audit_enabled": true
+        },
+        "permissions": [
+          "console:read",
+          "console:write",
+          "skills:execute",
+          "tasks:manage",
+          "learning:write",
+          "audit:read"
+        ]
+      },
+      {
         "id": "plugin:contributor-data_processing-sql_expert",
         "type": "plugin",
         "name": "SQL Expert Assistant",
         "version": "1.1.0",
         "author": "Community Contributor (db-community.org)",
         "license": "MIT",
-        "license_url": "https://github.com/community-plugin/sql-expert/blob/main/LICENSE",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "contributor",
         "category": "data_processing",
         "description": "Advanced SQL query optimization and debugging. Analyzes execution plans, suggests indexes, and refactors complex queries for performance.",
-        "readme_url": "https://github.com/community-plugin/sql-expert/blob/main/README.md",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/data_processing/sql_expert/README.md",
         "distribution": {
           "supports_source": true,
           "supports_wheel": false,
-          "source_url": "https://github.com/community-plugin/sql-expert"
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/data_processing/sql_expert"
         },
         "dependencies": [],
         "requires_version": ">=1.0.0",
@@ -3457,7 +3951,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "integration"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.integration.hook_system.HookSystem",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-integration-event_emitter",
@@ -3486,7 +3982,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "integration"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.integration.event_emitter.EventEmitter",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-integration-cowork_hub",
@@ -3524,7 +4022,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "integration"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.integration.cowork_hub.CoworkHub",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-integration-brain_event_emitter",
@@ -3557,7 +4057,9 @@
         },
         "tags": [
           "integration"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.integration.brain_event_emitter.BrainEventEmitter",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-integration-bridge_adapter",
@@ -3595,7 +4097,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "integration"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.integration.bridge_adapter.BridgeAdapter",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-integration-vibe_webhook_dispatcher",
@@ -3628,7 +4132,9 @@
         },
         "tags": [
           "integration"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.integration.vibe_webhook_dispatcher.VibeWebhookDispatcher",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-security_compliance-secret_scanner",
@@ -3658,7 +4164,9 @@
         "tags": [
           "security",
           "compliance"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.security_compliance.secret_scanner.SecretScanner",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-security_compliance-threat_detector",
@@ -3688,7 +4196,9 @@
         "tags": [
           "security",
           "compliance"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.security_compliance.threat_detector.ThreatDetector",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-security_compliance-policy_enforcer",
@@ -3718,7 +4228,9 @@
         "tags": [
           "security",
           "compliance"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.security_compliance.policy_enforcer.PolicyEnforcer",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-security_compliance-compliance_reporter",
@@ -3748,7 +4260,9 @@
         "tags": [
           "security",
           "compliance"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.security_compliance.compliance_reporter.ComplianceReporter",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-security_compliance-consent_manager",
@@ -3778,7 +4292,9 @@
         "tags": [
           "security",
           "compliance"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.security_compliance.consent_manager.ConsentManager",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-security_compliance-audit_logger",
@@ -3808,7 +4324,9 @@
         "tags": [
           "security",
           "compliance"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.security_compliance.audit_logger.AuditLogger",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-memory-learning_event_storage",
@@ -3846,7 +4364,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "memory"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.memory.learning_event_storage.LearningEventStorage",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-memory-brain_learning_tracker",
@@ -3879,7 +4399,9 @@
         },
         "tags": [
           "memory"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.memory.brain_learning_tracker.BrainLearningTracker",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-memory-user_model_learner",
@@ -3917,7 +4439,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "memory"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.memory.user_model_learner.UserModelLearner",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-memory-cel_session_memory",
@@ -3955,7 +4479,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "memory"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.memory.cel_session_memory.CelSessionMemory",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-memory-vibe_session_history",
@@ -3988,7 +4514,9 @@
         },
         "tags": [
           "memory"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.memory.vibe_session_history.VibeSessionHistory",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-memory-semantic_context_retriever",
@@ -4026,7 +4554,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "memory"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.memory.semantic_context_retriever.SemanticContextRetriever",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-observability-heartbeat_monitor",
@@ -4064,7 +4594,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "observability"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.observability.heartbeat_monitor.HeartbeatMonitor",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-observability-brain_diagnostics",
@@ -4097,7 +4629,9 @@
         },
         "tags": [
           "observability"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.observability.brain_diagnostics.BrainDiagnostics",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-observability-error_healing",
@@ -4135,7 +4669,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "observability"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.observability.error_healing.ErrorHealing",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-observability-diagnostics_dashboard",
@@ -4173,7 +4709,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "observability"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.observability.diagnostics_dashboard.DiagnosticsDashboard",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-observability-autonomy_status_tracker",
@@ -4206,7 +4744,9 @@
         },
         "tags": [
           "observability"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.observability.autonomy_status_tracker.AutonomyStatusTracker",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-observability-brain_layer_monitor",
@@ -4239,7 +4779,9 @@
         },
         "tags": [
           "observability"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.observability.brain_layer_monitor.BrainLayerMonitor",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-data_processing-wheel_content_inspector",
@@ -4277,7 +4819,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "data"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.data_processing.wheel_content_inspector.WheelContentInspector",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-data_processing-data_classification",
@@ -4315,7 +4859,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "data"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.data_processing.data_classification.DataClassification",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-data_processing-artifact_extraction",
@@ -4353,7 +4899,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "data"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.data_processing.artifact_extraction.ArtifactExtraction",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-data_processing-vibe_metrics_aggregator",
@@ -4386,7 +4934,9 @@
         },
         "tags": [
           "data"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.data_processing.vibe_metrics_aggregator.VibeMetricsAggregator",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-data_processing-anonymization_engine",
@@ -4424,7 +4974,9 @@
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
           "data"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.data_processing.anonymization_engine.AnonymizationEngine",
+        "origin": "builtin"
       },
       {
         "id": "plugin:buildin-data_processing-context_snapshot_analyzer",
@@ -4457,7 +5009,9 @@
         },
         "tags": [
           "data"
-        ]
+        ],
+        "entry_point": "core.plugins.buildin.data_processing.context_snapshot_analyzer.ContextSnapshotAnalyzer",
+        "origin": "builtin"
       }
     ]
   }

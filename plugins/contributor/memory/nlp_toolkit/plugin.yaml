@@ -1,0 +1,32 @@
+plugin_id: nlp_toolkit
+plugin_type: summary_provider
+version: 2.0.0
+display_name: NLP Toolkit
+description: 'Natural-language utilities for text analysis: named-entity recognition, sentiment and semantic
+  similarity. Contributor plugin: installs from this checkout, enabling records the operator''s consent.'
+origin: community
+boot_layer: installed
+locality: local
+network_egress: none
+egress_hosts: []
+pii_risk: low
+requires_consent: true
+audit_required: true
+infrastructure_plugin: false
+orchestration_support: true
+settings_schema:
+  type: object
+  properties:
+    language:
+      type: string
+      enum:
+      - auto
+      - en
+      - de
+      default: auto
+      description: Analysis language
+    max_text_chars:
+      type: integer
+      default: 20000
+      minimum: 100
+      description: Longest text analysed in one call

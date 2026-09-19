@@ -1,0 +1,32 @@
+plugin_id: sql_expert
+plugin_type: data_connector
+version: 1.1.0
+display_name: SQL Expert Assistant
+description: 'SQL query optimisation and debugging: execution-plan analysis, index suggestions, refactoring
+  of complex queries. Contributor plugin: installs from this checkout, enabling records the operator''s
+  consent.'
+origin: community
+boot_layer: installed
+locality: local
+network_egress: none
+egress_hosts: []
+pii_risk: low
+requires_consent: true
+audit_required: true
+infrastructure_plugin: false
+orchestration_support: true
+settings_schema:
+  type: object
+  properties:
+    dialect:
+      type: string
+      enum:
+      - postgres
+      - mysql
+      - sqlite
+      default: postgres
+      description: SQL dialect
+    explain_analyze:
+      type: boolean
+      default: false
+      description: Run EXPLAIN ANALYZE (executes the query)
