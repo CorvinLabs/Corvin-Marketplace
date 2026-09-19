@@ -1,31 +1,30 @@
 {
-  "id": "corvin-knowledge",
-  "name": "Corvin-Knowledge: Agentic Knowledge Mesh",
+  "id": "plugin:contributor-knowledge_management-corvin_knowledge",
+  "type": "plugin",
+  "name": "Corvin-Knowledge: Knowledge Graph",
   "version": "1.0.0",
-  "description": "Query, sync, and propose knowledge across distributed teams. Git-backed, fail-closed validation.",
-
-  "author": {
-    "name": "Shumway + Claude Haiku 4.5",
-    "url": "https://github.com/CorvinLabs"
-  },
-
+  "author": "CorvinLabs (Shumway + Claude)",
   "license": "Apache-2.0",
-  "category": "knowledge-management",
-  "type": "agentic-tool",
-
+  "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+  "tier": "contributor",
+  "category": "knowledge_management",
+  "description": "Query, sync and propose knowledge across distributed teams — ADRs, concepts and ideas as a Git-backed graph with fail-closed validation. Adds the Knowledge Graph panel to the console.",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/knowledge_management/corvin_knowledge/src/README.md",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": false,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/knowledge_management/corvin_knowledge"
+  },
+  "dependencies": [],
+  "requires_version": ">=1.0.0",
+  "boot_layer": "installed",
+  "sla_level": "contributor",
+  "maintainer_url": "https://github.com/CorvinLabs/Corvin-Knowledge",
   "tags": [
-    "knowledge-management",
-    "distributed-teams",
-    "git-based",
-    "agentic-ai",
-    "decision-records",
-    "concepts",
-    "ideas",
-    "collaboration"
+    "memory",
+    "integration",
+    "ai-learning"
   ],
-
-  "description_long": "Corvin-Knowledge is a distributed knowledge management plugin for Claude Code that enables agents and teams to:\n\n- Query architectural decisions (ADRs), concepts, and ideas across projects\n- Sync knowledge bases across distributed teams with Git-based conflict resolution\n- Propose new entities via GitHub PRs (no manual Git needed)\n- Configure independent knowledge repositories per team\n- Validate consistency automatically (circular deps, PII, duplicates)\n\nFeatured use cases:\n- Querying shared architectural decisions during code review\n- Multi-team knowledge synchronization without data loss\n- Proposing new patterns/ideas for team review\n- Building agent-queryable knowledge graphs\n\nArchitecture: Three-layer design (Manifest + Entry Point + SDK), fail-closed validation, Git-based sync.",
-
   "capabilities": [
     "query_entities",
     "get_graph",
@@ -33,190 +32,14 @@
     "propose_entity",
     "validate_consistency"
   ],
-
-  "commands": [
-    {
-      "name": "query",
-      "description": "Search knowledge by tag, project, or status",
-      "example": "mesh query --tag=skills --project=CorvinOS"
-    },
-    {
-      "name": "sync",
-      "description": "Sync with remote repository (pull, push, validate)",
-      "example": "mesh sync --pull --consistency=strict"
-    },
-    {
-      "name": "propose",
-      "description": "Propose new entity (idea, concept, implementation)",
-      "example": "mesh propose --type=idea --title='...' --body='...'"
-    },
-    {
-      "name": "config",
-      "description": "Configure plugin (repo path, remote URL, sync settings)",
-      "example": "mesh config --repo-path ~/.my-knowledge"
-    }
-  ],
-
-  "dependencies": {
-    "python": ">=3.9",
-    "git": ">=2.25",
-    "claude_code": ">=1.0.0"
-  },
-
-  "configuration": {
-    "repo_path": {
-      "type": "string",
-      "description": "Local path to knowledge repository",
-      "default": "~/.corvin-knowledge/",
-      "required": true
-    },
-    "remote_url": {
-      "type": "string",
-      "description": "Git remote URL (GitHub, GitLab, etc.)",
-      "default": "https://github.com/CorvinLabs/Corvin-Knowledge.git"
-    },
-    "auto_sync_on_query": {
-      "type": "boolean",
-      "description": "Automatically pull latest before queries",
-      "default": true
-    },
-    "consistency_level": {
-      "type": "string",
-      "enum": ["strict", "warn", "ignore"],
-      "description": "How to handle consistency errors",
-      "default": "warn"
-    }
-  },
-
-  "installation": {
-    "method": "marketplace",
-    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/knowledge-management/corvin-knowledge",
-    "marketplace_package": "https://github.com/CorvinLabs/Corvin-Marketplace/releases/download/v1.0.0/corvin-knowledge-1.0.0.zip",
-    "checksum_sha256": "auto_computed_at_release"
-  },
-
-  "documentation": {
-    "readme": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/knowledge-management/corvin-knowledge/README.md",
-    "installation": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/knowledge-management/corvin-knowledge/docs/INSTALLATION.md",
-    "console_integration": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/knowledge-management/corvin-knowledge/docs/CONSOLE_INTEGRATION.md",
-    "user_guide": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/knowledge-management/corvin-knowledge/README.md#quick-start"
-  },
-
-  "support": {
-    "issues": "https://github.com/CorvinLabs/Corvin-Marketplace/issues",
-    "discussions": "https://github.com/CorvinLabs/Corvin-Marketplace/discussions",
-    "contact": "support@corvin-labs.com"
-  },
-
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/CorvinLabs/Corvin-Marketplace.git",
-    "branch": "main",
-    "directory": "plugins/knowledge-management/corvin-knowledge"
-  },
-
-  "related_adrs": [
-    "ADR-0884",
-    "ADR-MESH-002",
-    "ADR-0262",
-    "ADR-0263",
-    "ADR-0671",
-    "ADR-0519"
-  ],
-
-  "related_plugins": [
-    "claude-code-kernel",
-    "skill-forge"
-  ],
-
-  "ratings": {
-    "stars": 0,
-    "downloads": 0,
-    "reviews": 0
-  },
-
-  "status": "production-ready",
-  "release_date": "2026-09-18",
-  "updated_date": "2026-09-18",
-
-  "marketplace": {
-    "auto_discover": true,
-    "auto_register": true,
-    "category_path": "knowledge-management",
-    "plugin_display": {
-      "card_title": "Corvin-Knowledge",
-      "card_description": "Query, sync, and propose knowledge across distributed teams",
-      "card_icon": "database",
-      "card_tags": ["knowledge", "agentic", "distributed"],
-      "featured": true,
-      "feature_priority": 1
-    },
+  "entry_points": {
     "console_panels": [
       {
         "id": "corvin-knowledge-graph",
-        "name": "Knowledge Graph Explorer",
-        "description": "Interactive visualization and navigation of knowledge graph",
-        "panel_type": "react-component",
-        "route": "/console/plugins/corvin-knowledge/graph",
-        "icon": "network",
-        "display_order": 1,
-        "requires_config": true,
-        "config_panel": {
-          "id": "corvin-knowledge-settings",
-          "name": "Settings",
-          "description": "Configure repository and sync settings",
-          "icon": "settings",
-          "display_order": 2
-        }
+        "title": "Knowledge Graph",
+        "route": "corvin-knowledge",
+        "component": "CorvinKnowledgePage"
       }
     ]
-  },
-
-  "roadmap": {
-    "v1.1": [
-      "Real GitHub API (create PRs programmatically)",
-      "Full PII detection + quarantine",
-      "Full-text search command"
-    ],
-    "v1.2": [
-      "Web dashboard (visualize knowledge graph)",
-      "Real-time sync (WebSocket)",
-      "Merge conflict auto-resolver"
-    ],
-    "v2.0": [
-      "MCP tool integration",
-      "Slack/Discord integration",
-      "GitHub Actions workflow"
-    ]
-  },
-
-  "requirements": {
-    "performance": {
-      "min_memory_mb": 50,
-      "typical_memory_mb": 100,
-      "network": "required_for_sync",
-      "disk_space_mb": 500
-    },
-    "compatibility": {
-      "os": ["linux", "macos", "windows"],
-      "python": "3.9+",
-      "git": "2.25+"
-    }
-  },
-
-  "quality_metrics": {
-    "test_coverage": "15_e2e_tests",
-    "test_status": "all_passing",
-    "linting": "passed",
-    "security_audit": "clean",
-    "code_review": "approved"
-  },
-
-  "metadata": {
-    "source": "https://github.com/CorvinLabs/Corvin-Knowledge",
-    "source_repo": "Corvin-Knowledge",
-    "maintainer": "Shumway",
-    "created_date": "2026-09-18",
-    "implementation_date": "2026-09-18"
   }
 }
