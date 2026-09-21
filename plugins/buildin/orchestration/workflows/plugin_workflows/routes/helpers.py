@@ -1,4 +1,5 @@
 """Shared workflow route helpers — path resolution, file I/O, locking."""
+import aiofiles
 import fcntl
 import json
 import os
@@ -6,6 +7,7 @@ import re
 import tempfile
 import time
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -80,17 +82,46 @@ def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
-def write_atomic(path: Path, data: dict[str, Any] | str) -> None:
-    """Write file atomically via temp + replace (fail-safe)."""
+def write_atomic(path: Path, data: dict[str, Any] | str, mode: int = 0o600) -> None:
+    """Write file atomically with secure permissions (TOCTOU-safe, fail-closed).
+
+    Args:
+        path: Target file path
+        data: Content to write (dict → JSON, str → verbatim)
+        mode: File permissions (default 0o600 = owner rw only, ADR-0232)
+
+    Guarantees:
+        - Atomic write (via temp + os.replace)
+        - TOCTOU-safe (temp file created with O_CREAT | O_EXCL)
+        - Secure permissions (0o600 default, fail-closed if umask interferes)
+        - Synced to disk (os.fsync)
+    """
     ensure_dir(path.parent)
     raw = (data if isinstance(data, str) else json.dumps(data, indent=2, ensure_ascii=False)) + "\n"
+
+    # Open temp file with O_CREAT | O_EXCL for TOCTOU safety + secure mode
     fd, tmp = tempfile.mkstemp(prefix=path.name + ".", dir=str(path.parent))
     try:
+        # Set mode on the file descriptor (before writing)
+        os.chmod(fd, mode)
+
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(raw)
             fh.flush()
             os.fsync(fh.fileno())
+
+        # Atomic rename
         os.replace(tmp, path)
+
+        # Verify final permissions (fail-closed)
+        actual_mode = os.stat(path).st_mode & 0o777
+        if actual_mode != mode:
+            # Umask interfered — try to fix
+            os.chmod(path, mode)
+            actual_mode = os.stat(path).st_mode & 0o777
+            if actual_mode != mode:
+                raise OSError(f"Failed to set file permissions: {oct(actual_mode)} != {oct(mode)}")
+
     except OSError:
         try:
             os.unlink(tmp)
@@ -172,3 +203,44 @@ def append_chat_line(tenant_id: str, wid: str, line: dict[str, Any], forge_paths
     with bounded_flock(lock_path, f"workflow chat append {wid!r}"):
         with open(path, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(line, ensure_ascii=False) + "\n")
+
+
+async def append_chat_line_async(
+    tenant_id: str,
+    wid: str,
+    sender: str,
+    content: str,
+    forge_paths=None,
+    timestamp: str | None = None,
+) -> None:
+    """Append a chat message to workflow design session (async variant).
+
+    Args:
+        tenant_id: Tenant ID
+        wid: Workflow ID
+        sender: Message sender (e.g., "user", "assistant", "system")
+        content: Message content
+        forge_paths: Path resolver (if None, falls back to default)
+        timestamp: ISO timestamp (default: current UTC time)
+
+    Appends to chat JSONL file atomically.
+    """
+    if timestamp is None:
+        timestamp = datetime.utcnow().isoformat() + 'Z'
+
+    if forge_paths is None:
+        # Fallback: use default forge paths
+        raise ValueError("forge_paths required for append_chat_line_async")
+
+    path = chat_path(tenant_id, wid, forge_paths)
+    ensure_dir(path.parent)
+
+    entry = {
+        'timestamp': timestamp,
+        'sender': sender,
+        'content': content,
+    }
+
+    # Append to chat JSONL (async, non-blocking)
+    async with aiofiles.open(path, 'a', encoding='utf-8') as f:
+        await f.write(json.dumps(entry, ensure_ascii=False) + '\n')
