@@ -1,6 +1,6 @@
 """Pydantic models for workflow routes — request/response payloads."""
 from typing import Any, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ── Constants ──────────────────────────────────────────────────────
@@ -13,10 +13,18 @@ _MAX_CHAT_MSG_CHARS = 4000
 
 class CreateWorkflowRequest(BaseModel):
     """POST /workflows request."""
-    title: str = Field(..., max_length=120)
-    description: str = Field("", max_length=1000)
-    yaml: Optional[str] = Field(None, max_length=_MAX_YAML_BYTES)
+    title: str = Field(..., max_length=120, description="Workflow title (required, non-empty)")
+    description: str = Field("", max_length=1000, description="Optional description")
+    yaml: Optional[str] = Field(None, max_length=_MAX_YAML_BYTES, description="Optional YAML definition")
     model_config = {"extra": "forbid"}
+
+    @field_validator('title')
+    @classmethod
+    def validate_title_not_empty(cls, v: str) -> str:
+        """Ensure title is not empty or whitespace-only."""
+        if not v or not v.strip():
+            raise ValueError("title cannot be empty")
+        return v.strip()
 
 
 class PatchWorkflowRequest(BaseModel):
