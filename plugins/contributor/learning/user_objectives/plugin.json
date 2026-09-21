@@ -1,0 +1,44 @@
+{
+  "id": "plugin:contributor-learning-user_objectives",
+  "name": "Learning Objectives",
+  "version": "1.0.0",
+  "boot_layer": "installed",
+  "origin": "marketplace",
+  "config": {
+    "enabled": true,
+    "track_objectives": true,
+    "retention_days": 90
+  },
+  "description": "User Learning Objectives (ULO) tracking \u2014 remember what users want to learn. Tracks learning goals and personalizes responses based on operator-defined learning paths.",
+  "entry_point": "objectives_tracker:LearningObjectivesTracker",
+  "audit_events": [
+    "plugin_loaded",
+    "plugin_disabled",
+    "objective_tracked",
+    "objective_completed"
+  ],
+  "category": "learning",
+  "tags": [
+    "learning",
+    "ai-learning"
+  ],
+  "type": "plugin",
+  "tier": "contributor",
+  "author": "CorvinLabs",
+  "license": "Apache-2.0",
+  "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/learning/user_objectives/README.md",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": false,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/learning/user_objectives"
+  },
+  "dependencies": [],
+  "requires_version": ">=1.0.0",
+  "sla_level": "contributor",
+  "security_audit": {
+    "audited": false
+  },
+  "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace/issues",
+  "last_updated": "2026-09-21"
+}

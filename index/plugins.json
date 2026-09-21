@@ -1,8 +1,8 @@
 {
   "version": "2.0",
   "schema": "ADR-0511",
-  "generated_at": "2026-09-19T21:09:13.367479Z",
-  "plugin_count": 35,
+  "generated_at": "2026-09-21T16:57:11.560784Z",
+  "plugin_count": 37,
   "plugins": [
     {
       "id": "plugin:contributor-integration-slack_notifier",
@@ -29,6 +29,50 @@
       "tags": [
         "integration"
       ]
+    },
+    {
+      "id": "plugin:contributor-learning-user_objectives",
+      "name": "Learning Objectives",
+      "version": "1.0.0",
+      "boot_layer": "installed",
+      "origin": "marketplace",
+      "config": {
+        "enabled": true,
+        "track_objectives": true,
+        "retention_days": 90
+      },
+      "description": "User Learning Objectives (ULO) tracking \u2014 remember what users want to learn. Tracks learning goals and personalizes responses based on operator-defined learning paths.",
+      "entry_point": "objectives_tracker:LearningObjectivesTracker",
+      "audit_events": [
+        "plugin_loaded",
+        "plugin_disabled",
+        "objective_tracked",
+        "objective_completed"
+      ],
+      "category": "learning",
+      "tags": [
+        "learning",
+        "ai-learning"
+      ],
+      "type": "plugin",
+      "tier": "contributor",
+      "author": "CorvinLabs",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/learning/user_objectives/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/learning/user_objectives"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "sla_level": "contributor",
+      "security_audit": {
+        "audited": false
+      },
+      "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace/issues",
+      "last_updated": "2026-09-21"
     },
     {
       "id": "plugin:contributor-memory-nlp_toolkit",
@@ -99,6 +143,32 @@
         "youtube-export"
       ],
       "entry_points": {
+        "renderers": [
+          {
+            "id": "svg_renderer",
+            "name": "SVG Renderer",
+            "module": "video_producer.renderers_skill_2_0.svg_renderer:SvgRenderer",
+            "description": "Renders flowcharts and diagrams to SVG"
+          },
+          {
+            "id": "effects_processor",
+            "name": "Effects Processor",
+            "module": "video_producer.renderers_skill_2_0.effects_processor:EffectsProcessor",
+            "description": "Processes video effects and transitions"
+          },
+          {
+            "id": "screencast_renderer",
+            "name": "Screencast Renderer",
+            "module": "video_producer.renderers_skill_2_0.screencast_renderer:ScreencastRenderer",
+            "description": "Captures and composes screencast videos"
+          },
+          {
+            "id": "blender_renderer",
+            "name": "Blender Renderer",
+            "module": "video_producer.renderers_skill_2_0.blender_renderer:BlenderRenderer",
+            "description": "Renders 3D scenes using Blender"
+          }
+        ],
         "console_panels": [
           {
             "id": "video-producer-panel",
@@ -179,6 +249,50 @@
           }
         ]
       }
+    },
+    {
+      "id": "plugin:contributor-session-device_sync",
+      "name": "Cross-Device Sync",
+      "version": "1.0.0",
+      "boot_layer": "installed",
+      "origin": "marketplace",
+      "config": {
+        "enabled": true,
+        "sync_interval_seconds": 60,
+        "max_devices": 5
+      },
+      "description": "Sync learning state and preferences across devices. Enables operators to access consistent state, learned preferences, and session memory across multiple machines.",
+      "entry_point": "device_syncer:DeviceSyncManager",
+      "audit_events": [
+        "plugin_loaded",
+        "plugin_disabled",
+        "device_synced",
+        "sync_conflict"
+      ],
+      "category": "session",
+      "tags": [
+        "session",
+        "data"
+      ],
+      "type": "plugin",
+      "tier": "contributor",
+      "author": "CorvinLabs",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/session/device_sync/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/session/device_sync"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "sla_level": "contributor",
+      "security_audit": {
+        "audited": false
+      },
+      "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace/issues",
+      "last_updated": "2026-09-21"
     },
     {
       "id": "plugin:contributor-data_processing-sql_expert",
@@ -1324,6 +1438,50 @@
         "integration"
       ]
     },
+    "plugin:contributor-learning-user_objectives": {
+      "id": "plugin:contributor-learning-user_objectives",
+      "name": "Learning Objectives",
+      "version": "1.0.0",
+      "boot_layer": "installed",
+      "origin": "marketplace",
+      "config": {
+        "enabled": true,
+        "track_objectives": true,
+        "retention_days": 90
+      },
+      "description": "User Learning Objectives (ULO) tracking \u2014 remember what users want to learn. Tracks learning goals and personalizes responses based on operator-defined learning paths.",
+      "entry_point": "objectives_tracker:LearningObjectivesTracker",
+      "audit_events": [
+        "plugin_loaded",
+        "plugin_disabled",
+        "objective_tracked",
+        "objective_completed"
+      ],
+      "category": "learning",
+      "tags": [
+        "learning",
+        "ai-learning"
+      ],
+      "type": "plugin",
+      "tier": "contributor",
+      "author": "CorvinLabs",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/learning/user_objectives/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/learning/user_objectives"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "sla_level": "contributor",
+      "security_audit": {
+        "audited": false
+      },
+      "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace/issues",
+      "last_updated": "2026-09-21"
+    },
     "plugin:contributor-memory-nlp_toolkit": {
       "id": "plugin:contributor-memory-nlp_toolkit",
       "type": "plugin",
@@ -1393,6 +1551,32 @@
         "youtube-export"
       ],
       "entry_points": {
+        "renderers": [
+          {
+            "id": "svg_renderer",
+            "name": "SVG Renderer",
+            "module": "video_producer.renderers_skill_2_0.svg_renderer:SvgRenderer",
+            "description": "Renders flowcharts and diagrams to SVG"
+          },
+          {
+            "id": "effects_processor",
+            "name": "Effects Processor",
+            "module": "video_producer.renderers_skill_2_0.effects_processor:EffectsProcessor",
+            "description": "Processes video effects and transitions"
+          },
+          {
+            "id": "screencast_renderer",
+            "name": "Screencast Renderer",
+            "module": "video_producer.renderers_skill_2_0.screencast_renderer:ScreencastRenderer",
+            "description": "Captures and composes screencast videos"
+          },
+          {
+            "id": "blender_renderer",
+            "name": "Blender Renderer",
+            "module": "video_producer.renderers_skill_2_0.blender_renderer:BlenderRenderer",
+            "description": "Renders 3D scenes using Blender"
+          }
+        ],
         "console_panels": [
           {
             "id": "video-producer-panel",
@@ -1473,6 +1657,50 @@
           }
         ]
       }
+    },
+    "plugin:contributor-session-device_sync": {
+      "id": "plugin:contributor-session-device_sync",
+      "name": "Cross-Device Sync",
+      "version": "1.0.0",
+      "boot_layer": "installed",
+      "origin": "marketplace",
+      "config": {
+        "enabled": true,
+        "sync_interval_seconds": 60,
+        "max_devices": 5
+      },
+      "description": "Sync learning state and preferences across devices. Enables operators to access consistent state, learned preferences, and session memory across multiple machines.",
+      "entry_point": "device_syncer:DeviceSyncManager",
+      "audit_events": [
+        "plugin_loaded",
+        "plugin_disabled",
+        "device_synced",
+        "sync_conflict"
+      ],
+      "category": "session",
+      "tags": [
+        "session",
+        "data"
+      ],
+      "type": "plugin",
+      "tier": "contributor",
+      "author": "CorvinLabs",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/session/device_sync/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/session/device_sync"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "sla_level": "contributor",
+      "security_audit": {
+        "audited": false
+      },
+      "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace/issues",
+      "last_updated": "2026-09-21"
     },
     "plugin:contributor-data_processing-sql_expert": {
       "id": "plugin:contributor-data_processing-sql_expert",
@@ -2832,6 +3060,52 @@
         "origin": "builtin"
       }
     ],
+    "learning": [
+      {
+        "id": "plugin:contributor-learning-user_objectives",
+        "name": "Learning Objectives",
+        "version": "1.0.0",
+        "boot_layer": "installed",
+        "origin": "marketplace",
+        "config": {
+          "enabled": true,
+          "track_objectives": true,
+          "retention_days": 90
+        },
+        "description": "User Learning Objectives (ULO) tracking \u2014 remember what users want to learn. Tracks learning goals and personalizes responses based on operator-defined learning paths.",
+        "entry_point": "objectives_tracker:LearningObjectivesTracker",
+        "audit_events": [
+          "plugin_loaded",
+          "plugin_disabled",
+          "objective_tracked",
+          "objective_completed"
+        ],
+        "category": "learning",
+        "tags": [
+          "learning",
+          "ai-learning"
+        ],
+        "type": "plugin",
+        "tier": "contributor",
+        "author": "CorvinLabs",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/learning/user_objectives/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/learning/user_objectives"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "sla_level": "contributor",
+        "security_audit": {
+          "audited": false
+        },
+        "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace/issues",
+        "last_updated": "2026-09-21"
+      }
+    ],
     "memory": [
       {
         "id": "plugin:contributor-memory-nlp_toolkit",
@@ -3134,6 +3408,32 @@
           "youtube-export"
         ],
         "entry_points": {
+          "renderers": [
+            {
+              "id": "svg_renderer",
+              "name": "SVG Renderer",
+              "module": "video_producer.renderers_skill_2_0.svg_renderer:SvgRenderer",
+              "description": "Renders flowcharts and diagrams to SVG"
+            },
+            {
+              "id": "effects_processor",
+              "name": "Effects Processor",
+              "module": "video_producer.renderers_skill_2_0.effects_processor:EffectsProcessor",
+              "description": "Processes video effects and transitions"
+            },
+            {
+              "id": "screencast_renderer",
+              "name": "Screencast Renderer",
+              "module": "video_producer.renderers_skill_2_0.screencast_renderer:ScreencastRenderer",
+              "description": "Captures and composes screencast videos"
+            },
+            {
+              "id": "blender_renderer",
+              "name": "Blender Renderer",
+              "module": "video_producer.renderers_skill_2_0.blender_renderer:BlenderRenderer",
+              "description": "Renders 3D scenes using Blender"
+            }
+          ],
           "console_panels": [
             {
               "id": "video-producer-panel",
@@ -3216,6 +3516,52 @@
             }
           ]
         }
+      }
+    ],
+    "session": [
+      {
+        "id": "plugin:contributor-session-device_sync",
+        "name": "Cross-Device Sync",
+        "version": "1.0.0",
+        "boot_layer": "installed",
+        "origin": "marketplace",
+        "config": {
+          "enabled": true,
+          "sync_interval_seconds": 60,
+          "max_devices": 5
+        },
+        "description": "Sync learning state and preferences across devices. Enables operators to access consistent state, learned preferences, and session memory across multiple machines.",
+        "entry_point": "device_syncer:DeviceSyncManager",
+        "audit_events": [
+          "plugin_loaded",
+          "plugin_disabled",
+          "device_synced",
+          "sync_conflict"
+        ],
+        "category": "session",
+        "tags": [
+          "session",
+          "data"
+        ],
+        "type": "plugin",
+        "tier": "contributor",
+        "author": "CorvinLabs",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/session/device_sync/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/session/device_sync"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "sla_level": "contributor",
+        "security_audit": {
+          "audited": false
+        },
+        "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace/issues",
+        "last_updated": "2026-09-21"
       }
     ],
     "data_processing": [
@@ -3928,6 +4274,50 @@
         ]
       },
       {
+        "id": "plugin:contributor-learning-user_objectives",
+        "name": "Learning Objectives",
+        "version": "1.0.0",
+        "boot_layer": "installed",
+        "origin": "marketplace",
+        "config": {
+          "enabled": true,
+          "track_objectives": true,
+          "retention_days": 90
+        },
+        "description": "User Learning Objectives (ULO) tracking \u2014 remember what users want to learn. Tracks learning goals and personalizes responses based on operator-defined learning paths.",
+        "entry_point": "objectives_tracker:LearningObjectivesTracker",
+        "audit_events": [
+          "plugin_loaded",
+          "plugin_disabled",
+          "objective_tracked",
+          "objective_completed"
+        ],
+        "category": "learning",
+        "tags": [
+          "learning",
+          "ai-learning"
+        ],
+        "type": "plugin",
+        "tier": "contributor",
+        "author": "CorvinLabs",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/learning/user_objectives/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/learning/user_objectives"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "sla_level": "contributor",
+        "security_audit": {
+          "audited": false
+        },
+        "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace/issues",
+        "last_updated": "2026-09-21"
+      },
+      {
         "id": "plugin:contributor-memory-nlp_toolkit",
         "type": "plugin",
         "name": "NLP Toolkit",
@@ -3996,6 +4386,32 @@
           "youtube-export"
         ],
         "entry_points": {
+          "renderers": [
+            {
+              "id": "svg_renderer",
+              "name": "SVG Renderer",
+              "module": "video_producer.renderers_skill_2_0.svg_renderer:SvgRenderer",
+              "description": "Renders flowcharts and diagrams to SVG"
+            },
+            {
+              "id": "effects_processor",
+              "name": "Effects Processor",
+              "module": "video_producer.renderers_skill_2_0.effects_processor:EffectsProcessor",
+              "description": "Processes video effects and transitions"
+            },
+            {
+              "id": "screencast_renderer",
+              "name": "Screencast Renderer",
+              "module": "video_producer.renderers_skill_2_0.screencast_renderer:ScreencastRenderer",
+              "description": "Captures and composes screencast videos"
+            },
+            {
+              "id": "blender_renderer",
+              "name": "Blender Renderer",
+              "module": "video_producer.renderers_skill_2_0.blender_renderer:BlenderRenderer",
+              "description": "Renders 3D scenes using Blender"
+            }
+          ],
           "console_panels": [
             {
               "id": "video-producer-panel",
@@ -4076,6 +4492,50 @@
             }
           ]
         }
+      },
+      {
+        "id": "plugin:contributor-session-device_sync",
+        "name": "Cross-Device Sync",
+        "version": "1.0.0",
+        "boot_layer": "installed",
+        "origin": "marketplace",
+        "config": {
+          "enabled": true,
+          "sync_interval_seconds": 60,
+          "max_devices": 5
+        },
+        "description": "Sync learning state and preferences across devices. Enables operators to access consistent state, learned preferences, and session memory across multiple machines.",
+        "entry_point": "device_syncer:DeviceSyncManager",
+        "audit_events": [
+          "plugin_loaded",
+          "plugin_disabled",
+          "device_synced",
+          "sync_conflict"
+        ],
+        "category": "session",
+        "tags": [
+          "session",
+          "data"
+        ],
+        "type": "plugin",
+        "tier": "contributor",
+        "author": "CorvinLabs",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/session/device_sync/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/session/device_sync"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "sla_level": "contributor",
+        "security_audit": {
+          "audited": false
+        },
+        "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace/issues",
+        "last_updated": "2026-09-21"
       },
       {
         "id": "plugin:contributor-data_processing-sql_expert",

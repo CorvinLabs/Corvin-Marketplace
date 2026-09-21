@@ -1,0 +1,40 @@
+# The manifest CorvinOS actually loads (see the note in the sibling
+# learning/user_objectives plugin.yaml). Added 2026-09-21.
+plugin_id: device_sync
+# Nearest existing type: it moves state between stores rather than answering a
+# turn. There is no dedicated "sync" type today.
+plugin_type: data_connector
+version: 1.0.0
+display_name: Cross-Device Sync
+description: >-
+  Sync learning state and preferences across an operator's machines, so session
+  memory and learned preferences stay consistent. Contributor plugin: installs
+  from this checkout, enabling records the operator's consent.
+origin: community
+boot_layer: installed
+# Sync is local-to-local in this implementation: register_device / sync_state /
+# resolve_conflict operate on in-process state, with no transport of their own.
+locality: local
+network_egress: none
+egress_hosts: []
+# Carries the operator's preferences and session state between their devices.
+pii_risk: low
+requires_consent: true
+audit_required: true
+infrastructure_plugin: false
+orchestration_support: false
+settings_schema:
+  type: object
+  properties:
+    enabled:
+      type: boolean
+      default: true
+      description: Keep state in sync across registered devices
+    sync_interval_seconds:
+      type: integer
+      default: 60
+      description: Seconds between sync passes
+    max_devices:
+      type: integer
+      default: 5
+      description: Maximum devices registered per operator

@@ -1,0 +1,42 @@
+# The manifest CorvinOS actually loads (bootstrap._builtin_plugin_dirs globs
+# plugin.yaml; routes/marketplace_resolve.resolve_builtin_dir refuses to install
+# a directory without one). Added 2026-09-21 — the plugin shipped with only a
+# plugin.json, so it was neither indexable nor installable.
+plugin_id: user_objectives
+# Nearest existing type: the plugin's payload is get_personalized_context(),
+# which hands the turn extra context derived from the operator's stated goals.
+plugin_type: context_retriever
+version: 1.0.0
+display_name: Learning Objectives
+description: >-
+  User Learning Objectives (ULO) tracking — records what the operator wants to
+  learn and personalises responses along those goals. Contributor plugin:
+  installs from this checkout, enabling records the operator's consent.
+origin: community
+boot_layer: installed
+locality: local
+# The source makes no outbound call — no http client, no socket.
+network_egress: none
+egress_hosts: []
+# Objectives are operator-authored text about the operator. Not sensitive data,
+# but it is about a person, so it is not "none".
+pii_risk: low
+requires_consent: true
+audit_required: true
+infrastructure_plugin: false
+orchestration_support: false
+settings_schema:
+  type: object
+  properties:
+    enabled:
+      type: boolean
+      default: true
+      description: Track learning objectives for this tenant
+    track_objectives:
+      type: boolean
+      default: true
+      description: Record progress updates against each objective
+    retention_days:
+      type: integer
+      default: 90
+      description: Days an objective and its progress history are kept
