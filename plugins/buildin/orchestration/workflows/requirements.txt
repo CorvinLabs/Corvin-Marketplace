@@ -1,0 +1,25 @@
+# Workflows Plugin Requirements
+
+# Hard dependencies
+fastapi>=0.104.0
+pydantic>=2.0.0
+anyio>=4.0.0
+
+# AWP Stack (must be installed from CorvinOS repo)
+# corvin_workflows @ file:///home/shumway/projects/CorvinOS/core/workflows
+
+# Soft dependencies (graceful degradation if missing)
+PyYAML>=6.0  # YAML parsing
+# scheduler @ file:///path/to/scheduler
+# awpkg @ file:///path/to/awpkg
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+httpx>=0.24.0
+
+# Development
+black>=23.0.0
+ruff>=0.1.0
+mypy>=1.0.0
