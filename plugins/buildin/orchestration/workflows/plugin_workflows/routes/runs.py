@@ -66,6 +66,64 @@ def _count_running_workflows(tenant_id: str, forge_paths) -> int:
     return count
 
 
+def _check_prompts_with_guard(
+    yaml_text: str,
+    tenant_id: str,
+    wid: str,
+    rid: str,
+    adapter: RunsAdapter,
+) -> None:
+    """Check all claude node prompts via PromptGuard (fail-closed).
+
+    This is a SECURITY GATE that runs BEFORE any node execution (ADR-0648).
+    If guard is unavailable or any prompt fails, raises HTTPException(400).
+    """
+    if not adapter.prompt_guard:
+        _log.warning("Prompt guard unavailable — refusing run (fail-closed)")
+        raise HTTPException(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="prompt guard unavailable",
+        )
+
+    try:
+        import yaml
+        parsed = yaml.safe_load(yaml_text) or {}
+        graph = parsed.get("orchestration", {}).get("graph") or []
+
+        for node in graph:
+            if node.get("type") != "claude":
+                continue
+
+            prompt = node.get("prompt", "")
+            node_id = node.get("id", "unknown")
+
+            # Check prompt via guard (fail-closed)
+            try:
+                _ = adapter.prompt_guard.guard(prompt)
+            except Exception as exc:
+                _log.error(f"Prompt guard failed for node {node_id}: {exc}")
+                adapter.audit_backend.log_event(
+                    "workflow.prompt_guard_failed",
+                    tenant_id=tenant_id,
+                    workflow_id=wid,
+                    run_id=rid,
+                    node_id=node_id,
+                    reason=str(exc),
+                )
+                raise HTTPException(
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
+                    detail=f"Prompt for node {node_id} failed security check: {str(exc)}",
+                ) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        _log.error(f"Error during prompt guard checks: {exc}")
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Prompt validation failed",
+        ) from exc
+
+
 async def _stream_run(
     tenant_id: str,
     sid_fingerprint: str,
@@ -93,6 +151,9 @@ async def _stream_run(
     }
 
     try:
+        # ✅ SECURITY: Check all prompts via PromptGuard BEFORE any execution (fail-closed)
+        _check_prompts_with_guard(yaml_text, tenant_id, wid, rid, adapter)
+
         # Create run directory
         run_dir = runs_dir(tenant_id, wid, adapter.forge_paths)
         ensure_dir(run_dir)
