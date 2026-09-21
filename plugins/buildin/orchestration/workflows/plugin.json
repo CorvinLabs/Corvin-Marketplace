@@ -1,0 +1,75 @@
+{
+  "id": "orchestration.workflows",
+  "version": "1.0.0",
+  "name": "Workflow Builder",
+  "description": "Design and execute multi-step automation workflows using AWP (Agentic Workflow Protocol)",
+  "author": "CorvinOS Team",
+  "homepage": "https://corvin.ai",
+  "boot_layer": "bundled",
+  "origin": "buildin",
+  "entry_point": "plugin_workflows:WorkflowsPlugin",
+  "manifest_version": "1.0",
+  "web_routes": [
+    {"method": "GET", "path": "/workflows", "description": "List workflows"},
+    {"method": "POST", "path": "/workflows", "description": "Create workflow"},
+    {"method": "GET", "path": "/workflows/{wid}", "description": "Get workflow"},
+    {"method": "PATCH", "path": "/workflows/{wid}", "description": "Update workflow metadata"},
+    {"method": "DELETE", "path": "/workflows/{wid}", "description": "Delete workflow"},
+    {"method": "GET", "path": "/workflows/{wid}/yaml", "description": "Get workflow YAML"},
+    {"method": "PUT", "path": "/workflows/{wid}/yaml", "description": "Update workflow YAML"},
+    {"method": "POST", "path": "/workflows/{wid}/runs", "description": "Start workflow run"},
+    {"method": "GET", "path": "/workflows/{wid}/runs", "description": "List runs"},
+    {"method": "GET", "path": "/workflows/{wid}/runs/{rid}", "description": "Get run details"},
+    {"method": "DELETE", "path": "/workflows/{wid}/runs/{rid}", "description": "Delete run"},
+    {"method": "GET", "path": "/workflows/{wid}/schedule", "description": "Get schedule"},
+    {"method": "PUT", "path": "/workflows/{wid}/schedule", "description": "Set schedule (Phase 4)"},
+    {"method": "DELETE", "path": "/workflows/{wid}/schedule", "description": "Delete schedule (Phase 4)"},
+    {"method": "GET", "path": "/workflows/{wid}/export.awpkg", "description": "Export as AWPKG (Phase 5)"},
+    {"method": "POST", "path": "/workflows/import", "description": "Import workflow (Phase 5)"},
+    {"method": "WS", "path": "/workflows/{wid}/chat", "description": "Design chat (Phase 7)"}
+  ],
+  "ui_navigation": [
+    {
+      "label": "Workflows",
+      "path": "/app/workflows",
+      "icon": "workflow",
+      "description": "Orchestration and automation"
+    }
+  ],
+  "audit_events": [
+    "workflow.created",
+    "workflow.updated",
+    "workflow.deleted",
+    "workflow.run.started",
+    "workflow.run.completed",
+    "workflow.run.failed",
+    "workflow.run.approved",
+    "workflow.yaml.updated",
+    "workflow.schedule.set",
+    "workflow.schedule.removed"
+  ],
+  "feature_flags": [
+    "workflows_enabled",
+    "workflows_export_enabled",
+    "workflows_scheduling_enabled",
+    "workflows_chat_enabled"
+  ],
+  "dependencies": {
+    "hard": [
+      "fastapi",
+      "pydantic",
+      "anyio",
+      "corvin_workflows"
+    ],
+    "soft": [
+      "yaml",
+      "scheduler",
+      "awpkg",
+      "skill-forge",
+      "voice"
+    ]
+  },
+  "license": "Apache-2.0",
+  "tier": "free",
+  "tags": ["orchestration", "automation", "workflow", "agentic"]
+}
