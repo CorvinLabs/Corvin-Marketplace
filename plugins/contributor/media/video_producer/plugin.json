@@ -40,6 +40,32 @@
     "youtube-export"
   ],
   "entry_points": {
+    "renderers": [
+      {
+        "id": "svg_renderer",
+        "name": "SVG Renderer",
+        "module": "video_producer.renderers_skill_2_0.svg_renderer:SvgRenderer",
+        "description": "Renders flowcharts and diagrams to SVG"
+      },
+      {
+        "id": "effects_processor",
+        "name": "Effects Processor",
+        "module": "video_producer.renderers_skill_2_0.effects_processor:EffectsProcessor",
+        "description": "Processes video effects and transitions"
+      },
+      {
+        "id": "screencast_renderer",
+        "name": "Screencast Renderer",
+        "module": "video_producer.renderers_skill_2_0.screencast_renderer:ScreencastRenderer",
+        "description": "Captures and composes screencast videos"
+      },
+      {
+        "id": "blender_renderer",
+        "name": "Blender Renderer",
+        "module": "video_producer.renderers_skill_2_0.blender_renderer:BlenderRenderer",
+        "description": "Renders 3D scenes using Blender"
+      }
+    ],
     "console_panels": [
       {
         "id": "video-producer-panel",

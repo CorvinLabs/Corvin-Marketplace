@@ -13,12 +13,24 @@ setup(
     packages=find_packages(),
     python_requires=">=3.9",
     install_requires=[
-        "openai>=1.0",
+        "corvinOS>=1.0.0",
+        "python-pptx>=0.6.21",
+        "openai>=1.0.0",
+        "pydantic>=2.0.0",
+        "requests>=2.31.0",
+        "anthropic>=0.40.0",
+        "gTTS>=2.5.0",
+        "python-dotenv>=1.0.0",
+        "Pillow>=10.0.0",
         "google-api-python-client>=2.0",
         "google-auth-oauthlib>=1.0",
+        "cairosvg>=2.5.0",
+        "ffmpeg-python>=0.2.1",
     ],
     extras_require={
         "dev": ["pytest>=7.0", "pytest-cov>=4.0"],
+        "blender": ["blender>=3.0.0"],
+        "imagemagick": ["imagemagick>=7.0.0"],
     },
     entry_points={
         "console_scripts": [
