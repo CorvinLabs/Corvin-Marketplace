@@ -1,12 +1,32 @@
-"""Tier Dispatcher — Route animation requests to best tier
+"""Tier Dispatcher — Route animation requests to best tier (ADR-0742, Blocker 6)
 
 Orchestrates 3-tier fallback chain:
   Try Tier 3 (Premium) → Tier 2 (Manim) → Tier 1 (Quick)
+
+With Phase 5 Voice-Sync Integration (ADR-0742):
+  - Each tier render produces frame sequence
+  - Voice-Sync Compositor integrates narration timing
+  - Final output: H.264 MP4 with narration-synced animation
+
+Blocker 6 Enhancement:
+  - Emits SkillExecutedEvent per render outcome
+  - Calculates confidence scores
+  - Wires optimizer feedback into tier selection
+  - Integrates with learning_integration module for feedback loop
 """
 
 from enum import Enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 import time
+from pathlib import Path
+import logging
+
+from .voice_sync_mapper import VoiceSyncMapper, VoiceSyncMapping
+from .voice_sync_compositor import VoiceSyncCompositor, VoiceSyncConfig
+from .learning_integration import LearningOptimizer, RenderOutcome
+
+logger = logging.getLogger(__name__)
 
 
 class TierLevel(Enum):
@@ -21,15 +41,34 @@ class AnimationRequest:
     didactic_level: str
     duration_seconds: int
     preferred_tier: TierLevel = TierLevel.TIER_2_RICH
+    narration_audio: Optional[str] = None  # Optional MP3 narration
+    voice_sync_mapping: Optional[dict] = None  # Optional voice-sync data
 
 
 class TierDispatcher:
-    """Route animation requests to appropriate tier with fallback"""
+    """Route animation requests to appropriate tier with fallback (ADR-0742, Blocker 6)
 
-    def __init__(self, tier1, tier2, tier3=None):
+    Phase 5 Enhancement (ADR-0742):
+    - Each tier produces frame sequence
+    - If narration_audio + voice_sync_mapping provided, composits final video
+    - Otherwise returns frame directory path
+
+    Blocker 6 Enhancement:
+    - Wires learning optimizer for confidence-based tier selection
+    - Emits learning events per render outcome
+    - Integrates feedback loop for continuous improvement
+    """
+
+    def __init__(self, tier1, tier2, tier3=None, learning_optimizer: Optional[LearningOptimizer] = None):
         self.tier1 = tier1  # QuickRendererWorker
         self.tier2 = tier2  # ManimAnimatorWorker
         self.tier3 = tier3  # PremiumAsyncQueue (optional)
+
+        self.voice_sync_compositor = VoiceSyncCompositor()
+        self.voice_sync_mapper = VoiceSyncMapper()
+
+        # Blocker 6: Learning optimizer integration
+        self.learning_optimizer = learning_optimizer or LearningOptimizer()
 
         self.tier_metrics = {
             TierLevel.TIER_1_QUICK: {"success_count": 0, "fail_count": 0},
@@ -38,17 +77,43 @@ class TierDispatcher:
         }
 
     def dispatch(self, request: AnimationRequest) -> dict:
-        """Dispatch request to appropriate tier with fallback"""
+        """Dispatch request to appropriate tier with fallback (Blocker 6 enhanced)
 
-        # Try preferred tier first
-        result = self._try_tier(request.preferred_tier, request)
+        Phase 5 (Voice-Sync): If narration_audio provided, integrates via
+        VoiceSyncCompositor for narration-synced MP4 output.
+
+        Blocker 6 (Learning): Uses optimizer feedback to refine tier selection,
+        emits learning events for each outcome.
+        """
+
+        # Blocker 6: Get optimizer-recommended tier based on past performance
+        recommended_tier = self.learning_optimizer.optimizer_feedback_next_tier(request.animation_id)
+
+        # Try recommended tier first (may differ from request.preferred_tier)
+        result = self._try_tier(recommended_tier, request)
 
         if result["success"]:
-            print(f"✅ {request.preferred_tier.name}: {request.animation_id}")
+            print(f"✅ {recommended_tier}: {request.animation_id}")
+
+            # Blocker 6: Record learning outcome
+            outcome = RenderOutcome(
+                success=True,
+                tier=recommended_tier,
+                animation_id=request.animation_id,
+                render_time_ms=result.get("render_time_ms", 0),
+                quality_score=result.get("quality_score", 0.8),
+                fallback_used=False
+            )
+            self.learning_optimizer.record_render_outcome(outcome)
+
+            # Phase 5: Apply voice-sync if narration provided
+            if request.narration_audio and request.voice_sync_mapping:
+                result = self._apply_voice_sync(result, request)
+
             return result
 
         # Fallback to next tier
-        fallback_tiers = self._get_fallback_chain(request.preferred_tier)
+        fallback_tiers = self._get_fallback_chain(TierLevel[f"TIER_{recommended_tier.split('_')[1]}_" + ("QUICK" if "QUICK" in recommended_tier else "RICH" if "RICH" in recommended_tier else "PREMIUM")])
 
         for tier in fallback_tiers:
             print(f"⚠️  Falling back to {tier.name}...")
@@ -56,12 +121,39 @@ class TierDispatcher:
 
             if result["success"]:
                 print(f"✅ {tier.name}: {request.animation_id}")
+
+                # Blocker 6: Record learning outcome (with fallback flag)
+                outcome = RenderOutcome(
+                    success=True,
+                    tier=tier.name,
+                    animation_id=request.animation_id,
+                    render_time_ms=result.get("render_time_ms", 0),
+                    quality_score=result.get("quality_score", 0.7),
+                    fallback_used=True  # Preferred tier failed
+                )
+                self.learning_optimizer.record_render_outcome(outcome)
+
+                # Phase 5: Apply voice-sync if narration provided
+                if request.narration_audio and request.voice_sync_mapping:
+                    result = self._apply_voice_sync(result, request)
+
                 return result
 
-        # All tiers failed (Tier 1 should always succeed)
+        # All tiers failed
+        outcome = RenderOutcome(
+            success=False,
+            tier="ALL_FAILED",
+            animation_id=request.animation_id,
+            render_time_ms=0,
+            quality_score=0.0,
+            fallback_used=True,
+            error="All tiers failed"
+        )
+        self.learning_optimizer.record_render_outcome(outcome)
+
         return {
             "success": False,
-            "error": "All tiers failed (unexpected: Tier 1 should always succeed)",
+            "error": "All tiers failed",
             "tier": None,
             "output_path": None
         }
@@ -70,8 +162,13 @@ class TierDispatcher:
         """Try to render with specific tier"""
 
         try:
-            if tier == TierLevel.TIER_3_PREMIUM and self.tier3:
-                # Submit async job (optional)
+            if tier == TierLevel.TIER_3_PREMIUM and not self.tier3:
+                # Tier 3 not configured (optional) — signal failure so the
+                # fallback chain moves on to Tier 2 / Tier 1.
+                return {"success": False, "error": "Tier 3 (Premium) not configured"}
+
+            if tier == TierLevel.TIER_3_PREMIUM:
+                # Submit async job
                 job_id = self.tier3.submit_job(request.animation_id)
                 self.tier_metrics[tier]["success_count"] += 1
                 return {
@@ -92,7 +189,7 @@ class TierDispatcher:
                     return {
                         "success": True,
                         "tier": tier.name,
-                        "output_path": str(result.get("output_path")),
+                        "output_path": result.get("output_path"),
                         "render_time_ms": elapsed_ms
                     }
                 else:
@@ -127,6 +224,71 @@ class TierDispatcher:
         }
 
         return chains.get(preferred_tier, [])
+
+    def _apply_voice_sync(self, tier_result: dict, request: AnimationRequest) -> dict:
+        """Apply voice-sync composition to tier output (Phase 5)
+
+        Args:
+            tier_result: Result from tier rendering (contains frame_dir or output_path)
+            request: AnimationRequest with narration_audio and voice_sync_mapping
+
+        Returns:
+            Updated result with voice-synced MP4 output_path
+        """
+
+        try:
+            frame_dir = tier_result.get("frame_dir") or tier_result.get("output_path")
+
+            # Check if frame directory exists
+            frame_path = Path(frame_dir)
+            if not frame_path.exists():
+                print(f"⚠️  Frame directory not found: {frame_dir}")
+                return tier_result  # Return tier result as-is
+
+            # Prepare output MP4 path
+            output_mp4 = frame_path.parent / f"{request.animation_id}_voice_synced.mp4"
+
+            print(f"🎬 Applying voice-sync: {output_mp4}")
+
+            # Composite with voice-sync
+            sync_result = self.voice_sync_compositor.composite_with_voice_sync(
+                frame_dir=str(frame_path),
+                narration_audio=request.narration_audio,
+                voice_sync_mapping=request.voice_sync_mapping,
+                output_path=str(output_mp4)
+            )
+
+            if sync_result.get("success"):
+                # Update metrics
+                self.tier_metrics[request.preferred_tier]["success_count"] += 1
+
+                # Return updated result with MP4 path
+                return {
+                    **tier_result,
+                    "output_path": str(output_mp4),
+                    "voice_sync_applied": True,
+                    "sync_result": sync_result,
+                    "keyframe_count": len(request.voice_sync_mapping.get("frame_to_event", {}))
+                }
+            else:
+                print(f"⚠️  Voice-sync failed: {sync_result.get('error')}")
+                self.tier_metrics[request.preferred_tier]["fail_count"] += 1
+
+                # Return tier result (frames only, no sync)
+                return {
+                    **tier_result,
+                    "voice_sync_failed": True,
+                    "voice_sync_error": sync_result.get("error")
+                }
+
+        except Exception as e:
+            print(f"❌ Voice-sync error: {e}")
+            self.tier_metrics[request.preferred_tier]["fail_count"] += 1
+            return {
+                **tier_result,
+                "voice_sync_failed": True,
+                "voice_sync_error": str(e)
+            }
 
     def get_metrics(self) -> dict:
         """Get tier performance metrics"""

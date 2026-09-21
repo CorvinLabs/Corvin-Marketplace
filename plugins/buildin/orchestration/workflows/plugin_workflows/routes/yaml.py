@@ -157,10 +157,10 @@ def put_workflow_yaml(
     meta["updated_at"] = time.time()
     write_atomic(meta_path(tenant_id, wid, adapter.forge_paths), meta)
 
-    adapter.audit_backend.action_performed(
+    adapter.audit_backend.log_event(
+        "workflow.updated",
         tenant_id=tenant_id,
         sid_fingerprint=sid_fingerprint,
-        action="workflow.updated",
         target_kind="workflow",
         target_id=wid,
     )

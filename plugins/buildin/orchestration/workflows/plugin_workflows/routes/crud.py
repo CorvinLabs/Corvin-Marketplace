@@ -87,10 +87,10 @@ def _enforce_workflows_max(tenant_id: str, rec_tenant_id: str, rec_sid_fingerpri
     try:
         adapter.license_backend.assert_limit("workflows_max", existing + 1)
     except adapter.license_backend.LimitError as exc:
-        adapter.audit_backend.action_failed(
+        adapter.audit_backend.log_event(
+            "workflow.create.failed",
             tenant_id=rec_tenant_id,
             sid_fingerprint=rec_sid_fingerprint,
-            action="workflow.create",
             target_kind="workflow",
             target_id="pending",
             reason="license_limit_exceeded",
@@ -111,10 +111,10 @@ def _enforce_workflows_max(tenant_id: str, rec_tenant_id: str, rec_sid_fingerpri
 def _refuse_lock_busy(rec_tenant_id: str, rec_sid_fingerprint: str, action: str,
                       target_id: str, adapter: CRUDAdapter) -> HTTPException:
     """Convert WorkflowLockBusy into audited 503 response."""
-    adapter.audit_backend.action_failed(
+    adapter.audit_backend.log_event(
+        f"{action}.failed",
         tenant_id=rec_tenant_id,
         sid_fingerprint=rec_sid_fingerprint,
-        action=action,
         target_kind="workflow",
         target_id=target_id,
         reason="lock_busy",
@@ -228,10 +228,10 @@ def create_workflow(
         write_atomic(yaml_path(tenant_id, wid, adapter.forge_paths), initial_yaml)
         write_atomic(meta_path(tenant_id, wid, adapter.forge_paths), meta)
 
-    adapter.audit_backend.action_performed(
+    adapter.audit_backend.log_event(
+        "workflow.created",
         tenant_id=tenant_id,
         sid_fingerprint=sid_fingerprint,
-        action="workflow.created",
         target_kind="workflow",
         target_id=wid,
     )
@@ -277,10 +277,10 @@ def patch_workflow(
         meta["description"] = body.description
     meta["updated_at"] = time.time()
     write_atomic(meta_path(tenant_id, wid, adapter.forge_paths), meta)
-    adapter.audit_backend.action_performed(
+    adapter.audit_backend.log_event(
+        "workflow.updated",
         tenant_id=tenant_id,
         sid_fingerprint=sid_fingerprint,
-        action="workflow.updated",
         target_kind="workflow",
         target_id=wid,
     )
@@ -315,10 +315,10 @@ def delete_workflow(
     if run_d.exists():
         shutil.rmtree(run_d)
 
-    adapter.audit_backend.action_performed(
+    adapter.audit_backend.log_event(
+        "workflow.deleted",
         tenant_id=tenant_id,
         sid_fingerprint=sid_fingerprint,
-        action="workflow.deleted",
         target_kind="workflow",
         target_id=wid,
     )
