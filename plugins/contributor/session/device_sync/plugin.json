@@ -1,0 +1,44 @@
+{
+  "id": "plugin:contributor-session-device_sync",
+  "name": "Cross-Device Sync",
+  "version": "1.0.0",
+  "boot_layer": "installed",
+  "origin": "marketplace",
+  "config": {
+    "enabled": true,
+    "sync_interval_seconds": 60,
+    "max_devices": 5
+  },
+  "description": "Sync learning state and preferences across devices. Enables operators to access consistent state, learned preferences, and session memory across multiple machines.",
+  "entry_point": "device_syncer:DeviceSyncManager",
+  "audit_events": [
+    "plugin_loaded",
+    "plugin_disabled",
+    "device_synced",
+    "sync_conflict"
+  ],
+  "category": "session",
+  "tags": [
+    "session",
+    "data"
+  ],
+  "type": "plugin",
+  "tier": "contributor",
+  "author": "CorvinLabs",
+  "license": "Apache-2.0",
+  "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/session/device_sync/README.md",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": false,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/session/device_sync"
+  },
+  "dependencies": [],
+  "requires_version": ">=1.0.0",
+  "sla_level": "contributor",
+  "security_audit": {
+    "audited": false
+  },
+  "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace/issues",
+  "last_updated": "2026-09-21"
+}

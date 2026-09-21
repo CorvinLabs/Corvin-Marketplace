@@ -91,7 +91,9 @@
         "data_processing",
         "observability",
         "media",
-        "knowledge_management"
+        "knowledge_management",
+        "learning",
+        "session"
       ],
       "description": "Plugin category for discovery and browsing"
     },
@@ -249,7 +251,9 @@
           "performance",
           "experimental",
           "media",
-          "knowledge_management"
+          "knowledge_management",
+          "learning",
+          "session"
         ]
       },
       "maxItems": 5,
@@ -266,7 +270,7 @@
     },
     "origin": {
       "type": "string",
-      "description": "Declared provenance — a CLAIM; CorvinOS derives the real origin from the directory (ADR-0643)"
+      "description": "Declared provenance \u2014 a CLAIM; CorvinOS derives the real origin from the directory (ADR-0643)"
     },
     "capabilities": {
       "type": "array",
@@ -303,6 +307,13 @@
     },
     "adr_graph": {
       "type": "string"
+    },
+    "audit_events": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Audit event types this plugin emits. Declared so the audit trail's expected vocabulary is reviewable from the manifest alone."
     }
   },
   "additionalProperties": false,

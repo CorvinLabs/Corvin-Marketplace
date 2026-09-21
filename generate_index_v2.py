@@ -52,6 +52,8 @@ class MarketplaceIndexGenerator:
         "observability",
         "media",  # 2026-09-20: contributor/media/video_producer
         "knowledge_management",  # 2026-09-20: contributor/knowledge_management/corvin_knowledge
+        "learning",  # 2026-09-21: plugins/learning/user_objectives
+        "session",  # 2026-09-21: plugins/session/device_sync
     }
 
     def __init__(
