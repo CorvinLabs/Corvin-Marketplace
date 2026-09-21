@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 from typing import Annotated, Any
@@ -153,7 +154,7 @@ def put_workflow_yaml(
     _write_awpkg_sidecar(tenant_id, wid, adapter.forge_paths)
 
     # Update metadata timestamp
-    meta["updated_at"] = import time; time.time()
+    meta["updated_at"] = time.time()
     write_atomic(meta_path(tenant_id, wid, adapter.forge_paths), meta)
 
     adapter.audit_backend.action_performed(
