@@ -93,10 +93,10 @@ def set_schedule(
             meta.pop("schedule_task_id", None)
 
     # Audit-first: write event before persisting to disk
-    adapter.audit_backend.action_performed(
+    adapter.audit_backend.log_event(
+        "workflow.scheduled",
         tenant_id=tenant_id,
         sid_fingerprint=sid_fingerprint,
-        action="workflow.scheduled",
         target_kind="workflow",
         target_id=wid,
     )
@@ -133,10 +133,10 @@ def delete_schedule(
     meta["updated_at"] = time.time()
 
     # Audit-first: write event before persisting to disk
-    adapter.audit_backend.action_performed(
+    adapter.audit_backend.log_event(
+        "workflow.unscheduled",
         tenant_id=tenant_id,
         sid_fingerprint=sid_fingerprint,
-        action="workflow.unscheduled",
         target_kind="workflow",
         target_id=wid,
     )

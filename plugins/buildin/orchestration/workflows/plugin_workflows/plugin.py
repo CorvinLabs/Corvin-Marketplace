@@ -41,6 +41,9 @@ class WorkflowsPlugin:
         license_backend: Optional[LicenseBackend] = None,
         prompt_guard: Optional[PromptGuard] = None,
         scheduler_backend: Optional[SchedulerBackend] = None,
+        forge_paths: Optional[Any] = None,
+        spawn_gates: Optional[Any] = None,
+        awp_engine: Optional[Any] = None,
     ):
         """Initialize plugin with adapters (DI).
 
@@ -52,6 +55,9 @@ class WorkflowsPlugin:
         self.license_backend = license_backend or FreeTierLicenseBackend()
         self.prompt_guard = prompt_guard or NoOpPromptGuard()
         self.scheduler_backend = scheduler_backend or NoOpSchedulerBackend()
+        self.forge_paths = forge_paths or self._get_default_forge_paths()
+        self.spawn_gates = spawn_gates
+        self.awp_engine = awp_engine
 
         self.router = APIRouter(prefix="/workflows", tags=["workflows"])
         self._register_routes()
@@ -59,135 +65,40 @@ class WorkflowsPlugin:
         _log.info("WorkflowsPlugin initialized ✓")
 
     def _register_routes(self) -> None:
-        """Register all workflow routes."""
-        # Phase 1: CRUD
-        self.router.get("")(self.list_workflows)
-        self.router.post("")(self.create_workflow)
-        self.router.get("/{wid}")(self.get_workflow)
-        self.router.patch("/{wid}")(self.update_workflow)
-        self.router.delete("/{wid}")(self.delete_workflow)
+        """Register all workflow routes via dependency injection."""
+        from .routes import create_workflow_routers
 
-        # Phase 1: YAML management
-        self.router.get("/{wid}/yaml")(self.get_workflow_yaml)
-        self.router.put("/{wid}/yaml")(self.update_workflow_yaml)
+        # Wire all 7 route modules with dependency injection
+        routers = create_workflow_routers(
+            audit_backend=self.audit_backend,
+            forge_paths=self.forge_paths,
+            license_backend=self.license_backend,
+            spawn_gates=self.spawn_gates,
+            scheduler=self.scheduler_backend,
+            prompt_guard=self.prompt_guard,
+            awp_engine=self.awp_engine,
+        )
 
-        # Phase 1: Runs
-        self.router.post("/{wid}/runs")(self.start_run)
-        self.router.get("/{wid}/runs")(self.list_runs)
-        self.router.get("/{wid}/runs/{rid}")(self.get_run)
-        self.router.delete("/{wid}/runs/{rid}")(self.delete_run)
+        # Mount all routers on main router
+        for router in routers:
+            self.router.include_router(router)
 
-        # Phase 4: Scheduling
-        self.router.get("/{wid}/schedule")(self.get_schedule)
-        self.router.put("/{wid}/schedule")(self.set_schedule)
-        self.router.delete("/{wid}/schedule")(self.remove_schedule)
-
-        # Phase 5: Export/Import
-        self.router.get("/{wid}/export.awpkg")(self.export_awpkg)
-        self.router.post("/import")(self.import_workflow)
-
-        # Phase 7: Chat
-        # self.router.websocket("/{wid}/chat")(self.chat_handler)
-
-        _log.info("Routes registered: %d routes", len(self.router.routes))
+        _log.info("Routes registered: %d sub-routers from create_workflow_routers()", len(routers))
 
     # ─────────────────────────────────────────────────────────────────────────
-    # CRUD Handlers (Phase 1)
+    # Helper Methods
     # ─────────────────────────────────────────────────────────────────────────
 
-    async def list_workflows(self, tenant_id: Optional[str] = None) -> dict[str, Any]:
-        """GET /workflows — List workflows (placeholder)."""
-        return {
-            "workflows": [],
-            "count": 0,
-            "message": "Phase 2–3: CRUD implementation pending",
-        }
+    def _get_default_forge_paths(self) -> Any:
+        """Get default forge paths resolver (fallback if not injected)."""
+        # In production, this would be injected from the gateway/console.
+        # For testing, return a minimal object with required methods.
+        class DefaultForgePaths:
+            def tenant_workflows_path(self, tenant_id: str) -> str:
+                import os
+                return os.path.expanduser(f"~/.corvin/tenants/{tenant_id}/forge/workflows")
 
-    async def create_workflow(self, title: str, description: str = "") -> dict[str, Any]:
-        """POST /workflows — Create workflow (placeholder)."""
-        return {"wid": "wf-0001", "message": "Phase 2–3: CRUD implementation pending"}
-
-    async def get_workflow(self, wid: str) -> dict[str, Any]:
-        """GET /workflows/{wid} — Get workflow (placeholder)."""
-        return {"wid": wid, "message": "Phase 2–3: CRUD implementation pending"}
-
-    async def update_workflow(self, wid: str, title: str = None, description: str = None) -> dict[str, Any]:
-        """PATCH /workflows/{wid} — Update workflow (placeholder)."""
-        return {"wid": wid, "message": "Phase 2–3: CRUD implementation pending"}
-
-    async def delete_workflow(self, wid: str) -> dict[str, Any]:
-        """DELETE /workflows/{wid} — Delete workflow (placeholder)."""
-        return {"deleted": True, "message": "Phase 2–3: CRUD implementation pending"}
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # YAML Management (Phase 1)
-    # ─────────────────────────────────────────────────────────────────────────
-
-    async def get_workflow_yaml(self, wid: str) -> dict[str, Any]:
-        """GET /workflows/{wid}/yaml — Get YAML (placeholder)."""
-        return {"yaml": "", "message": "Phase 2–3: Implementation pending"}
-
-    async def update_workflow_yaml(self, wid: str, yaml: str) -> dict[str, Any]:
-        """PUT /workflows/{wid}/yaml — Update YAML (placeholder)."""
-        return {"updated": True, "message": "Phase 2–3: Implementation pending"}
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Runs (Phase 1)
-    # ─────────────────────────────────────────────────────────────────────────
-
-    async def start_run(self, wid: str) -> dict[str, Any]:
-        """POST /workflows/{wid}/runs — Start run (placeholder)."""
-        return {"rid": "run-0001", "message": "Phase 2–3: Implementation pending"}
-
-    async def list_runs(self, wid: str) -> dict[str, Any]:
-        """GET /workflows/{wid}/runs — List runs (placeholder)."""
-        return {"runs": [], "count": 0, "message": "Phase 2–3: Implementation pending"}
-
-    async def get_run(self, wid: str, rid: str) -> dict[str, Any]:
-        """GET /workflows/{wid}/runs/{rid} — Get run (placeholder)."""
-        return {"rid": rid, "message": "Phase 2–3: Implementation pending"}
-
-    async def delete_run(self, wid: str, rid: str) -> dict[str, Any]:
-        """DELETE /workflows/{wid}/runs/{rid} — Delete run (placeholder)."""
-        return {"deleted": True, "message": "Phase 2–3: Implementation pending"}
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Scheduling (Phase 4)
-    # ─────────────────────────────────────────────────────────────────────────
-
-    async def get_schedule(self, wid: str) -> dict[str, Any]:
-        """GET /workflows/{wid}/schedule — Get schedule (placeholder)."""
-        return {"schedule": None, "message": "Phase 4: Implementation pending"}
-
-    async def set_schedule(self, wid: str, cron: str) -> dict[str, Any]:
-        """PUT /workflows/{wid}/schedule — Set schedule (placeholder)."""
-        return {"schedule": cron, "message": "Phase 4: Implementation pending"}
-
-    async def remove_schedule(self, wid: str) -> dict[str, Any]:
-        """DELETE /workflows/{wid}/schedule — Remove schedule (placeholder)."""
-        return {"removed": True, "message": "Phase 4: Implementation pending"}
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Export/Import (Phase 5)
-    # ─────────────────────────────────────────────────────────────────────────
-
-    async def export_awpkg(self, wid: str) -> dict[str, Any]:
-        """GET /workflows/{wid}/export.awpkg — Export (placeholder)."""
-        return {"message": "Phase 5: Implementation pending"}
-
-    async def import_workflow(self, file: Any) -> dict[str, Any]:
-        """POST /workflows/import — Import (placeholder)."""
-        return {"wid": "wf-0002", "message": "Phase 5: Implementation pending"}
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Chat (Phase 7)
-    # ─────────────────────────────────────────────────────────────────────────
-
-    # async def chat_handler(self, websocket: WebSocket, wid: str) -> None:
-    #     """WS /workflows/{wid}/chat — Design chat (placeholder)."""
-    #     await websocket.accept()
-    #     await websocket.send_json({"message": "Phase 7: Implementation pending"})
-    #     await websocket.close()
+        return DefaultForgePaths()
 
     # ─────────────────────────────────────────────────────────────────────────
     # Plugin Lifecycle

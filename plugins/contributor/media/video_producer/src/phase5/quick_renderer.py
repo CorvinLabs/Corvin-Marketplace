@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 from typing import Optional
 import tempfile
+from .video_paths import QUICK_OUTPUT, video_dir
 
 
 class QuickRendererWorker:
@@ -18,11 +19,6 @@ class QuickRendererWorker:
         self.name = "quick_renderer"
         self.version = "5.1.0"
         self.timeout = timeout_seconds
-
-        # Setup output directory (relative to plugin)
-        plugin_root = Path(__file__).parent.parent.parent
-        self.output_dir = plugin_root / "outputs" / "tier1"
-        self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def execute(self, request) -> dict:
         """Execute quick rendering"""
@@ -128,7 +124,9 @@ class QuickRendererWorker:
                     )
 
             # Copy to persistent location
-            output_png = self.output_dir / "diagram.png"
+            output_dir = Path("/tmp/quick_render")
+            output_dir.mkdir(exist_ok=True)
+            output_png = output_dir / "diagram.png"
 
             if png_path.exists():
                 import shutil
@@ -139,7 +137,9 @@ class QuickRendererWorker:
     def _create_mp4_from_frames(self, png_path: Path, duration_seconds: int) -> Path:
         """Create MP4 from single PNG (with fade effect)"""
 
-        output_path = self.output_dir / "diagram.mp4"
+        output_dir = video_dir(QUICK_OUTPUT)
+        output_dir.mkdir(exist_ok=True)
+        output_path = output_dir / "diagram.mp4"
 
         try:
             # FFmpeg: Create video from image with fade effect

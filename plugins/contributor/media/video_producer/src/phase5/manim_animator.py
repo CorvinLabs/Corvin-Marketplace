@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 from datetime import datetime
+from .video_paths import MANIM_OUTPUT, MANIM_SCENES, video_dir
 
 
 @dataclass
@@ -73,11 +74,10 @@ class ManimAnimatorWorker:
         self.timeout = timeout_seconds
         self.cache_enabled = cache_enabled
 
-        # Setup directories (relative to plugin root)
-        plugin_root = Path(__file__).parent.parent.parent
-        self.cache_dir = plugin_root / "outputs" / "cache"
-        self.output_dir = plugin_root / "outputs" / "manim"
-        self.scenes_dir = plugin_root / "outputs" / "scenes"
+        # Setup directories
+        self.cache_dir = Path("/tmp/manim_cache")
+        self.output_dir = video_dir(MANIM_OUTPUT)
+        self.scenes_dir = video_dir(MANIM_SCENES)
 
         for d in [self.cache_dir, self.output_dir, self.scenes_dir]:
             d.mkdir(parents=True, exist_ok=True)
@@ -101,7 +101,7 @@ class ManimAnimatorWorker:
                     render_time_ms = int((time.time() - start_time) * 1000)
                     return AnimationResult(
                         animation_id=request.animation_id,
-                        output_path=Path(cached["path"]),
+                        output_path=cached["path"],
                         duration_seconds=cached["duration"],
                         render_time_ms=render_time_ms,
                         output_hash=cached["hash"],

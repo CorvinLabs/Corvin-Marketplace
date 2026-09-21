@@ -170,10 +170,10 @@ def start_run(
         running = _count_running_workflows(tenant_id, adapter.forge_paths)
         limit = adapter.license_backend.get_limit("workflows_concurrent")
         if limit is not None and running + 1 > limit:
-            adapter.audit_backend.action_failed(
-                tenant_id=tenant_id,
-                sid_fingerprint=sid_fingerprint,
-                action="workflow.run_started",
+            adapter.audit_backend.log_event(
+            "workflow.run_started.failed",
+            tenant_id=tenant_id,
+            sid_fingerprint=sid_fingerprint,
                 target_kind="workflow",
                 target_id=wid,
                 reason="quota_exceeded",
@@ -198,10 +198,10 @@ def start_run(
         ) from exc
 
     # Audit the run start
-    adapter.audit_backend.action_performed(
+    adapter.audit_backend.log_event(
+        "workflow.run_started",
         tenant_id=tenant_id,
         sid_fingerprint=sid_fingerprint,
-        action="workflow.run_started",
         target_kind="workflow",
         target_id=wid,
         run_id=rid,
@@ -284,10 +284,10 @@ def delete_run(
         if p.exists():
             p.unlink()
 
-    adapter.audit_backend.action_performed(
+    adapter.audit_backend.log_event(
+        "workflow.run_deleted",
         tenant_id=tenant_id,
         sid_fingerprint=sid_fingerprint,
-        action="workflow.run_deleted",
         target_kind="workflow",
         target_id=wid,
         run_id=rid,
@@ -318,10 +318,10 @@ def approve_run(
     }
     write_atomic(approval_p, approval_data)
 
-    adapter.audit_backend.action_performed(
+    adapter.audit_backend.log_event(
+        "workflow.run_approved",
         tenant_id=tenant_id,
         sid_fingerprint=sid_fingerprint,
-        action="workflow.run_approved",
         target_kind="workflow",
         target_id=wid,
         run_id=rid,
@@ -352,10 +352,10 @@ def reject_run(
     }
     write_atomic(approval_p, approval_data)
 
-    adapter.audit_backend.action_performed(
+    adapter.audit_backend.log_event(
+        "workflow.run_rejected",
         tenant_id=tenant_id,
         sid_fingerprint=sid_fingerprint,
-        action="workflow.run_rejected",
         target_kind="workflow",
         target_id=wid,
         run_id=rid,
@@ -392,10 +392,10 @@ def resume_run(
     meta["resume_input"] = body.reply
     write_atomic(run_meta_path(tenant_id, wid, rid, adapter.forge_paths), meta)
 
-    adapter.audit_backend.action_performed(
+    adapter.audit_backend.log_event(
+        "workflow.run_resumed",
         tenant_id=tenant_id,
         sid_fingerprint=sid_fingerprint,
-        action="workflow.run_resumed",
         target_kind="workflow",
         target_id=wid,
         run_id=rid,
