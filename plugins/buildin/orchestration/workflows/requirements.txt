@@ -10,6 +10,8 @@ anyio>=4.0.0
 
 # Soft dependencies (graceful degradation if missing)
 PyYAML>=6.0  # YAML parsing
+croniter>=1.3.0  # Cron expression parsing (Phase 4)
+pytz>=2023.3  # Timezone handling (Phase 4)
 # scheduler @ file:///path/to/scheduler
 # awpkg @ file:///path/to/awpkg
 

@@ -1,6 +1,8 @@
 """Pydantic models for workflow routes — request/response payloads."""
 from typing import Any, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+import croniter
+import pytz
 
 
 # ── Constants ──────────────────────────────────────────────────────
@@ -83,3 +85,72 @@ class RunResponse(BaseModel):
     started_at: str
     completed_at: Optional[str] = None
     node_results: dict[str, Any] = Field(default_factory=dict)
+
+
+# ── Schedule Models ────────────────────────────────────────────────────
+
+class SetScheduleRequest(BaseModel):
+    """PUT /workflows/{wid}/schedule request."""
+    cron_schedule: str = Field(..., description="Cron expression (e.g., '0 9 * * 1-5')")
+    timezone: str = Field(default="UTC", description="IANA timezone (e.g., 'America/New_York')")
+    overrun_policy: str = Field(
+        default="skip",
+        description="Behavior when task overruns: 'skip' | 'parallel' | 'wait'"
+    )
+    model_config = {"extra": "forbid"}
+
+    @field_validator('cron_schedule')
+    @classmethod
+    def validate_cron(cls, v: str) -> str:
+        """Validate cron expression using croniter."""
+        if not v or not v.strip():
+            raise ValueError("cron_schedule cannot be empty")
+        try:
+            croniter.croniter(v)
+            return v
+        except (ValueError, KeyError) as e:
+            raise ValueError(f"Invalid cron expression: {v}. Error: {e}") from e
+
+    @field_validator('timezone')
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        """Validate timezone using pytz."""
+        if not v or not v.strip():
+            raise ValueError("timezone cannot be empty")
+        try:
+            pytz.timezone(v)
+            return v
+        except pytz.exceptions.UnknownTimeZoneError as e:
+            raise ValueError(f"Invalid timezone: {v}") from e
+
+    @field_validator('overrun_policy')
+    @classmethod
+    def validate_overrun_policy(cls, v: str) -> str:
+        """Validate overrun policy."""
+        valid_policies = {"skip", "parallel", "wait"}
+        if v not in valid_policies:
+            raise ValueError(
+                f"Invalid overrun_policy: {v}. Must be one of: {', '.join(valid_policies)}"
+            )
+        return v
+
+
+class ScheduleResponse(BaseModel):
+    """Schedule GET response."""
+    workflow_id: str
+    cron_schedule: str
+    timezone: str
+    overrun_policy: str
+    next_run: Optional[str] = None
+    last_run: Optional[str] = None
+    status: str
+
+
+class ScheduleUpdateResponse(BaseModel):
+    """Schedule PUT response."""
+    ok: bool
+    workflow_id: str
+    cron_schedule: str
+    timezone: str
+    next_run: Optional[str] = None
+    scheduler_registered: bool = False
