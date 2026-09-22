@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1000 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+      .title { font-size: 28px; font-weight: bold; }
+      .section-title { font-size: 16px; font-weight: bold; }
+      .component-label { font-size: 12px; text-anchor: middle; }
+      .small-text { font-size: 10px; text-anchor: middle; }
+      .arrow { fill: none; stroke: #666; stroke-width: 2; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#666"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="500" y="35" class="title" text-anchor="middle">Workflows Plugin Architecture</text>
+
+  <!-- Frontend Layer -->
+  <rect x="50" y="70" width="900" height="120" fill="#E8F4F8" stroke="#0066CC" stroke-width="2" rx="5"/>
+  <text x="500" y="95" class="section-title" text-anchor="middle">Frontend Layer (React)</text>
+
+  <rect x="70" y="110" width="250" height="60" fill="#0066CC" stroke="#004499" stroke-width="1" rx="3"/>
+  <text x="195" y="135" class="component-label" fill="white">Workflow CRUD UI</text>
+  <text x="195" y="150" class="small-text" fill="white">(Create, edit, delete)</text>
+
+  <rect x="375" y="110" width="250" height="60" fill="#0066CC" stroke="#004499" stroke-width="1" rx="3"/>
+  <text x="500" y="135" class="component-label" fill="white">Design Chat (WebSocket)</text>
+  <text x="500" y="150" class="small-text" fill="white">(Claude-powered editor)</text>
+
+  <rect x="680" y="110" width="250" height="60" fill="#0066CC" stroke="#004499" stroke-width="1" rx="3"/>
+  <text x="805" y="135" class="component-label" fill="white">Run Monitor Dashboard</text>
+  <text x="805" y="150" class="small-text" fill="white">(Real-time status & logs)</text>
+
+  <!-- Arrow down -->
+  <line x1="500" y1="190" x2="500" y2="220" class="arrow"/>
+
+  <!-- API Layer -->
+  <rect x="50" y="220" width="900" height="120" fill="#F0E8F4" stroke="#9933CC" stroke-width="2" rx="5"/>
+  <text x="500" y="245" class="section-title" text-anchor="middle">API Layer (FastAPI)</text>
+
+  <rect x="70" y="260" width="160" height="60" fill="#9933CC" stroke="#663399" stroke-width="1" rx="3"/>
+  <text x="150" y="285" class="component-label" fill="white">CRUD</text>
+  <text x="150" y="305" class="small-text" fill="white">/workflows/*</text>
+
+  <rect x="270" y="260" width="160" height="60" fill="#9933CC" stroke="#663399" stroke-width="1" rx="3"/>
+  <text x="350" y="285" class="component-label" fill="white">Scheduler</text>
+  <text x="350" y="305" class="small-text" fill="white">/schedule</text>
+
+  <rect x="470" y="260" width="160" height="60" fill="#9933CC" stroke="#663399" stroke-width="1" rx="3"/>
+  <text x="550" y="285" class="component-label" fill="white">Export/Import</text>
+  <text x="550" y="305" class="small-text" fill="white">/export, /import</text>
+
+  <rect x="670" y="260" width="160" height="60" fill="#9933CC" stroke="#663399" stroke-width="1" rx="3"/>
+  <text x="750" y="285" class="component-label" fill="white">Execution</text>
+  <text x="750" y="305" class="small-text" fill="white">/runs</text>
+
+  <!-- Arrow down -->
+  <line x1="500" y1="340" x2="500" y2="370" class="arrow"/>
+
+  <!-- Core Engine -->
+  <rect x="50" y="370" width="900" height="120" fill="#E8F8E8" stroke="#009900" stroke-width="2" rx="5"/>
+  <text x="500" y="395" class="section-title" text-anchor="middle">Core Engine (Python)</text>
+
+  <rect x="70" y="410" width="200" height="60" fill="#009900" stroke="#006600" stroke-width="1" rx="3"/>
+  <text x="170" y="435" class="component-label" fill="white">Parser</text>
+  <text x="170" y="455" class="small-text" fill="white">(YAML → DAG)</text>
+
+  <rect x="300" y="410" width="200" height="60" fill="#009900" stroke="#006600" stroke-width="1" rx="3"/>
+  <text x="400" y="435" class="component-label" fill="white">Executor</text>
+  <text x="400" y="455" class="small-text" fill="white">(Dispatch & run)</text>
+
+  <rect x="530" y="410" width="200" height="60" fill="#009900" stroke="#006600" stroke-width="1" rx="3"/>
+  <text x="630" y="435" class="component-label" fill="white">Scheduler</text>
+  <text x="630" y="455" class="small-text" fill="white">(Cron adapter)</text>
+
+  <rect x="760" y="410" width="150" height="60" fill="#009900" stroke="#006600" stroke-width="1" rx="3"/>
+  <text x="835" y="435" class="component-label" fill="white">Storage</text>
+  <text x="835" y="455" class="small-text" fill="white">(File + cache)</text>
+
+  <!-- Arrow down -->
+  <line x1="500" y1="490" x2="500" y2="520" class="arrow"/>
+
+  <!-- CorvinOS Integration -->
+  <rect x="50" y="520" width="900" height="120" fill="#F8F4E8" stroke="#FF9900" stroke-width="2" rx="5"/>
+  <text x="500" y="545" class="section-title" text-anchor="middle">CorvinOS Integration</text>
+
+  <rect x="70" y="560" width="200" height="60" fill="#FF9900" stroke="#CC7700" stroke-width="1" rx="3"/>
+  <text x="170" y="585" class="component-label" fill="white">Skills</text>
+  <text x="170" y="605" class="small-text" fill="white">(Claude invocation)</text>
+
+  <rect x="300" y="560" width="200" height="60" fill="#FF9900" stroke="#CC7700" stroke-width="1" rx="3"/>
+  <text x="400" y="585" class="component-label" fill="white">Audit</text>
+  <text x="400" y="605" class="small-text" fill="white">(Hash-chained)</text>
+
+  <rect x="530" y="560" width="200" height="60" fill="#FF9900" stroke="#CC7700" stroke-width="1" rx="3"/>
+  <text x="630" y="585" class="component-label" fill="white">Prompt Guard</text>
+  <text x="630" y="605" class="small-text" fill="white">(Fail-closed)</text>
+
+  <rect x="760" y="560" width="150" height="60" fill="#FF9900" stroke="#CC7700" stroke-width="1" rx="3"/>
+  <text x="835" y="585" class="component-label" fill="white">Auth</text>
+  <text x="835" y="605" class="small-text" fill="white">(Tenant isolation)</text>
+
+  <!-- Legend -->
+  <text x="50" y="720" style="font-size: 12px; font-weight: bold;">Legend:</text>
+
+  <rect x="50" y="730" width="15" height="15" fill="#0066CC"/>
+  <text x="70" y="742" style="font-size: 11px;">Frontend Layer</text>
+
+  <rect x="250" y="730" width="15" height="15" fill="#9933CC"/>
+  <text x="270" y="742" style="font-size: 11px;">API Layer</text>
+
+  <rect x="450" y="730" width="15" height="15" fill="#009900"/>
+  <text x="470" y="742" style="font-size: 11px;">Core Engine</text>
+
+  <rect x="650" y="730" width="15" height="15" fill="#FF9900"/>
+  <text x="670" y="742" style="font-size: 11px;">Integration</text>
+
+  <!-- Data flow indicator -->
+  <text x="50" y="770" style="font-size: 10px; fill: #666;">Data flows top-to-bottom through each layer</text>
+</svg>
