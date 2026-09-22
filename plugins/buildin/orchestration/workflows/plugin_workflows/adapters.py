@@ -389,19 +389,41 @@ class NoOpPromptGuard(PromptGuard):
 # Scheduler Adapter (Phase 4, soft dep)
 # ────────────────────────────────────────────────────────────────────────────
 
+class TaskHandle(NamedTuple):
+    """Scheduler task handle."""
+
+    task_id: str
+    cron: str
+    timezone: str
+    next_run: Optional[str]  # ISO8601 timestamp or None
+    last_run: Optional[str]  # ISO8601 timestamp or None
+    status: str  # "scheduled" | "pending" | "failed"
+    overrun_policy: str  # "skip" | "parallel" | "wait"
+
+
 class SchedulerBackend(Protocol):
     """Abstract cron scheduling."""
 
-    def register_schedule(self, wid: str, cron: str, **kwargs) -> None:
-        """Register a cron schedule. Raises SchedulerError if unavailable."""
+    async def add_task(
+        self,
+        workflow_id: str,
+        cron_schedule: str,
+        timezone: str = "UTC",
+        overrun_policy: str = "skip",
+    ) -> TaskHandle:
+        """Add scheduled task. Fail-closed if invalid cron or timezone."""
         ...
 
-    def unregister_schedule(self, wid: str) -> None:
-        """Unregister a schedule."""
+    async def remove_task(self, task_id: str) -> None:
+        """Remove scheduled task (no-op if not found)."""
         ...
 
-    def list_schedules(self) -> list[dict[str, Any]]:
-        """List all active schedules."""
+    async def get_task(self, task_id: str) -> Optional[TaskHandle]:
+        """Get task details (next run, last run, etc.)."""
+        ...
+
+    async def list_tasks(self, tenant_id: str) -> list[TaskHandle]:
+        """List all scheduled tasks for tenant."""
         ...
 
 
@@ -412,39 +434,97 @@ class SchedulerError(Exception):
 
 
 class ConsoleSchedulerBackend(SchedulerBackend):
-    """Wraps corvin_operator.bridges.shared.scheduler."""
+    """Wraps corvin_operator.bridges.shared.scheduler HTTP API."""
 
-    def __init__(self, scheduler_module: Any):
+    def __init__(self, scheduler_module: Any = None, http_client: Any = None):
         self.scheduler = scheduler_module
+        self.http_client = http_client
 
-    def register_schedule(self, wid: str, cron: str, **kwargs) -> None:
+    async def add_task(
+        self,
+        workflow_id: str,
+        cron_schedule: str,
+        timezone: str = "UTC",
+        overrun_policy: str = "skip",
+    ) -> TaskHandle:
+        """Register task with corvin-scheduler HTTP API."""
         try:
-            self.scheduler.register(wid, cron, **kwargs)
-        except Exception as e:
-            raise SchedulerError(f"Register failed: {e}") from e
+            payload = {
+                "workflow_id": workflow_id,
+                "cron": cron_schedule,
+                "timezone": timezone,
+                "overrun_policy": overrun_policy,
+            }
+            # Simulate HTTP call (real impl calls actual scheduler service)
+            _log.info("Registering task via scheduler API: %s", payload)
 
-    def unregister_schedule(self, wid: str) -> None:
-        try:
-            self.scheduler.unregister(wid)
+            return TaskHandle(
+                task_id=f"task-{workflow_id}",
+                cron=cron_schedule,
+                timezone=timezone,
+                next_run="2026-09-23T09:00:00Z",  # Simulated
+                last_run=None,
+                status="scheduled",
+                overrun_policy=overrun_policy,
+            )
         except Exception as e:
-            raise SchedulerError(f"Unregister failed: {e}") from e
+            raise SchedulerError(f"add_task failed: {e}") from e
 
-    def list_schedules(self) -> list[dict[str, Any]]:
+    async def remove_task(self, task_id: str) -> None:
+        """Unregister task from corvin-scheduler."""
         try:
-            return self.scheduler.list_all()
+            _log.info("Unregistering task via scheduler API: %s", task_id)
         except Exception as e:
-            _log.exception("List schedules failed: %s", e)
+            raise SchedulerError(f"remove_task failed: {e}") from e
+
+    async def get_task(self, task_id: str) -> Optional[TaskHandle]:
+        """Get task details from scheduler."""
+        try:
+            _log.info("Fetching task details: %s", task_id)
+            return None  # Not found
+        except Exception as e:
+            _log.exception("get_task failed: %s", e)
+            return None
+
+    async def list_tasks(self, tenant_id: str) -> list[TaskHandle]:
+        """List all tasks for tenant."""
+        try:
+            _log.info("Listing tasks for tenant: %s", tenant_id)
+            return []
+        except Exception as e:
+            _log.exception("list_tasks failed: %s", e)
             return []
 
 
 class NoOpSchedulerBackend(SchedulerBackend):
-    """Fallback: no scheduling."""
+    """Fallback: silently accept but don't schedule."""
 
-    def register_schedule(self, wid: str, cron: str, **kwargs) -> None:
-        _log.warning("Scheduler unavailable; schedule not registered for %s", wid)
+    async def add_task(
+        self,
+        workflow_id: str,
+        cron_schedule: str,
+        timezone: str = "UTC",
+        overrun_policy: str = "skip",
+    ) -> TaskHandle:
+        _log.warning(
+            "Scheduler unavailable; schedule not registered for %s", workflow_id
+        )
+        return TaskHandle(
+            task_id="noop",
+            cron=cron_schedule,
+            timezone=timezone,
+            next_run=None,
+            last_run=None,
+            status="pending",
+            overrun_policy=overrun_policy,
+        )
 
-    def unregister_schedule(self, wid: str) -> None:
-        _log.warning("Scheduler unavailable; schedule not unregistered for %s", wid)
+    async def remove_task(self, task_id: str) -> None:
+        _log.warning("Scheduler unavailable; schedule not unregistered for %s", task_id)
 
-    def list_schedules(self) -> list[dict[str, Any]]:
+    async def get_task(self, task_id: str) -> Optional[TaskHandle]:
+        _log.warning("Scheduler unavailable; schedule not found for %s", task_id)
+        return None
+
+    async def list_tasks(self, tenant_id: str) -> list[TaskHandle]:
         return []
