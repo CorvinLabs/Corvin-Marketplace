@@ -192,7 +192,7 @@ class TestPluginIntegration:
         except Exception as e:
             pytest.skip(f"Orchestrator instantiation skipped (expected if dependencies missing): {e}")
 
-    def test_plugin_tier_is_community(self, plugin_manifest):
+    def test_plugin_tier_is_community(self, plugin_manifest_dict):
         """Verify plugin is community/contributor tier (not vetted/builtin)."""
-        assert plugin_manifest["tier"] == "contributor"
-        assert plugin_manifest["sla_level"] == "contributor"
+        assert plugin_manifest_dict["tier"] == "contributor"
+        assert plugin_manifest_dict["sla_level"] == "contributor"

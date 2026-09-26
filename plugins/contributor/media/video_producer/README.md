@@ -63,6 +63,28 @@ asyncio.run(main())
 - `OPENAI_API_KEY` — OpenAI API key (required)
 - `~/.corvin/youtube-credentials.json` — YouTube Service Account
 
+## Blender Headless Rendering
+
+`BlenderHeadlessOrchestrator` (`src/video_producer/blender_orchestrator.py`) renders a
+`.blend` scene to a real playable video via a real, non-interactive `blender` subprocess
+(no mocks): fps/frame range/resolution are read back from the scene itself, output is
+copied to a durable path before the render's temp directory is cleaned up, and every
+phase (`blender.render_start`, `blender.bpy_script_generated`, `blender.render_complete`)
+is written to the tenant's hash-chained audit trail (GDPR Art. 30).
+
+**CLI:**
+```bash
+python3 -m video_producer.blender_cli \
+  --blend path/to/scene.blend \
+  --output /tmp/my_video.mp4
+```
+
+**Requires:** a `blender` binary on `PATH`, plus `ffmpeg`/`ffprobe` and `ffmpeg-python`.
+
+Scene-building helpers for authoring new `.blend` fixtures live in
+`src/video_producer/blender_scene_kit.py` — importable ONLY from inside a running
+Blender process (`blender --background --python <script>`), never from regular Python.
+
 ## Testing
 
 ```bash
@@ -71,6 +93,9 @@ python3 tests/test_orchestrator_e2e.py
 
 # All tests
 python3 -m pytest tests/ -v
+
+# Blender render E2E (skipped automatically if `blender` isn't on PATH)
+python3 -m pytest tests/test_blender_orchestrator_e2e.py tests/test_blender_cli_e2e.py -v
 ```
 
 ## Documentation

@@ -1,6 +1,6 @@
 plugin_id: video_producer
 plugin_type: web_surface
-version: 1.0.0
+version: 1.1.0
 display_name: Video Producer
 description: "Create CorvinOS marketing and explainer videos from PowerPoints, screenshots
   and voice narration — orchestrated multi-skill production with asset analysis, per-scene

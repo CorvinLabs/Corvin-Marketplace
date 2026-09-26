@@ -2,7 +2,7 @@
   "id": "plugin:contributor-media-video_producer",
   "type": "plugin",
   "name": "Video Producer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "CorvinOS Contributors",
   "license": "Apache-2.0",
   "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
@@ -36,6 +36,7 @@
     "voice-narration",
     "screenshot-capture",
     "slide-rendering",
+    "blender-3d-rendering",
     "video-assembly",
     "youtube-export"
   ],
