@@ -1,6 +1,6 @@
 ---
 id: ADR-0953
-status: proposed
+status: accepted
 supersedes: []
 depends_on: []
 related: [ADR-0001, ADR-0002, ADR-0003, ADR-0951, ADR-0952, ADR-0698]
@@ -15,7 +15,7 @@ docs:
 
 # ADR-0953 — Consolidation: one Video Producer, not eleven dead clusters
 
-**Status:** Proposed
+**Status:** Accepted (Phases A–D executed and verified 2026-10-03; see "Phase B — resolved" / "Phase C/D — resolved" below)
 **Date:** 2026-10-03
 **Deciders:** Claude Sonnet 5, Gordon Shumway
 
@@ -188,5 +188,65 @@ docstrings' claims:
 **Net result:** of ~16 800 dead LoC, exactly two flags (`-crf 18 -preset slow`) were
 worth keeping. Phase C can proceed against the full dead-cluster list in the Decision
 section above without further extraction review.
+
+## Phase C/D — resolved (2026-10-03)
+
+Removal executed in four staged commits (smallest-risk first, each independently
+revertible against the `pre-consolidation-2026-10-03` tag), verified with a
+full test run after every commit:
+
+- **C.1** — the three never-reachable, internally-broken clusters
+  (`executor_skill_2_0/`, `llm_synthesis_skill_2_0/`, `renderers_skill_2_0/`,
+  `verification/`, `maestro_verification_integration.py`) plus the four tests
+  that imported them. Also corrected `plugin.json`'s `entry_points.renderers`
+  block, which named four of the just-deleted modules by Python path —
+  confirmed via CorvinOS source that no loader reads this JSON field at all
+  (`importlib.metadata.entry_points()` reads packaging metadata, not this
+  key). A path-spec error in the first attempt's multi-path `git add`
+  silently dropped the `plugin.json` fix from that commit; caught by `git
+  diff` against the committed tree (not just the staged one) and corrected
+  in a dedicated follow-up commit — logged here because the same class of
+  error recurred twice more below, and is worth watching for in any `git
+  rm`/`git add` with multiple paths in one invocation: a single
+  already-gone or nonexistent path aborts the ENTIRE command before any of
+  the other paths are processed.
+- **C.2** — the duplicate TTS (4 implementations)/assembly (3)/screenshot
+  (2)/YouTube (2) clusters and the full Blender/Manim/Three.js tier-render
+  system (`tier_dispatcher.py`, `threejs_renderer.py`,
+  `blender_async_executor.py`, `phase5/`), plus `src/workers/` (3 more TTS
+  variants the original audit's `src/`-only sweep had already covered but
+  worth naming explicitly) and the tests that imported them.
+- **C.3** — the second orchestrator package (`src/video_producer/`,
+  `src/maestro.py`) and the remaining side-modules (learning/quality/settings
+  helpers, `director/`, `web/`, the two Phase-B-rejected asset-analyzer
+  files). `tests/test_plugin_registration.py` was rewritten rather than
+  deleted — it mixed legitimate manifest/structure assertions with five
+  tests requiring `src/video_producer/` to exist; removing only the latter
+  also fixed a pre-existing, unrelated bug (a class-local pytest fixture
+  `TestPluginIntegration` could never see, now module-scoped).
+- **C.4** — the last 9 dead test files, leaving exactly the 8 files that
+  import only the live cluster.
+- **D (verification)** — a full reachability re-sweep after C.4 turned up
+  two items the original `src/`-focused audit had not covered because they
+  live at the plugin root, not under `src/`: a second, independently-read
+  manifest (`plugin.yaml`, confirmed live via
+  `core/plugins/corvin_plugins/manifest.py`'s `console_panel` field) with
+  the same stale TTS/YouTube claims as the now-fixed `plugin.json`, and a
+  second ADR directory (`docs/ADRs/`, plural — distinct from `docs/ADR-NNNN-
+  *.md`) holding 5 proposed ADRs + 1 concept describing exactly the modules
+  removed in C.3. Both corrected with the same pattern as Phase A. `provider.py`
+  (the actual `corvin_plugins` loader entry point) was read and needed no
+  change — it only declares plugin lifecycle, never imports from the removed
+  clusters.
+
+**Final numbers:** `src/` went from ~40 files/~17,600 LoC to 5 files/999 LoC.
+Test suite: 58 failed + 23 errors at the start of Phase C → 4 failed + 0
+errors at the end (the 4 are the pre-existing, review-independent
+`test_api_routes.py` mismatches identified before any Phase C change — zero
+new failures introduced). CorvinOS's own
+`core/console/tests/test_video_producer_routes_e2e.py` — the hardened,
+tenant-isolated path this entire plugin now exists to serve — stayed 9/9
+passing throughout, confirming the deletions never touched what the console
+actually calls.
 
 ## Operator Notes
