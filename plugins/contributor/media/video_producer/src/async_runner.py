@@ -1,155 +1,87 @@
-"""Background async job runner for video production."""
+"""Background async job runner for video production.
+
+The persisted VideoJob (storage) is the source of truth for status; this
+runner only tracks which job ids are executing in THIS process, and forgets
+them when they finish so memory does not grow with the process lifetime.
+"""
 
 import asyncio
 import logging
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
-from typing import Dict, Any, Optional, Callable
 import threading
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, Set
 
-# Support both relative and absolute imports
 try:
-    from skill import start_video_production
-except ImportError:
     from .skill import start_video_production
+except ImportError:  # standalone script use (no package context)
+    from skill import start_video_production
 
 logger = logging.getLogger(__name__)
 
 
 class VideoProductionRunner:
-    """Manages async video production jobs in background."""
+    """Runs video production jobs on a small thread pool."""
 
     def __init__(self, max_workers: int = 3):
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
-        self.running_jobs: Dict[str, Dict[str, Any]] = {}
+        self._running: Set[str] = set()
         self.lock = threading.Lock()
-        self.progress_callback: Optional[Callable] = None
 
-    def set_progress_callback(self, callback: Callable):
-        """Set callback for progress updates (for WebSocket broadcast)."""
-        self.progress_callback = callback
-
-    async def start_job(
-        self,
-        job_id: str,
-        task: str,
-        config: Dict[str, Any]
-    ) -> str:
-        """
-        Start a video production job in background.
-
-        Returns immediately with job_id.
-        Orchestration happens asynchronously.
-        """
+    async def start_job(self, job_id: str, task: str, config: Dict[str, Any]) -> str:
+        """Schedule a job and return immediately. Failures are persisted onto
+        the stored job by the orchestrator, never only kept in memory."""
         with self.lock:
-            self.running_jobs[job_id] = {
-                "status": "starting",
-                "created_at": datetime.now(),
-                "task": task,
-                "progress": 0,
-                "error": None,
-            }
+            if job_id in self._running:
+                raise RuntimeError(f"job {job_id} is already running")
+            self._running.add(job_id)
 
-        logger.info(f"[{job_id}] Starting background job: {task[:50]}...")
-
-        # Run orchestrator in background
-        loop = asyncio.get_event_loop()
-        loop.run_in_executor(
-            self.executor,
-            self._run_orchestrator_sync,
-            job_id,
-            task,
-            config
-        )
-
+        # Never log the task text: it is user content.
+        logger.info("[%s] scheduling background job", job_id)
+        loop = asyncio.get_running_loop()
+        loop.run_in_executor(self.executor, self._run_orchestrator_sync, job_id, task, config)
         return job_id
 
-    def _run_orchestrator_sync(
-        self,
-        job_id: str,
-        task: str,
-        config: Dict[str, Any]
-    ):
-        """Wrapper to run async orchestrator in sync context."""
+    def _run_orchestrator_sync(self, job_id: str, task: str, config: Dict[str, Any]):
         try:
             asyncio.run(start_video_production(job_id, task, config))
-
+            logger.info("[%s] job complete", job_id)
+        except Exception as e:  # noqa: BLE001 — the orchestrator already persisted the error
+            logger.error("[%s] job failed: %s", job_id, type(e).__name__)
+        finally:
             with self.lock:
-                self.running_jobs[job_id]["status"] = "complete"
-                self.running_jobs[job_id]["completed_at"] = datetime.now()
-                self.running_jobs[job_id]["progress"] = 100
-
-            logger.info(f"[{job_id}] Job complete")
-
-        except Exception as e:
-            error_msg = str(e)
-            logger.error(f"[{job_id}] Job failed: {error_msg}", exc_info=True)
-
-            with self.lock:
-                self.running_jobs[job_id]["status"] = "error"
-                self.running_jobs[job_id]["error"] = error_msg
-                self.running_jobs[job_id]["completed_at"] = datetime.now()
-
-    def get_job_status(self, job_id: str) -> Optional[Dict[str, Any]]:
-        """Get current job status."""
-        with self.lock:
-            return self.running_jobs.get(job_id)
-
-    def list_running_jobs(self) -> Dict[str, Dict[str, Any]]:
-        """Get all running jobs."""
-        with self.lock:
-            return {
-                jid: status
-                for jid, status in self.running_jobs.items()
-                if status.get("status") != "complete"
-            }
+                self._running.discard(job_id)
 
     def is_job_running(self, job_id: str) -> bool:
-        """Check if job is currently running."""
         with self.lock:
-            status = self.running_jobs.get(job_id, {})
-            return status.get("status") in ["starting", "storyboard_generating", "skills_running"]
+            return job_id in self._running
 
-    def cancel_job(self, job_id: str) -> bool:
-        """Cancel a running job (best-effort)."""
+    def running_job_ids(self) -> Set[str]:
         with self.lock:
-            if job_id in self.running_jobs:
-                status = self.running_jobs[job_id].get("status")
-                if status not in ["complete", "error"]:
-                    self.running_jobs[job_id]["status"] = "cancelled"
-                    self.running_jobs[job_id]["completed_at"] = datetime.now()
-                    logger.info(f"[{job_id}] Job cancelled")
-                    return True
-        return False
+            return set(self._running)
 
     def shutdown(self, wait: bool = True):
-        """Shutdown the runner and cleanup resources."""
         logger.info("Shutting down VideoProductionRunner...")
         self.executor.shutdown(wait=wait)
-        logger.info("VideoProductionRunner shutdown complete")
 
 
-# Global runner instance
-_runner: Optional[VideoProductionRunner] = None
+_runner = None
 _runner_lock = threading.Lock()
 
 
 def get_runner(max_workers: int = 3) -> VideoProductionRunner:
-    """Get or create global runner instance (singleton)."""
+    """Get or create the process-wide runner (singleton)."""
     global _runner
-
     if _runner is None:
         with _runner_lock:
             if _runner is None:
                 _runner = VideoProductionRunner(max_workers=max_workers)
-                logger.info(f"VideoProductionRunner initialized (max_workers={max_workers})")
-
     return _runner
 
 
 def reset_runner():
     """Reset global runner (for testing)."""
     global _runner
-    if _runner:
-        _runner.shutdown(wait=True)
-    _runner = None
+    with _runner_lock:
+        if _runner:
+            _runner.shutdown(wait=True)
+        _runner = None

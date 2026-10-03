@@ -45,7 +45,7 @@ class TestStoryboardGeneration:
 
             mock_client.messages.create.return_value = mock_message
 
-            storyboard = await generate_storyboard_with_llm("Test video", 5)
+            storyboard = await generate_storyboard_with_llm("Test video", 5, backend="anthropic", model="test-model")
 
             assert storyboard is not None
             assert len(storyboard.scenes) == 1
@@ -77,7 +77,7 @@ class TestStoryboardGeneration:
             mock_client.messages.create.return_value = mock_message
 
             with pytest.raises(ValueError, match="too long"):
-                await generate_storyboard_with_llm("Test", max_duration_minutes=5)
+                await generate_storyboard_with_llm("Test", max_duration_minutes=5, backend="anthropic", model="test-model")
 
     @pytest.mark.asyncio
     async def test_storyboard_exceeds_scene_limit(self):
@@ -108,7 +108,7 @@ class TestStoryboardGeneration:
             mock_client.messages.create.return_value = mock_message
 
             with pytest.raises(ValueError, match="Too many scenes"):
-                await generate_storyboard_with_llm("Test", 10)
+                await generate_storyboard_with_llm("Test", 10, backend="anthropic", model="test-model")
 
 
 class TestOrchestrationFlow:
@@ -168,34 +168,19 @@ class TestAsyncRunner:
         result = await runner.start_job(job_id, task, config)
         assert result == job_id
 
-    def test_get_job_status(self):
-        """Test retrieving job status."""
+    def test_is_job_running_unknown_job(self):
+        """The persisted job is the status source of truth; the runner only
+        knows which ids execute in this process."""
         reset_runner()
         runner = get_runner()
+        assert runner.is_job_running("nonexistent") is False
+        assert runner.running_job_ids() == set()
 
-        job_id = "job_status_test"
-
-        # Before job starts
-        status = runner.get_job_status("nonexistent")
-        assert status is None
-
-    def test_cancel_job(self):
-        """Test cancelling a job."""
+    def test_no_cancel_api_that_cancels_nothing(self):
+        """cancel_job used to flip an in-memory flag while the job kept running
+        (and was then overwritten with 'complete'); it had no caller and is gone."""
         reset_runner()
-        runner = get_runner()
-
-        job_id = "job_cancel"
-
-        # Manually add a running job
-        runner.running_jobs[job_id] = {
-            "status": "skills_running",
-            "progress": 50
-        }
-
-        # Cancel it
-        success = runner.cancel_job(job_id)
-        assert success is True
-        assert runner.running_jobs[job_id]["status"] == "cancelled"
+        assert not hasattr(get_runner(), "cancel_job")
 
 
 class TestProgressTracking:

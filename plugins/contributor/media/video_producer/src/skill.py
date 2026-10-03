@@ -15,29 +15,19 @@ import uuid
 import anthropic
 import requests
 
-try:
-    from dotenv import load_dotenv, find_dotenv
-    # usecwd=True: search upward from the PROCESS cwd (CorvinOS, per the uvicorn
-    # service's WorkingDirectory), not from this file's own location under
-    # Corvin-Marketplace — plain find_dotenv() would search the wrong tree since
-    # this module is loaded via importlib.util.spec_from_file_location.
-    load_dotenv(find_dotenv(usecwd=True))
-except ImportError:
-    pass
+# No .env loading here: this module runs inside the host's shared console
+# process, and a dotenv load would put every token in the host's .env into
+# the environment of every tenant's request and every subprocess. Credentials
+# reach this plugin only through the host's own service environment.
 
-# Support both relative and absolute imports
 try:
-    from models import VideoJob, Storyboard, Scene, VideoOutput
-    from storage import get_storage
-except ImportError:
     from .models import VideoJob, Storyboard, Scene, VideoOutput
-    from .storage import get_storage
+    from .storage import get_storage, TERMINAL_STATUSES
+except ImportError:  # standalone script use (no package context)
+    from models import VideoJob, Storyboard, Scene, VideoOutput
+    from storage import get_storage, TERMINAL_STATUSES
 
 logger = logging.getLogger(__name__)
-
-# Global progress tracking (log-only; the persisted VideoJob is the source of truth polled by the UI)
-_progress_events = {}
-
 
 def emit_job_progress(
     job_id: str,
@@ -46,17 +36,8 @@ def emit_job_progress(
     message: str = None,
     error: str = None
 ):
-    """Emit job progress event (log + in-memory, for debugging)."""
-    event = {
-        "job_id": job_id,
-        "status": status,
-        "percent": percent,
-        "message": message,
-        "error": error,
-        "timestamp": datetime.now().isoformat(),
-    }
-    _progress_events[job_id] = event
-    logger.info(f"[{job_id}] {status} {percent}% — {message or ''}")
+    """Log a progress step (the persisted VideoJob is the source of truth the UI polls)."""
+    logger.info("[%s] %s %s%% — %s", job_id, status, percent, message or "")
 
 
 def _update_job_progress(
@@ -86,28 +67,32 @@ _OLLAMA_URL = "http://localhost:11434/api/generate"
 _OLLAMA_MODEL = "qwen3:1.7b"
 
 
-def _call_storyboard_llm(prompt: str) -> str:
+def _call_storyboard_llm(prompt: str, backend: str = "ollama", model: Optional[str] = None) -> str:
     """
     Call an LLM to turn the prompt into a storyboard JSON string.
 
-    Prefers Anthropic (claude-opus-5) when ANTHROPIC_API_KEY is configured;
-    falls back to the local Ollama instance (already running on this host for
-    the L44 house-rules classifier) when no key is set or the API call fails.
-    Both paths are real inference — no mocked/fabricated storyboard content.
+    ``backend`` is decided by the HOST, which ran its data-flow / egress gates
+    for exactly that destination before starting the job: "anthropic" (needs
+    ``model``) or "ollama" (local). The plugin never upgrades a job to a
+    remote backend on its own. An "anthropic" call that fails falls back to
+    the local Ollama instance (strictly less egress). Both paths are real
+    inference — no mocked/fabricated storyboard content.
     """
-    if os.environ.get("ANTHROPIC_API_KEY"):
+    if backend not in ("anthropic", "ollama"):
+        raise ValueError(f"unknown storyboard backend {backend!r}")
+    if backend == "anthropic":
+        if not model:
+            raise ValueError("storyboard backend 'anthropic' needs a model id from the host")
         try:
             client = anthropic.Anthropic()
             message = client.messages.create(
-                model="claude-opus-5",
+                model=model,
                 max_tokens=3000,
                 messages=[{"role": "user", "content": prompt}],
             )
             return message.content[0].text
-        except Exception as e:
-            logger.warning(f"Anthropic storyboard call failed, falling back to local Ollama: {e}")
-    else:
-        logger.info("No ANTHROPIC_API_KEY configured — using local Ollama for storyboard generation")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Anthropic storyboard call failed (%s), falling back to local Ollama", type(e).__name__)
 
     response = requests.post(
         _OLLAMA_URL,
@@ -125,7 +110,9 @@ def _call_storyboard_llm(prompt: str) -> str:
 
 async def generate_storyboard_with_llm(
     task: str,
-    max_duration_minutes: int = 60
+    max_duration_minutes: int = 60,
+    backend: str = "ollama",
+    model: Optional[str] = None,
 ) -> Storyboard:
     """
     LLM: Task → Storyboard (JSON)
@@ -158,7 +145,6 @@ CONSTRAINTS (MUST ENFORCE):
 OUTPUT FORMAT (valid JSON only, no markdown):
 {{
   "id": "sb_{uuid.uuid4().hex[:8]}",
-  "task": "{task}",
   "scenes": [
     {{
       "id": "s1",
@@ -174,7 +160,7 @@ OUTPUT FORMAT (valid JSON only, no markdown):
 RETURN ONLY THE JSON, NO EXPLANATIONS.
 """
 
-    raw = _call_storyboard_llm(prompt)
+    raw = _call_storyboard_llm(prompt, backend=backend, model=model)
 
     try:
         raw = raw.strip()
@@ -324,7 +310,11 @@ def _concat_clips(clip_paths: List[Path], out_path: Path, work_dir: Path) -> Non
     filelist = work_dir / "concat.txt"
     with open(filelist, "w") as f:
         for p in clip_paths:
-            f.write(f"file '{p.resolve()}'\n")
+            path = str(p.resolve())
+            if "\n" in path or "\r" in path:
+                raise ValueError("clip path contains a line break")
+            quoted = path.replace("'", "'\\''")
+            f.write(f"file '{quoted}'\n")
 
     cmd = [
         "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(filelist),
@@ -372,12 +362,17 @@ def emit_feedback(job_id: str, event_type: str, metrics: Dict[str, Any]):
     logger.info(f"[{job_id}] Feedback: {event_type} | {metrics}")
 
 
+SUPPORTED_TTS_ENGINES = ("gtts",)
+
+
 async def orchestrate_video(
     job_id: str,
     task: str,
-    output_folder: str = None,
-    tts_engine: str = "azure",
-    max_duration_minutes: int = 60
+    storage_base: str,
+    tts_engine: str = "gtts",
+    max_duration_minutes: int = 60,
+    storyboard_backend: str = "ollama",
+    storyboard_model: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Main orchestrator Skill:
@@ -386,29 +381,40 @@ async def orchestrate_video(
     3. Real ffmpeg concat → final MP4 + SRT captions
     4. Collect feedback → Learning (ADR-0314)
     """
-    if shutil.which("ffmpeg") is None:
-        raise RuntimeError("ffmpeg binary not found on PATH — required for real video assembly")
-
-    storage = get_storage()
+    storage = get_storage(storage_base)
     job = storage.get_job(job_id)
-
     if not job:
+        # Nothing to persist an error onto: the host created the job before
+        # scheduling it, so this is a host/plugin contract violation.
         raise ValueError(f"Job {job_id} not found")
-
-    if output_folder is None:
-        output_folder = "~/.corvin/video-producer/videos"
-    out_root = Path(os.path.expanduser(output_folder)) / job_id
-    out_root.mkdir(parents=True, exist_ok=True)
-    scenes_dir = out_root / "scenes"
-    scenes_dir.mkdir(parents=True, exist_ok=True)
+    if job.status in TERMINAL_STATUSES:
+        raise ValueError(f"Job {job_id} is already {job.status}")
 
     job.started_at = job.started_at or datetime.now()
 
+    # Everything that can fail — including setup — runs inside the try, so the
+    # stored job (what the UI polls) always ends in "error" on failure instead
+    # of staying "pending" forever.
     try:
+        if tts_engine not in SUPPORTED_TTS_ENGINES:
+            raise ValueError(f"TTS engine {tts_engine!r} is not available (supported: {', '.join(SUPPORTED_TTS_ENGINES)})")
+        if not isinstance(max_duration_minutes, int) or not 1 <= max_duration_minutes <= 60:
+            raise ValueError("max_duration_minutes must be an integer between 1 and 60")
+        if shutil.which("ffmpeg") is None:
+            raise RuntimeError("ffmpeg binary not found on PATH — required for real video assembly")
+
+        # Output always lives in this store's own directory — the host cannot
+        # be talked into writing a tenant's video anywhere else.
+        out_root = storage.videos_dir / job_id
+        scenes_dir = out_root / "scenes"
+        scenes_dir.mkdir(parents=True, exist_ok=True)
+
         # Step 1: Generate Storyboard via LLM
         _update_job_progress(storage, job, "storyboard_generating", 0, "Analyzing task...")
 
-        storyboard = await generate_storyboard_with_llm(task, max_duration_minutes)
+        storyboard = await generate_storyboard_with_llm(
+            task, max_duration_minutes, backend=storyboard_backend, model=storyboard_model,
+        )
         job.storyboard = storyboard
         _update_job_progress(
             storage, job, "storyboard_generating", 100,
@@ -469,6 +475,12 @@ async def orchestrate_video(
 
             clip_paths.append(clip_path)
             srt_entries.append({"narration_text": narration, "duration_s": audio_duration})
+
+        measured_s = sum(e["duration_s"] for e in srt_entries)
+        if measured_s > max_duration_minutes * 60:
+            raise ValueError(
+                f"Narrated length {measured_s:.0f}s exceeds the {max_duration_minutes}-minute limit"
+            )
 
         # Step 3: Concat scenes + captions
         _update_job_progress(storage, job, "skills_running", 92, "Assembling final video...")
@@ -556,7 +568,9 @@ async def start_video_production(
     return await orchestrate_video(
         job_id=job_id,
         task=task,
-        output_folder=config.get("output_folder"),
-        tts_engine=config.get("tts_engine", "azure"),
+        storage_base=config["storage_base"],
+        tts_engine=config.get("tts_engine", "gtts"),
         max_duration_minutes=config.get("max_duration_minutes", 60),
+        storyboard_backend=config.get("storyboard_backend", "ollama"),
+        storyboard_model=config.get("storyboard_model"),
     )
