@@ -6,6 +6,9 @@ metadata:
   related: ["ADR-0702", "ADR-0703", "ADR-0701", "ADR-0702", "ADR-0703"]
 ---
 
+> **2026-10-03 correction:** the module(s) this document describes were removed as part of ADR-0953 (dead code, zero production callers) -- see `../ADR-0953-consolidation-dead-code-removal.md`. Read what follows as historical design intent, not current system status.
+
+
 # CONCEPT-0041 — Video Quality Enhancement Orchestration
 
 **Status:** Proposed  

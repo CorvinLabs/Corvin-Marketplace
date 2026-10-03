@@ -12,6 +12,9 @@ docs:
   - "docs/video-producer/color-processing.md"
 ---
 
+> **2026-10-03 correction:** the module(s) this document describes were removed as part of ADR-0953 (dead code, zero production callers) -- see `../ADR-0953-consolidation-dead-code-removal.md`. Read what follows as historical design intent, not current system status.
+
+
 # ADR-0701 — Video Producer Color Processing Pipeline
 
 **Status:** Proposed  
