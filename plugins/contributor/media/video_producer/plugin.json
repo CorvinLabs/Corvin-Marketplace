@@ -8,7 +8,7 @@
   "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
   "tier": "contributor",
   "category": "media",
-  "description": "Create CorvinOS marketing and explainer videos from PowerPoints, screenshots, and voice narration. Orchestrated multi-skill system with deep asset analysis, per-scene feedback, and learning loops.",
+  "description": "Create short narrated MP4s from a task description: LLM-written storyboard, per-scene TTS narration, ffmpeg assembly. See docs/ADR-0953 for the current (consolidated) scope versus earlier design plans.",
   "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/media/video_producer/README.md",
   "documentation": "docs/README.md",
   "adr_prefix": "video-producer",
@@ -32,40 +32,11 @@
   ],
   "capabilities": [
     "video-production",
-    "asset-analysis",
     "voice-narration",
-    "screenshot-capture",
-    "slide-rendering",
-    "video-assembly",
-    "youtube-export"
+    "video-assembly"
   ],
+  "_entry_points_note": "Neither this field nor its contents are read by any CorvinOS loader (importlib.metadata.entry_points() reads Python packaging metadata, not this JSON field; the console route loads src/__init__.py directly by path) -- kept only for marketplace manifest schema conformance (tests/test_plugin_registration.py). The 'renderers' sub-block that named now-deleted renderers_skill_2_0/ modules was removed per ADR-0953; 'console_panels'/'skills' are labels, not module paths, so they don't point at dead code the way 'renderers' did.",
   "entry_points": {
-    "renderers": [
-      {
-        "id": "svg_renderer",
-        "name": "SVG Renderer",
-        "module": "video_producer.renderers_skill_2_0.svg_renderer:SvgRenderer",
-        "description": "Renders flowcharts and diagrams to SVG"
-      },
-      {
-        "id": "effects_processor",
-        "name": "Effects Processor",
-        "module": "video_producer.renderers_skill_2_0.effects_processor:EffectsProcessor",
-        "description": "Processes video effects and transitions"
-      },
-      {
-        "id": "screencast_renderer",
-        "name": "Screencast Renderer",
-        "module": "video_producer.renderers_skill_2_0.screencast_renderer:ScreencastRenderer",
-        "description": "Captures and composes screencast videos"
-      },
-      {
-        "id": "blender_renderer",
-        "name": "Blender Renderer",
-        "module": "video_producer.renderers_skill_2_0.blender_renderer:BlenderRenderer",
-        "description": "Renders 3D scenes using Blender"
-      }
-    ],
     "console_panels": [
       {
         "id": "video-producer-panel",
@@ -79,18 +50,15 @@
     "skills": [
       {
         "id": "os.video_producer",
-        "name": "Video Producer Orchestrator",
-        "description": "Main orchestrator for video production workflow using multi-skill architecture"
+        "name": "Video Producer",
+        "description": "Turns a task description into a short narrated MP4 (storyboard, TTS, ffmpeg assembly)."
       }
     ]
   },
   "config": {
-    "tts_engine": "openai",
-    "tts_model": "tts-1-hd",
-    "tts_voice": "nova",
-    "youtube_upload_supported": true,
+    "tts_engine": "gtts",
+    "youtube_upload_supported": false,
     "max_video_length_minutes": 60,
-    "enable_learning_loops": true,
     "audit_enabled": true
   },
   "permissions": [
