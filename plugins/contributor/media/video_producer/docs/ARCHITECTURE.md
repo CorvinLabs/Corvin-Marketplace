@@ -1,5 +1,12 @@
 # Video Producer Plugin 2.0 — Architecture Overview
 
+> **2026-10-03 correction:** a full reachability audit found this architecture has
+> **zero production callers** — see
+> [ADR-0953](ADR-0953-consolidation-dead-code-removal.md) for the audit and the
+> consolidation decision. Read what follows as historical design intent, not current
+> system status.
+
+
 ## System Overview
 
 The Video Producer Skill 2.0 is an **orchestrated multi-worker skill** that generates educational and marketing videos from storyboard specifications. The plugin implements a **3-Tier Animation Architecture** to handle diverse quality and complexity requirements.

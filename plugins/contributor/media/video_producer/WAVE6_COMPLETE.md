@@ -1,5 +1,12 @@
 # 🎬 WAVE 6: Real API Integration — COMPLETE
 
+> **2026-10-03 correction:** a full reachability audit found the architecture this
+> document describes has **zero production callers** — see
+> [ADR-0953](docs/ADR-0953-consolidation-dead-code-removal.md) (or `../ADR-0953-...`
+> from this file's own location) for the audit and the consolidation decision. Read
+> what follows as historical design intent, not current system status.
+
+
 **Status:** ✅ ALL 4 PHASES IMPLEMENTED  
 **Commit:** Ready  
 **Timeline:** Weeks 8–12 (Complete)
@@ -274,4 +281,3 @@ Next step: Production testing + marketplace v2.0.0 release.
 **Marketplace:** Ready for v2.0.0 release  
 
 🚀 **WAVE 6 IMPLEMENTATION COMPLETE**
-

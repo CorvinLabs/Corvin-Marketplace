@@ -1,5 +1,12 @@
 # Video Producer Skill 2.0 — Production Deployment Status
 
+> **2026-10-03 correction:** a full reachability audit found the architecture this
+> document describes has **zero production callers** — see
+> [ADR-0953](docs/ADR-0953-consolidation-dead-code-removal.md) (or `../ADR-0953-...`
+> from this file's own location) for the audit and the consolidation decision. Read
+> what follows as historical design intent, not current system status.
+
+
 **Final Status: ✅ PRODUCTION READY FOR DEPLOYMENT**
 
 **Date: 2026-09-14**  
