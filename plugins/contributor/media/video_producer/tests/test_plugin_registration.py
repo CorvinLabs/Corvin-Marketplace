@@ -5,15 +5,19 @@ import pytest
 from pathlib import Path
 
 
+@pytest.fixture
+def plugin_manifest():
+    """Load plugin.json manifest. Module-level (not class-local) so every
+    test class below can use it — a class-local fixture here previously left
+    TestPluginIntegration.test_plugin_tier_is_community erroring with
+    "fixture 'plugin_manifest' not found" on every run."""
+    manifest_path = Path(__file__).parent.parent / "plugin.json"
+    with open(manifest_path) as f:
+        return json.load(f)
+
+
 class TestPluginManifest:
     """Test plugin.json manifest correctness."""
-
-    @pytest.fixture
-    def plugin_manifest(self):
-        """Load plugin.json manifest."""
-        manifest_path = Path(__file__).parent.parent / "plugin.json"
-        with open(manifest_path) as f:
-            return json.load(f)
 
     def test_manifest_has_required_fields(self, plugin_manifest):
         """Plugin manifest must have all required fields."""
@@ -71,34 +75,18 @@ class TestPluginManifest:
 
 
 class TestPluginStructure:
-    """Test plugin directory structure."""
+    """Test plugin directory structure.
+
+    test_video_producer_module_exists / test_required_python_files_exist were
+    removed here (ADR-0953 Phase C.3): they asserted src/video_producer/ is
+    required, which was true only of the dead second orchestrator package
+    removed in this same commit.
+    """
 
     def test_src_directory_exists(self):
         """Plugin must have src/ directory."""
         src_path = Path(__file__).parent.parent / "src"
         assert src_path.is_dir(), "src/ directory must exist"
-
-    def test_video_producer_module_exists(self):
-        """Plugin must have src/video_producer/ module."""
-        module_path = Path(__file__).parent.parent / "src" / "video_producer"
-        assert module_path.is_dir(), "src/video_producer/ module must exist"
-        assert (module_path / "__init__.py").exists(), "__init__.py must exist in video_producer"
-
-    def test_required_python_files_exist(self):
-        """Plugin must have required Python implementation files."""
-        video_producer_path = Path(__file__).parent.parent / "src" / "video_producer"
-        required_files = [
-            "__init__.py",
-            "orchestrator.py",
-            "exceptions.py",
-            "types.py",
-            "learning_optimizer.py",
-            "storyboard_generator.py",
-            "console_panel.py",
-        ]
-        for filename in required_files:
-            filepath = video_producer_path / filename
-            assert filepath.exists(), f"Missing required file: {filename}"
 
     def test_tests_directory_exists(self):
         """Plugin must have tests/ directory."""
@@ -126,71 +114,8 @@ class TestPluginStructure:
         assert reqs_path.exists(), "requirements.txt must exist"
 
 
-class TestPluginImports:
-    """Test that plugin modules can be imported."""
-
-    def test_can_import_orchestrator(self):
-        """Should be able to import VideoProducerOrchestrator."""
-        from video_producer.orchestrator import VideoProducerOrchestrator
-        assert VideoProducerOrchestrator is not None
-
-    def test_can_import_types(self):
-        """Should be able to import plugin types."""
-        from video_producer.types import (
-            AssetAnalysisResult,
-            Storyboard,
-            Scene,
-            FactualClaim,
-            Contradiction,
-        )
-        assert all([AssetAnalysisResult, Storyboard, Scene, FactualClaim, Contradiction])
-
-    def test_can_import_exceptions(self):
-        """Should be able to import plugin exceptions."""
-        from video_producer.exceptions import (
-            VideoProducerError,
-            AssetIngestionError,
-            AnalysisIncompleteError,
-            AnalysisGateFailedError,
-        )
-        assert all([
-            VideoProducerError,
-            AssetIngestionError,
-            AnalysisIncompleteError,
-            AnalysisGateFailedError,
-        ])
-
-    def test_can_import_learning_optimizer(self):
-        """Should be able to import learning optimizer."""
-        from video_producer.learning_optimizer import VideoProducerLearningOptimizer
-        assert VideoProducerLearningOptimizer is not None
-
-    def test_can_import_console_panel(self):
-        """Should be able to import console panel."""
-        from video_producer.console_panel import VideoProducerPanel, get_panel_config
-        assert VideoProducerPanel is not None
-        assert get_panel_config is not None
-
-
 class TestPluginIntegration:
     """Test plugin integration readiness."""
-
-    def test_plugin_has_console_panel_config(self):
-        """Plugin must expose console panel configuration."""
-        from video_producer.console_panel import get_panel_config
-        config = get_panel_config()
-        assert "id" in config
-        assert "title" in config
-        assert config["id"] == "video-producer-panel"
-
-    def test_plugin_can_be_instantiated(self):
-        """Plugin components should be instantiable."""
-        from video_producer.orchestrator import VideoProducerOrchestrator
-        try:
-            orchestrator = VideoProducerOrchestrator()
-            assert orchestrator is not None
-        except Exception as e:
-            pytest.skip(f"Orchestrator instantiation skipped (expected if dependencies missing): {e}")
 
     def test_plugin_tier_is_community(self, plugin_manifest):
         """Verify plugin is community/contributor tier (not vetted/builtin)."""
