@@ -142,7 +142,7 @@ The plugin handles errors gracefully:
 
 ## ADR Reference
 
-See [ADR-0541](../../../../../../../Corvin-ADR/decisions/ADR-0541-observability-heartbeat-monitor.md) for architectural decisions.
+See [ADR-0541](../../../../../../../Corvin-Knowledge/decisions/ADR-0541-observability-heartbeat-monitor.md) for architectural decisions.
 
 ---
 

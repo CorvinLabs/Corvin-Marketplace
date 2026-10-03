@@ -94,7 +94,7 @@ All READMEs verified for production readiness:
 ## Phase 3: ADR Linking & Validation
 
 ### ADR Reference Inventory
-All ADRs verified to exist in canonical `/home/shumway/projects/Corvin-ADR/decisions/` location:
+All ADRs verified to exist in canonical `/home/shumway/projects/Corvin-Knowledge/decisions/` location:
 
 | Plugin | ADR | Status | Path |
 |--------|-----|--------|------|

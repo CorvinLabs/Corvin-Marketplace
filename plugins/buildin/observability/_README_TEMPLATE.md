@@ -109,7 +109,7 @@ The plugin handles errors gracefully:
 
 ## ADR Reference
 
-See [ADR-0XXX](../../Corvin-ADR/decisions/ADR-0XXX-{plugin_name}.md) for architectural decisions.
+See [ADR-0XXX](../../Corvin-Knowledge/decisions/ADR-0XXX-{plugin_name}.md) for architectural decisions.
 
 ---
 

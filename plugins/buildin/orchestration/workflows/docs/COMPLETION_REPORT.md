@@ -311,7 +311,7 @@ docs/
    - Capture coverage report (target: 85%+)
 
 2. **ADR Submission:**
-   - Move `docs/ADR-0XXX-...md` to `/home/shumway/projects/Corvin-ADR/decisions/`
+   - Move `docs/ADR-0XXX-...md` to `/home/shumway/projects/Corvin-Knowledge/decisions/`
    - Update frontmatter: `id`, `status: PROPOSED`, `depends_on`, `paths`, `docs`
    - Submit to architecture review
 
