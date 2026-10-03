@@ -292,12 +292,18 @@ def _render_slide_image(scene: Scene, out_path: Path, w: int = 1280, h: int = 72
 
 
 def _assemble_scene_clip(image_path: Path, audio_path: Path, out_path: Path) -> None:
-    """Combine one still image + narration audio into a scene mp4 (real ffmpeg encode)."""
+    """Combine one still image + narration audio into a scene mp4 (real ffmpeg encode).
+
+    CRF 18 + preset slow adopted from video_ffmpeg.py (ADR-0953 Phase B review) — the
+    only piece of that dead cluster worth keeping; its PNG-sequence+single-audio-track
+    architecture was not (this function's per-scene-clip-then-concat design handles
+    variable per-scene durations, which a single shared audio track cannot)."""
     cmd = [
         "ffmpeg", "-y",
         "-loop", "1", "-i", str(image_path),
         "-i", str(audio_path),
-        "-c:v", "libx264", "-tune", "stillimage", "-pix_fmt", "yuv420p",
+        "-c:v", "libx264", "-tune", "stillimage", "-crf", "18", "-preset", "slow",
+        "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "160k",
         "-shortest", "-vf", "fps=30",
         str(out_path),

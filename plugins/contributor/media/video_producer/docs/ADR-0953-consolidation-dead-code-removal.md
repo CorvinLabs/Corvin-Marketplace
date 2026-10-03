@@ -147,4 +147,46 @@ re-deriving later is strictly more expensive than evaluating first.
   removed as a side effect of deleting the package, not independently investigated —
   flagged here in case the same pattern exists elsewhere in the marketplace.
 
+## Phase B — resolved (2026-10-03)
+
+All four extraction candidates evaluated by reading the code, not the surrounding
+docstrings' claims:
+
+- **`voice_openai.py`** — real OpenAI `tts-1-hd` call with SHA256 caching, but its
+  `execute()` interface aggregates every scene's narration into **one** TTS call
+  (`" ".join(s["narration"] for s in scenes)`), while the live path needs one audio file
+  per scene (variable per-scene durations feed the concat pipeline). Worse, it
+  *estimates* duration from word count (`words / 2.5`) instead of measuring it — the
+  live path already measures via `ffprobe`, so adopting this as-is would be a quality
+  **regression** against ADR-0694's "no estimates, all measured" constraint. **Not
+  integrated.** If OpenAI TTS is wanted over gTTS later, treat the API-call shape here
+  as a reference, not a drop-in.
+- **`video_ffmpeg.py`** — the only real yield: `-crf 18 -preset slow` is a genuine
+  quality improvement over the live path's unset (ffmpeg-default) values. Its own
+  architecture (PNG-sequence + one shared audio track) was not adopted — the live path's
+  per-scene-clip-then-concat design is the better fit for variable scene durations, which
+  a single shared audio track cannot represent. **Extracted:** the two flags were added
+  to `skill.py::_assemble_scene_clip` (alongside the existing `-tune stillimage`, which
+  `video_ffmpeg.py` lacks and the live path's still-image-per-scene case needs). Verified
+  with a real `ffmpeg`+`ffprobe` round trip (H.264 High profile, AAC-LC, correct
+  duration) — not just a syntax check — plus the full live-path test suite unchanged at
+  60/64 passing (the 4 pre-existing `test_api_routes.py` failures predate this review and
+  are unrelated: they exercise a different, non-console route shape).
+- **`screenshot_puppeteer.py`** — depends on a console "scene" query-parameter API
+  (`{console_url}?scene=${id}`) that does not exist anywhere in CorvinOS, plus an
+  undeclared Node/Puppeteer dependency. **Not integrated.** CorvinOS already has a real,
+  previously-verified alternative for this exact gap:
+  `core/skills/video_producer/workers/screenshot_capturer.py` (Playwright, Python-native,
+  no new runtime dependency) — closing the screenshot-capture gap (ADR-0694) should start
+  there, as a separate task, not from this dead file.
+- **`asset_analyzer.py`** — its own docstring admits it: `_extract_ppt_sections()` is "a
+  stub: hardcoded for testing" and always returns the same 3 fixed sections regardless of
+  the input PPT. **Not integrated** — there is no extractable logic here, only an
+  interface shape; closing the asset-analysis gap (ADR-0693) means writing the
+  `python-pptx` reader from scratch, as a separate task.
+
+**Net result:** of ~16 800 dead LoC, exactly two flags (`-crf 18 -preset slow`) were
+worth keeping. Phase C can proceed against the full dead-cluster list in the Decision
+section above without further extraction review.
+
 ## Operator Notes
