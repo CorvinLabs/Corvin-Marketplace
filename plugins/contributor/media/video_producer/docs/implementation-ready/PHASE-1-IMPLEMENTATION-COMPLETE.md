@@ -1,5 +1,8 @@
 # Phase 1 Implementation — COMPLETE
 
+> **2026-10-04 correction (ADR-0953):** this document describes the pre-consolidation architecture or API shape. The live path is documented in [INSTALLATION.md](../INSTALLATION.md), [../README.md](../../README.md) and [ADR-0953](../ADR-0953-consolidation-dead-code-removal.md). Read what follows as historical design intent, not current behaviour.
+
+
 **Status:** ✅ **COMPLETE AND TESTED**  
 **Date:** 2026-09-13  
 **Implementation Time:** ~6 hours  

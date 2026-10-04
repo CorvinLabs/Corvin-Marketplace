@@ -1,5 +1,8 @@
 # Implementation Plan: CONCEPT-0051 Content-First Video Verification
 
+> **2026-10-04 correction (ADR-0953):** this document describes the pre-consolidation architecture or API shape. The live path is documented in [INSTALLATION.md](INSTALLATION.md), [../README.md](../README.md) and [ADR-0953](ADR-0953-consolidation-dead-code-removal.md). Read what follows as historical design intent, not current behaviour.
+
+
 **Concept:** CONCEPT-0051 — Content-First Video Verification  
 **ADRs:** ADR-0951, ADR-0952  
 **Timeline:** 2 weeks (Phases 1–2)  
@@ -399,4 +402,3 @@ tests/adversarial/
 - Track Tier 1 rejection rate (expect <5% of real videos)
 - Monitor audit event volume
 - Survey operator feedback
-

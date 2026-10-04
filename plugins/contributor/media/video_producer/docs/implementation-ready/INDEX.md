@@ -1,4 +1,7 @@
 # Video Producer Plugin — Implementation Ready Package
+
+> **2026-10-04 correction (ADR-0953):** this document describes the pre-consolidation architecture or API shape. The live path is documented in [INSTALLATION.md](../INSTALLATION.md), [../README.md](../../README.md) and [ADR-0953](../ADR-0953-consolidation-dead-code-removal.md). Read what follows as historical design intent, not current behaviour.
+
 ## Complete Quality Enhancement Framework (ADRs + Deliverables)
 
 **Status:** 🟢 Implementation Ready (2026-09-13)  

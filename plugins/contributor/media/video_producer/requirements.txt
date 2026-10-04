@@ -1,11 +1,19 @@
-corvinOS>=1.0.0
-python-pptx>=0.6.21
-openai>=1.0.0
-pydantic>=2.0.0
-requests>=2.31.0
+# Exactly what core/skills/__init__.py..storage.py..skill.py..async_runner.py
+# actually import (verified by grepping every import line, including the
+# lazy ones inside functions) — ADR-0953 Phase E (self-contained packaging).
+# Previously this file listed corvinOS, python-pptx, openai, pydantic,
+# python-dotenv, google-api-python-client and google-auth-oauthlib: none of
+# them are imported by the live path, and "corvinOS" is not a real PyPI
+# package (the plugin runs INSIDE a CorvinOS process, it does not depend on
+# one as a library) — `pip install -r requirements.txt` would have failed
+# outright on a clean machine.
 anthropic>=0.40.0
+requests>=2.31.0
 gTTS>=2.5.0
-python-dotenv>=1.0.0
 Pillow>=10.0.0
-google-api-python-client>=2.0
-google-auth-oauthlib>=1.0
+
+# System binary, not installable via pip — the live path shells out to it
+# (subprocess, not the ffmpeg-python wrapper, which was never imported):
+#   Debian/Ubuntu: apt-get install ffmpeg
+#   macOS:         brew install ffmpeg
+#   Verify:        ffmpeg -version

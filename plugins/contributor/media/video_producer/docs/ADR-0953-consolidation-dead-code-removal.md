@@ -249,4 +249,52 @@ tenant-isolated path this entire plugin now exists to serve — stayed 9/9
 passing throughout, confirming the deletions never touched what the console
 actually calls.
 
+## Phase E — self-contained packaging (2026-10-04)
+
+A follow-up request ("make it production-ready, self-contained, installable
+by anyone on any machine") turned up the same drift pattern as Phases A/D,
+this time in the packaging layer: `requirements.txt` listed `corvinOS>=1.0.0`
+(not a real PyPI package — the plugin runs *inside* a CorvinOS process, it
+does not depend on one as a library), `python-pptx`, `openai`, `pydantic`,
+`python-dotenv`, `google-api-python-client`, `google-auth-oauthlib` — none
+imported by the live path, which only ever needed `anthropic`, `requests`,
+`gTTS`, `Pillow` (verified by grepping every import line, including the lazy
+ones inside functions, across all 5 live files). `pip install -r
+requirements.txt` on a clean machine would have failed outright on the
+nonexistent `corvinOS` package. `setup.py`'s `entry_points` named two
+modules already deleted in Phase C (`video_producer.__main__`,
+`video_producer.plugin`) and were read by nothing (confirmed: no CorvinOS
+loader reads either the `corvin.skills` or `console_scripts` entry-point
+groups this project declared) — removed rather than fixed, since there is no
+live CLI to point them at. `find_packages()` would also have found zero
+packages post-Phase-C (`src/__init__.py` is the package root now, not a
+subdirectory) — switched to an explicit `package_dir`/`packages` pair.
+
+**Verified, not just asserted:** a genuinely fresh machine was simulated —
+new venv, zero pre-existing packages, no access to the CorvinOS venv. `pip
+install -r requirements.txt` succeeded (4 direct packages, clean resolve).
+`pip install -e .` succeeded and built a loadable `corvinos_video_producer`
+package. Imported from *outside* the checkout (proving the install, not just
+the source tree, works). Ran the real pipeline building blocks against that
+fresh install: `gTTS` narration (free public endpoint, no key) produced real
+audio, `ffmpeg` assembly (subprocess, the actual live code path) produced a
+real H.264/AAC clip. The only piece not exercised end-to-end is the
+Anthropic storyboard call, which needs a paid API key and was already
+covered structurally (host-gated, Ollama fallback) rather than financially
+re-verified here.
+
+Also corrected, same drift pattern (claims not matching the live path —
+Node.js/Puppeteer as a requirement, OpenAI key as required, Azure TTS, a
+fantasy Docker image, a `/orchestrate` endpoint that doesn't exist):
+`INSTALLATION.md` and `SETUP.md` rewritten in full (these are forward-facing
+install guides a new user would actually follow, not historical status
+reports — held to the same bar as the README in Phase A). The remaining 13
+docs (`API.md`, `USAGE.md`, `CONFIGURATION.md`, `TROUBLESHOOTING.md`,
+`PLUGIN-DEVELOPMENT-GUIDE.md`, the two `IMPLEMENTATION-PLAN*.md`, 5 files
+under `implementation-ready/`, `docs/claude.md`, `docs/README.md`) and 2
+root `.txt` certificates got the Phase-A correction-header treatment rather
+than full rewrites — rewriting all of them was out of scope for this pass;
+the header stops anyone (human or agent) from trusting their contents at
+face value, which is the load-bearing property.
+
 ## Operator Notes

@@ -1,5 +1,8 @@
 # Video Producer Plugin — Claude Code Reference
 
+> **2026-10-04 correction (ADR-0953):** this document describes the pre-consolidation architecture or API shape. The live path is documented in [INSTALLATION.md](INSTALLATION.md), [../README.md](../README.md) and [ADR-0953](ADR-0953-consolidation-dead-code-removal.md). Read what follows as historical design intent, not current behaviour.
+
+
 **Plugin:** `media/video_producer`  
 **Type:** Contributor (Marketplace)  
 **Status:** Production-Ready  
@@ -208,4 +211,3 @@ Failures emit signals for optimization:
 - **Plugin Owner:** Video Producer Plugin Team
 - **Questions:** See `docs/README.md` FAQ section
 - **Issues:** Report in plugin issue tracker
-

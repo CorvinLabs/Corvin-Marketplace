@@ -1,3 +1,5 @@
+[2026-10-04 correction, ADR-0953]: this document describes the pre-consolidation architecture; see docs/ADR-0953-consolidation-dead-code-removal.md for the audit and current (consolidated) scope.
+
 ╔════════════════════════════════════════════════════════════════════════════╗
 ║                                                                            ║
 ║             VIDEO PRODUCER SKILL 2.0 — VERIFICATION SUMMARY              ║
@@ -301,4 +303,3 @@ are expected to be nominal.
 Generated:  2026-09-14
 Verified By: Claude Haiku 4.5
 Approval:    FINAL ✅
-
