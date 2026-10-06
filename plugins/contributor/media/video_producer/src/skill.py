@@ -294,6 +294,130 @@ def _synthesize_narration(text: str, out_path: Path, lang: str) -> None:
     tts.save(str(out_path))
 
 
+# --------------------------------------------------------------------------
+# TTS fallback chain (ADR-2211): openai -> edge-tts -> piper-tts -> mock.
+# Each tier returns True on success, False on "decline" (missing key/package,
+# network error, timeout) — a decline falls through to the next tier, it
+# never raises past the chain. "mock" is the only tier that cannot decline
+# (no external dependency), so the chain always produces an audio_path.
+# --------------------------------------------------------------------------
+
+_PIPER_VOICE_MODELS = {
+    "de": "de_DE-thorsten-medium",
+    "en": "en_US-lessac-medium",
+}
+
+
+def _tts_tier_openai(text: str, out_path: Path, lang: str) -> bool:
+    """Tier 1: OpenAI TTS. Declines if no key or package, or the call fails."""
+    api_key = os.environ.get("CORVIN_TTS_OPENAI_KEY") or os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        return False
+    try:
+        from openai import OpenAI
+    except ImportError:
+        logger.info("tts chain: openai package not installed, declining")
+        return False
+
+    try:
+        client = OpenAI(api_key=api_key)
+        response = client.audio.speech.create(
+            model="tts-1-hd",
+            voice="onyx",  # ADR-2211: calm, low male voice — consistent across de/en
+            input=(text or "").strip() or "...",
+        )
+        response.stream_to_file(str(out_path))
+        return out_path.exists() and out_path.stat().st_size > 0
+    except Exception as e:  # noqa: BLE001 — any failure declines, never crashes the chain
+        logger.warning("tts chain: openai tier declined (%s: %s)", type(e).__name__, e)
+        return False
+
+
+def _tts_tier_edge(text: str, out_path: Path, lang: str) -> bool:
+    """Tier 2: edge-tts (Microsoft cloud voices, free, no API key, needs network)."""
+    try:
+        import edge_tts
+    except ImportError:
+        logger.info("tts chain: edge-tts package not installed, declining")
+        return False
+
+    voice = "de-DE-KatjaNeural" if lang == "de" else "en-US-AvaMultilingualNeural"
+    try:
+        async def _run() -> None:
+            communicate = edge_tts.Communicate((text or "").strip() or "...", voice)
+            await communicate.save(str(out_path))
+
+        asyncio.run(_run())
+        return out_path.exists() and out_path.stat().st_size > 0
+    except Exception as e:  # noqa: BLE001
+        logger.warning("tts chain: edge-tts tier declined (%s: %s)", type(e).__name__, e)
+        return False
+
+
+def _tts_tier_piper(text: str, out_path: Path, lang: str) -> bool:
+    """Tier 3: piper-tts (fully local/offline, needs a downloaded voice model)."""
+    try:
+        from piper import PiperVoice
+    except ImportError:
+        logger.info("tts chain: piper-tts package not installed, declining")
+        return False
+
+    model_name = _PIPER_VOICE_MODELS.get(lang, _PIPER_VOICE_MODELS["en"])
+    model_path = Path.home() / ".local" / "share" / "piper-voices" / f"{model_name}.onnx"
+    if not model_path.exists():
+        logger.info("tts chain: piper voice model %s not downloaded, declining", model_name)
+        return False
+
+    try:
+        import wave
+        voice = PiperVoice.load(str(model_path))
+        with wave.open(str(out_path), "wb") as wav_file:
+            voice.synthesize((text or "").strip() or "...", wav_file)
+        return out_path.exists() and out_path.stat().st_size > 0
+    except Exception as e:  # noqa: BLE001
+        logger.warning("tts chain: piper tier declined (%s: %s)", type(e).__name__, e)
+        return False
+
+
+def _tts_tier_mock(text: str, out_path: Path, lang: str) -> bool:
+    """Tier 4: last resort — a silent placeholder WAV, duration estimated from
+    text length (~150 words/minute), so a network-isolated CI environment
+    still produces a pipeline result instead of a hard failure."""
+    import wave
+    import struct
+
+    word_count = max(1, len((text or "").split()))
+    duration_s = max(1.0, word_count / 150.0 * 60.0)
+    sample_rate = 16000
+    n_frames = int(duration_s * sample_rate)
+
+    with wave.open(str(out_path), "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(struct.pack(f"<{n_frames}h", *([0] * n_frames)))
+    logger.warning("tts chain: all real tiers declined, wrote %.1fs silent mock", duration_s)
+    return True
+
+
+_TTS_CHAIN = (
+    ("openai", _tts_tier_openai),
+    ("edge", _tts_tier_edge),
+    ("piper", _tts_tier_piper),
+    ("mock", _tts_tier_mock),
+)
+
+
+def _synthesize_narration_chain(text: str, out_path: Path, lang: str) -> str:
+    """Try each TTS tier in priority order (ADR-2211); returns the provider
+    name that actually produced audio_path, for audit/feedback attribution."""
+    for provider_name, tier_fn in _TTS_CHAIN:
+        if tier_fn(text, out_path, lang):
+            return provider_name
+    # Unreachable: the mock tier never declines, but keep the contract explicit.
+    raise RuntimeError("tts chain: every tier declined, including mock")
+
+
 def _ffprobe_duration(path: Path) -> float:
     result = subprocess.run(
         [
@@ -682,7 +806,7 @@ def emit_feedback(job_id: str, event_type: str, metrics: Dict[str, Any]):
     logger.info(f"[{job_id}] Feedback: {event_type} | {metrics}")
 
 
-SUPPORTED_TTS_ENGINES = ("gtts", "openai")
+SUPPORTED_TTS_ENGINES = ("gtts", "openai", "auto")
 
 
 async def orchestrate_video(
@@ -774,6 +898,7 @@ async def orchestrate_video(
         total = len(storyboard.scenes)
         clip_paths: List[Path] = []
         srt_entries: List[Dict[str, Any]] = []
+        tts_providers_used: List[str] = []
 
         for i, scene in enumerate(storyboard.scenes, start=1):
             pct = int(((i - 1) / total) * 90)  # 0..90% spans scene production
@@ -793,10 +918,14 @@ async def orchestrate_video(
             # local fallback model — matching the actual narration text avoids
             # e.g. German TTS phonetics being applied to English narration.
             lang = _detect_lang(narration)
-            if tts_engine == "openai":
+            if tts_engine == "auto":
+                tts_provider_used = _synthesize_narration_chain(narration, audio_path, lang)
+            elif tts_engine == "openai":
                 _synthesize_narration_openai(narration, audio_path, lang)
+                tts_provider_used = "openai"
             else:
                 _synthesize_narration(narration, audio_path, lang)
+                tts_provider_used = "gtts"
             audio_duration = _ffprobe_duration(audio_path)
 
             _update_job_progress(
@@ -821,6 +950,7 @@ async def orchestrate_video(
 
             clip_paths.append(clip_path)
             srt_entries.append({"narration_text": narration, "duration_s": audio_duration})
+            tts_providers_used.append(tts_provider_used)
 
         measured_s = sum(e["duration_s"] for e in srt_entries)
         if measured_s > max_duration_minutes * 60:
@@ -839,6 +969,14 @@ async def orchestrate_video(
         duration_seconds = int(sum(e["duration_s"] for e in srt_entries))
         file_size_mb = round(video_path.stat().st_size / (1024 * 1024), 2)
 
+        # ADR-2211 auditability: record which TTS tier actually spoke each
+        # scene, not just which engine was configured — "openai" if every
+        # scene reached tier 1, "mixed" if the chain fell through on some
+        # scenes (e.g. a transient API failure), or the single provider name
+        # when tts_engine wasn't "auto" (no chain, no fallback possible).
+        distinct_providers = set(tts_providers_used)
+        provider_used = distinct_providers.pop() if len(distinct_providers) == 1 else "mixed"
+
         video_output = VideoOutput(
             job_id=job_id,
             video_path=str(video_path),
@@ -849,6 +987,8 @@ async def orchestrate_video(
                 "fps": 30,
                 "file_size_mb": file_size_mb,
                 "scenes": total,
+                "tts_engine": tts_engine,
+                "tts_provider_used": provider_used,
             },
         )
         storage.save_video_output(video_output)

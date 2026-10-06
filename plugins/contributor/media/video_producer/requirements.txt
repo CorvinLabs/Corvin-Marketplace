@@ -13,6 +13,13 @@ gTTS>=2.5.0
 openai>=1.0.0
 Pillow>=10.0.0
 
+# TTS fallback chain (ADR-2211): openai -> edge-tts -> piper-tts -> mock.
+# edge-tts is free, no API key, Microsoft's cloud voices (network required).
+# piper-tts is fully local/offline (no network after its voice model is
+# downloaded once) — the last real-audio tier before the mock stand-in.
+edge-tts>=6.1.0
+piper-tts>=1.2.0
+
 # Real screenshot capture for kind=="screenshot" scenes (CONCEPT-0095,
 # screenshot_capturer.py). A genuinely NEW runtime dependency, not a reuse
 # of anything already in this file — stated plainly per the concept's own
