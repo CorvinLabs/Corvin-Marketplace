@@ -265,6 +265,26 @@ def _detect_lang(text: str) -> str:
     return "en"
 
 
+def _synthesize_narration_openai(text: str, out_path: Path, lang: str) -> None:
+    """Real TTS via OpenAI API (requires OPENAI_API_KEY in environment)."""
+    try:
+        from openai import OpenAI
+    except ImportError:
+        logger.warning("openai package not available, falling back to gTTS")
+        _synthesize_narration(text, out_path, lang)
+        return
+
+    text = (text or "").strip() or "..."
+    client = OpenAI()  # Uses OPENAI_API_KEY from environment
+    voice = "nova" if lang == "de" else "nova"
+    response = client.audio.speech.create(
+        model="tts-1-hd",
+        voice=voice,
+        input=text,
+    )
+    response.stream_to_file(str(out_path))
+
+
 def _synthesize_narration(text: str, out_path: Path, lang: str) -> None:
     """Real TTS via gTTS (Google Translate public endpoint, no API key required)."""
     from gtts import gTTS
@@ -662,7 +682,7 @@ def emit_feedback(job_id: str, event_type: str, metrics: Dict[str, Any]):
     logger.info(f"[{job_id}] Feedback: {event_type} | {metrics}")
 
 
-SUPPORTED_TTS_ENGINES = ("gtts",)
+SUPPORTED_TTS_ENGINES = ("gtts", "openai")
 
 
 async def orchestrate_video(
@@ -772,7 +792,11 @@ async def orchestrate_video(
             # "answer in the task's language" instruction, especially the small
             # local fallback model — matching the actual narration text avoids
             # e.g. German TTS phonetics being applied to English narration.
-            _synthesize_narration(narration, audio_path, _detect_lang(narration))
+            lang = _detect_lang(narration)
+            if tts_engine == "openai":
+                _synthesize_narration_openai(narration, audio_path, lang)
+            else:
+                _synthesize_narration(narration, audio_path, lang)
             audio_duration = _ffprobe_duration(audio_path)
 
             _update_job_progress(

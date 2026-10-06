@@ -10,6 +10,7 @@
 anthropic>=0.40.0
 requests>=2.31.0
 gTTS>=2.5.0
+openai>=1.0.0
 Pillow>=10.0.0
 
 # Real screenshot capture for kind=="screenshot" scenes (CONCEPT-0095,
