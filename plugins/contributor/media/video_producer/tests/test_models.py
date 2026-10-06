@@ -3,7 +3,15 @@
 import json
 from datetime import datetime
 import pytest
-from src.models import Scene, Storyboard, VideoJob, VideoOutput
+from src.models import (
+    AssetAnalysisResult,
+    Contradiction,
+    FactualClaim,
+    Scene,
+    Storyboard,
+    VideoJob,
+    VideoOutput,
+)
 
 
 class TestScene:
@@ -184,3 +192,117 @@ class TestVideoOutput:
         output = VideoOutput.from_dict(data)
         assert output.job_id == "job1"
         assert output.metadata["duration_ms"] == 30000
+
+
+class TestFactualClaim:
+    """FactualClaim ported from CorvinOS core (consolidation plan 2026-10-06)."""
+
+    def test_claim_creation_defaults(self):
+        claim = FactualClaim(id="c1", text="The sky is blue", source_asset="doc.pdf")
+        assert claim.id == "c1"
+        assert claim.confidence == "medium"
+        assert claim.source_page is None
+        assert claim.contradictions == []
+
+    def test_claim_is_frozen(self):
+        claim = FactualClaim(id="c1", text="x", source_asset="a.pdf")
+        with pytest.raises(Exception):
+            claim.text = "y"
+
+    def test_claim_to_dict_from_dict_roundtrip(self):
+        claim = FactualClaim(
+            id="c1",
+            text="The sky is blue",
+            source_asset="doc.pdf",
+            source_page="3",
+            confidence="high",
+            contradictions=["c2"],
+        )
+        d = claim.to_dict()
+        restored = FactualClaim.from_dict(d)
+        assert restored == claim
+
+    def test_claim_to_dict_json_serializable(self):
+        claim = FactualClaim(id="c1", text="x", source_asset="a.pdf")
+        # Must not raise — the dict is plain str/bool/list/None.
+        json.dumps(claim.to_dict())
+
+
+class TestContradiction:
+    """Contradiction ported from CorvinOS core (consolidation plan 2026-10-06)."""
+
+    def test_contradiction_creation(self):
+        c = Contradiction(sources=["a.pdf", "b.pdf"], claim_a="x", claim_b="not x")
+        assert c.sources == ["a.pdf", "b.pdf"]
+        assert c.resolution is None
+
+    def test_contradiction_is_frozen(self):
+        c = Contradiction(sources=["a"], claim_a="x", claim_b="y")
+        with pytest.raises(Exception):
+            c.resolution = "resolved"
+
+    def test_contradiction_to_dict_from_dict_roundtrip(self):
+        c = Contradiction(sources=["a.pdf", "b.pdf"], claim_a="x", claim_b="not x", resolution="a.pdf wins")
+        restored = Contradiction.from_dict(c.to_dict())
+        assert restored == c
+
+
+class TestAssetAnalysisResult:
+    """AssetAnalysisResult ported from CorvinOS core (consolidation plan 2026-10-06)."""
+
+    def test_creation_defaults(self):
+        result = AssetAnalysisResult(metadata={"source": "doc.pdf"})
+        assert result.audience is None
+        assert result.purpose is None
+        assert result.factual_claims == []
+        assert result.ready_for_narration is False
+        assert result.blockers == []
+
+    def test_to_dict_includes_nested_claims_and_contradictions(self):
+        claim = FactualClaim(id="c1", text="x", source_asset="a.pdf")
+        contradiction = Contradiction(sources=["a.pdf"], claim_a="x", claim_b="y")
+        result = AssetAnalysisResult(
+            metadata={"source": "doc.pdf"},
+            audience="beginners",
+            purpose="explain x",
+            factual_claims=[claim],
+            contradictions=[contradiction],
+            ready_for_narration=True,
+        )
+        d = result.to_dict()
+        assert d["audience"] == "beginners"
+        assert d["ready_for_narration"] is True
+        assert d["factual_claims"][0]["id"] == "c1"
+        assert d["contradictions"][0]["claim_a"] == "x"
+
+    def test_to_dict_json_serializable(self):
+        claim = FactualClaim(id="c1", text="x", source_asset="a.pdf")
+        result = AssetAnalysisResult(metadata={}, factual_claims=[claim])
+        json.dumps(result.to_dict())  # must not raise
+
+    def test_from_dict_roundtrip(self):
+        claim = FactualClaim(id="c1", text="x", source_asset="a.pdf", confidence="high")
+        contradiction = Contradiction(sources=["a.pdf", "b.pdf"], claim_a="x", claim_b="not x")
+        result = AssetAnalysisResult(
+            metadata={"source": "doc.pdf"},
+            audience="beginners",
+            purpose="explain x",
+            factual_claims=[claim],
+            asset_roles={"a.pdf": "primary"},
+            terminology={"x": "definition of x"},
+            contradictions=[contradiction],
+            ready_for_narration=True,
+            blockers=["none"],
+        )
+        restored = AssetAnalysisResult.from_dict(result.to_dict())
+        assert restored.metadata == result.metadata
+        assert restored.audience == result.audience
+        assert restored.factual_claims == result.factual_claims
+        assert restored.contradictions == result.contradictions
+        assert restored.ready_for_narration == result.ready_for_narration
+
+    def test_from_dict_defaults_on_missing_keys(self):
+        result = AssetAnalysisResult.from_dict({})
+        assert result.metadata == {}
+        assert result.factual_claims == []
+        assert result.ready_for_narration is False

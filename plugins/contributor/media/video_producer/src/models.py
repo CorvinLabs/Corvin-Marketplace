@@ -2,8 +2,122 @@
 
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
-from typing import Optional, List
+from typing import Any, Optional, List
 import json
+
+
+@dataclass(frozen=True)
+class FactualClaim:
+    """A single sourced factual claim from asset analysis.
+
+    Ported from CorvinOS core (``core/skills/os_skills/video_producer/types.py``,
+    consolidation plan 2026-10-06) so the plugin is self-contained — this file
+    imports nothing from CorvinOS. Field shape kept byte-identical to the core
+    version so a future caller can move between the two without translation.
+    """
+    id: str
+    text: str
+    source_asset: str
+    source_page: Optional[str] = None
+    confidence: str = "medium"  # high, medium, low
+    contradictions: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "text": self.text,
+            "source_asset": self.source_asset,
+            "source_page": self.source_page,
+            "confidence": self.confidence,
+            "contradictions": list(self.contradictions),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "FactualClaim":
+        return cls(
+            id=data["id"],
+            text=data["text"],
+            source_asset=data["source_asset"],
+            source_page=data.get("source_page"),
+            confidence=data.get("confidence", "medium"),
+            contradictions=list(data.get("contradictions", [])),
+        )
+
+
+@dataclass(frozen=True)
+class Contradiction:
+    """A contradiction between two factual claims.
+
+    Ported from CorvinOS core alongside ``FactualClaim`` (see its docstring).
+    """
+    sources: List[str]
+    claim_a: str
+    claim_b: str
+    resolution: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "sources": list(self.sources),
+            "claim_a": self.claim_a,
+            "claim_b": self.claim_b,
+            "resolution": self.resolution,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Contradiction":
+        return cls(
+            sources=list(data["sources"]),
+            claim_a=data["claim_a"],
+            claim_b=data["claim_b"],
+            resolution=data.get("resolution"),
+        )
+
+
+@dataclass
+class AssetAnalysisResult:
+    """Complete analysis output from the asset_analyzer worker.
+
+    Ported from CorvinOS core alongside ``FactualClaim`` (see its docstring).
+    Mutable (unlike ``FactualClaim``/``Contradiction``) because the core
+    version is assembled incrementally by the analyzer worker.
+    """
+    metadata: dict
+    audience: Optional[str] = None
+    purpose: Optional[str] = None
+    factual_claims: List[FactualClaim] = field(default_factory=list)
+    asset_roles: dict = field(default_factory=dict)
+    terminology: dict = field(default_factory=dict)
+    contradictions: List[Contradiction] = field(default_factory=list)
+    ready_for_narration: bool = False
+    blockers: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        """Convert to a JSON-serializable dict."""
+        return {
+            "metadata": self.metadata,
+            "audience": self.audience,
+            "purpose": self.purpose,
+            "factual_claims": [c.to_dict() for c in self.factual_claims],
+            "asset_roles": self.asset_roles,
+            "terminology": self.terminology,
+            "contradictions": [c.to_dict() for c in self.contradictions],
+            "ready_for_narration": self.ready_for_narration,
+            "blockers": self.blockers,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AssetAnalysisResult":
+        return cls(
+            metadata=data.get("metadata", {}),
+            audience=data.get("audience"),
+            purpose=data.get("purpose"),
+            factual_claims=[FactualClaim.from_dict(c) for c in data.get("factual_claims", [])],
+            asset_roles=data.get("asset_roles", {}),
+            terminology=data.get("terminology", {}),
+            contradictions=[Contradiction.from_dict(c) for c in data.get("contradictions", [])],
+            ready_for_narration=data.get("ready_for_narration", False),
+            blockers=data.get("blockers", []),
+        )
 
 
 @dataclass
