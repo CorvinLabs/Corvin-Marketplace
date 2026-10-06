@@ -48,4 +48,11 @@ def annotate_screenshot(
     radius = max(1, min(20, (x1 - x0) / 2, (y1 - y0) / 2))
     draw.rounded_rectangle([x0, y0, x1, y1], radius=radius, outline=color, width=stroke_width)
 
-    img.save(out_path)
+    # format="PNG" explicit: the caller (skill.py::_render_screenshot_scene)
+    # writes through a same-directory temp file ending in ".tmp" before an
+    # atomic os.replace swap (CLAUDE.md: every write goes through a fresh
+    # temp + swap, never an in-place overwrite). Pillow's save() infers the
+    # format from the path's final extension when none is given, and ".tmp"
+    # is not a registered extension — every annotated screenshot failed here
+    # (ValueError: unknown file extension: .tmp) until this was explicit.
+    img.save(out_path, format="PNG")
