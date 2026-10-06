@@ -24,10 +24,14 @@ try:
     from .models import VideoJob, Storyboard, Scene, VideoOutput
     from .storage import get_storage, TERMINAL_STATUSES
     from .narration_validator import validate_storyboard_dict, validate_storyboard
+    from .screenshot_capturer import capture_screenshot, ScreenshotCaptureError
+    from .screenshot_annotator import annotate_screenshot
 except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
     from narration_validator import validate_storyboard_dict, validate_storyboard
+    from screenshot_capturer import capture_screenshot, ScreenshotCaptureError
+    from screenshot_annotator import annotate_screenshot
 
 logger = logging.getLogger(__name__)
 
@@ -410,8 +414,14 @@ def _render_slide_image(scene: Scene, out_path: Path, w: int = 1280, h: int = 72
         "summary": "SUMMARY",
         "anchor": "ANCHOR",
         "narration": "NARRATION",
-        "screenshot": "SCREENSHOT (placeholder — no live capture in this pipeline yet)",
-        "screencast": "SCREENCAST (placeholder — no live capture in this pipeline yet)",
+        # Real capture (CONCEPT-0095) happens in _render_screenshot_scene(),
+        # called from orchestrate_video() BEFORE this function for
+        # kind=="screenshot" — this label only shows if _render_slide_image
+        # is called directly for a screenshot scene (bypassing the real
+        # capture path, e.g. in a test), which is why it still says
+        # "placeholder" here and nowhere else.
+        "screenshot": "SCREENSHOT (placeholder — call _render_screenshot_scene via orchestrate_video for a real capture)",
+        "screencast": "SCREENCAST (not implemented — CONCEPT-0095 Tier 2/video capture is out of scope)",
         "animation": "ANIMATION (placeholder)",
     }.get(scene.kind, scene.kind.upper())
 
@@ -454,6 +464,38 @@ def _render_slide_image(scene: Scene, out_path: Path, w: int = 1280, h: int = 72
             y += line_height
 
     img.save(out_path)
+
+
+async def _render_screenshot_scene(scene: Scene, image_path: Path) -> None:
+    """Capture a real screenshot for a kind=='screenshot' scene (CONCEPT-0095),
+    optionally annotated with a spotlight call-out around
+    ``scene.highlight_selector``'s resolved bounding box.
+
+    Hard errors (ScreenshotCaptureError, or a missing screenshot_url)
+    propagate to the caller — a scene that can't be captured correctly must
+    fail the job, not silently fall back to a placeholder slide shipped as
+    if it were correct.
+    """
+    if not scene.screenshot_url:
+        raise ValueError(
+            f"Scene {scene.id!r} has kind='screenshot' but no screenshot_url set "
+            f"— cannot capture nothing"
+        )
+
+    capture = await capture_screenshot(
+        scene.screenshot_url,
+        image_path,
+        highlight_selector=scene.highlight_selector,
+    )
+
+    if capture.bounding_box:
+        # Annotate into a temp file, then atomically replace — never leave
+        # image_path in a partially-written state if annotation fails
+        # partway through (CLAUDE.md: every write goes through a fresh temp
+        # + swap, not an in-place overwrite of the file a reader might see).
+        tmp_path = image_path.with_suffix(".annotated.png.tmp")
+        annotate_screenshot(image_path, capture.bounding_box, tmp_path)
+        os.replace(tmp_path, image_path)
 
 
 def _assemble_scene_clip(image_path: Path, audio_path: Path, out_path: Path) -> None:
@@ -651,7 +693,10 @@ async def orchestrate_video(
                 f"Scene {i}/{total}: rendering slide...",
                 current_scene=i, total_scenes=total,
             )
-            _render_slide_image(scene, image_path, strategy=storyboard.didactic_strategy)
+            if scene.kind == "screenshot":
+                await _render_screenshot_scene(scene, image_path)
+            else:
+                _render_slide_image(scene, image_path, strategy=storyboard.didactic_strategy)
 
             _update_job_progress(
                 storage, job, "skills_running", pct,

@@ -20,6 +20,15 @@ class Scene:
     # not invalid.
     character_count: Optional[int] = None
     pacing_note: Optional[str] = None
+    # Screenshot capture (CONCEPT-0095): only meaningful when kind=="screenshot".
+    # screenshot_url replaces a keyword-guessed URL map — it is explicit, so a
+    # wrong URL fails loudly (selector lookup fails) instead of silently
+    # screenshotting the wrong page. highlight_selector is a CSS selector
+    # resolved against the real DOM to a bounding box for the spotlight
+    # call-out; a selector that doesn't resolve is a hard error, never a
+    # silently un-annotated screenshot.
+    screenshot_url: Optional[str] = None
+    highlight_selector: Optional[str] = None
 
     def to_dict(self):
         return asdict(self)

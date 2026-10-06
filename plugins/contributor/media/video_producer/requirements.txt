@@ -12,6 +12,13 @@ requests>=2.31.0
 gTTS>=2.5.0
 Pillow>=10.0.0
 
+# Real screenshot capture for kind=="screenshot" scenes (CONCEPT-0095,
+# screenshot_capturer.py). A genuinely NEW runtime dependency, not a reuse
+# of anything already in this file — stated plainly per the concept's own
+# requirement, not smuggled in as "just wiring up existing code".
+# Post-install step (not covered by pip): `playwright install chromium`.
+playwright>=1.40.0
+
 # System binary, not installable via pip — the live path shells out to it
 # (subprocess, not the ffmpeg-python wrapper, which was never imported):
 #   Debian/Ubuntu: apt-get install ffmpeg
