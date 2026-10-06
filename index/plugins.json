@@ -946,7 +946,7 @@
           "medium": 0,
           "low": 0
         },
-        "audit_report_url": "https://github.com/CorvinLabs/Corvin-ADR/blob/main/decisions/0598-semantic-context-retriever-plugin.md"
+        "audit_report_url": "https://github.com/CorvinLabs/Corvin-Knowledge/blob/main/decisions/ADR-0598-semantic-context-retriever-plugin.md"
       },
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
@@ -2354,7 +2354,7 @@
           "medium": 0,
           "low": 0
         },
-        "audit_report_url": "https://github.com/CorvinLabs/Corvin-ADR/blob/main/decisions/0598-semantic-context-retriever-plugin.md"
+        "audit_report_url": "https://github.com/CorvinLabs/Corvin-Knowledge/blob/main/decisions/ADR-0598-semantic-context-retriever-plugin.md"
       },
       "maintainer_url": "mailto:plugins@anthropic.com",
       "tags": [
@@ -3355,7 +3355,7 @@
             "medium": 0,
             "low": 0
           },
-          "audit_report_url": "https://github.com/CorvinLabs/Corvin-ADR/blob/main/decisions/0598-semantic-context-retriever-plugin.md"
+          "audit_report_url": "https://github.com/CorvinLabs/Corvin-Knowledge/blob/main/decisions/ADR-0598-semantic-context-retriever-plugin.md"
         },
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [
@@ -5191,7 +5191,7 @@
             "medium": 0,
             "low": 0
           },
-          "audit_report_url": "https://github.com/CorvinLabs/Corvin-ADR/blob/main/decisions/0598-semantic-context-retriever-plugin.md"
+          "audit_report_url": "https://github.com/CorvinLabs/Corvin-Knowledge/blob/main/decisions/ADR-0598-semantic-context-retriever-plugin.md"
         },
         "maintainer_url": "mailto:plugins@anthropic.com",
         "tags": [

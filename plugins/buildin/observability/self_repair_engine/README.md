@@ -152,7 +152,7 @@ The plugin handles errors gracefully:
 
 ## ADR Reference
 
-See [ADR-0542](../../../../../../../Corvin-ADR/decisions/ADR-0542-observability-self-repair-engine.md) for architectural decisions.
+See [ADR-0542](../../../../../../../Corvin-Knowledge/decisions/ADR-0542-observability-self-repair-engine.md) for architectural decisions.
 
 ---
 

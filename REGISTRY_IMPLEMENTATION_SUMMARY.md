@@ -456,10 +456,10 @@ registry.json                   # Aggregated plugin metadata (committed to repo)
 
 ## References
 
-- [ADR-0233](https://github.com/CorvinLabs/Corvin-ADR/blob/main/decisions/ADR-0233-plugin-consolidation.md) — Plugin System
-- [ADR-0243](https://github.com/CorvinLabs/Corvin-ADR/blob/main/decisions/ADR-0243-plugin-boot-layers.md) — Boot Layers
-- [ADR-0249](https://github.com/CorvinLabs/Corvin-ADR/blob/main/decisions/ADR-0249-plugin-trust-anchor.md) — Trust Anchor & Signatures
-- [ADR-0262](https://github.com/CorvinLabs/Corvin-ADR/blob/main/decisions/ADR-0262-plugin-builder-v2.md) — Plugin-Builder v2
+- [ADR-0233](https://github.com/CorvinLabs/Corvin-Knowledge/blob/main/decisions/ADR-0233-plugin-consolidation.md) — Plugin System
+- [ADR-0243](https://github.com/CorvinLabs/Corvin-Knowledge/blob/main/decisions/ADR-0243-plugin-boot-layers.md) — Boot Layers
+- [ADR-0249](https://github.com/CorvinLabs/Corvin-Knowledge/blob/main/decisions/ADR-0249-plugin-trust-anchor.md) — Trust Anchor & Signatures
+- [ADR-0262](https://github.com/CorvinLabs/Corvin-Knowledge/blob/main/decisions/ADR-0262-plugin-builder-v2.md) — Plugin-Builder v2
 - [ADR-0259](https://docs/claude-ref/e2e-wiring-proof-standard.md) — E2E Wiring Proof Standard
 - [PLUGIN_DEVELOPMENT.md](plugins/PLUGIN_DEVELOPMENT.md) — Developer Guide
 - [PLUGIN_MANIFEST.md](plugins/PLUGIN_MANIFEST.md) — Manifest Reference

@@ -159,7 +159,7 @@ The plugin handles errors gracefully:
 
 ## ADR Reference
 
-See [ADR-0543](../../../../../../../Corvin-ADR/decisions/ADR-0543-observability-telemetry-client.md) for architectural decisions.
+See [ADR-0543](../../../../../../../Corvin-Knowledge/decisions/ADR-0543-observability-telemetry-client.md) for architectural decisions.
 
 ---
 

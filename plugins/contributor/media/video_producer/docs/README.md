@@ -197,7 +197,7 @@ See [ADR-GRAPH.md](./ADR-GRAPH.md) for full constraint map.
 - **Main Plugin:** `/home/shumway/projects/Corvin-Marketplace/plugins/contributor/video_producer/`
 - **Marketplace:** https://github.com/CorvinLabs/Corvin-Marketplace
 - **Core Skill Framework:** https://github.com/CorvinLabs/CorvinOS (see `core/skills/`)
-- **Learning Infrastructure:** [ADR-0314](https://github.com/CorvinLabs/Corvin-ADR/decisions/ADR-0314-learning-infrastructure-event-schema.md)
+- **Learning Infrastructure:** [ADR-0314](https://github.com/CorvinLabs/Corvin-Knowledge/decisions/ADR-0314-learning-infrastructure-event-schema.md)
 
 ---
 

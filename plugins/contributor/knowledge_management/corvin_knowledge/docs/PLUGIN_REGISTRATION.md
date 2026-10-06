@@ -330,7 +330,7 @@ pytest tests/test_plugin_corvin_knowledge_wiring.py -v
 ## Related ADRs
 
 - **ADR-0884** — Claude Code Plugin Integration (CorvinOS)
-- **ADR-MESH-002** — Plugin Contract & Distribution (canonical)
+- **ADR-2201** — Plugin Contract & Distribution (canonical)
 - **ADR-0262/0263** — Plugin-Builder v2 (how to author plugins)
 - **ADR-0671** — Knowledge Graph Builder (tenant isolation)
 - **ADR-0519** — Self-Extending Knowledge Graph (learning loop)

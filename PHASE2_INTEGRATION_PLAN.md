@@ -122,7 +122,7 @@
 #### ADR Documentation
 - [ ] ADR created documenting plugin integration decisions
 - [ ] ADR filename: ADR-{next_number}-{plugin}-marketplace-integration.md
-- [ ] Moved to Corvin-ADR/decisions/ repository
+- [ ] Moved to Corvin-Knowledge/decisions/ repository
 - [ ] Links to this integration checklist
 
 ---
@@ -153,6 +153,6 @@
 - [ ] 77/77 E2E tests passing (11 plugins × 7 tests each)
 - [ ] Console Marketplace Panel displays all plugins correctly
 - [ ] No security vulnerabilities
-- [ ] Full ADR documentation in Corvin-ADR/decisions/
+- [ ] Full ADR documentation in Corvin-Knowledge/decisions/
 - [ ] Production deployment ready
 
