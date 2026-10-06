@@ -10,17 +10,24 @@ import json
 class Scene:
     """A single scene in a storyboard."""
     id: str
-    kind: str  # "title", "narration", "screenshot", "screencast"
+    kind: str  # "title", "opening", "problem", "solution", "example", "summary", "anchor", "narration", "screenshot", "screencast"
     duration_ms: int
     narration_text: Optional[str] = None
     visual_description: Optional[str] = None
+    # Didactic metadata (ADR-0004): set by the storyboard LLM when it follows
+    # the didactic constraints, read by NarrationValidator and the renderer.
+    # Never required — a scene without them is simply unvalidated/unstyled,
+    # not invalid.
+    character_count: Optional[int] = None
+    pacing_note: Optional[str] = None
 
     def to_dict(self):
         return asdict(self)
 
     @classmethod
     def from_dict(cls, data: dict):
-        return cls(**data)
+        known = {f for f in cls.__dataclass_fields__}
+        return cls(**{k: v for k, v in data.items() if k in known})
 
 
 @dataclass
@@ -30,6 +37,11 @@ class Storyboard:
     task: str
     scenes: List[Scene] = field(default_factory=list)
     generated_at: datetime = field(default_factory=datetime.now)
+    # Didactic strategy (ADR-0004): "minimal_visual" (concept-first, 150-250
+    # chars/scene, narration carries the content) or "rich_visual"
+    # (system/architecture, 300-400 chars/scene, diagrams carry the content).
+    # Defaults to "rich_visual" for storyboards predating this field.
+    didactic_strategy: str = "rich_visual"
 
     def to_json(self) -> str:
         return json.dumps({
@@ -37,18 +49,12 @@ class Storyboard:
             "task": self.task,
             "scenes": [s.to_dict() for s in self.scenes],
             "generated_at": self.generated_at.isoformat(),
+            "didactic_strategy": self.didactic_strategy,
         })
 
     @classmethod
     def from_json(cls, json_str: str):
-        data = json.loads(json_str)
-        scenes = [Scene.from_dict(s) for s in data.get("scenes", [])]
-        return cls(
-            id=data["id"],
-            task=data["task"],
-            scenes=scenes,
-            generated_at=datetime.fromisoformat(data["generated_at"])
-        )
+        return cls.from_dict(json.loads(json_str))
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -57,7 +63,8 @@ class Storyboard:
             id=data["id"],
             task=data["task"],
             scenes=scenes,
-            generated_at=datetime.fromisoformat(data["generated_at"])
+            generated_at=datetime.fromisoformat(data["generated_at"]),
+            didactic_strategy=data.get("didactic_strategy", "rich_visual"),
         )
 
 

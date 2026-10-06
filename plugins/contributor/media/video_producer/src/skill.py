@@ -23,9 +23,11 @@ import requests
 try:
     from .models import VideoJob, Storyboard, Scene, VideoOutput
     from .storage import get_storage, TERMINAL_STATUSES
+    from .narration_validator import validate_storyboard_dict, validate_storyboard
 except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
+    from narration_validator import validate_storyboard_dict, validate_storyboard
 
 logger = logging.getLogger(__name__)
 
@@ -108,17 +110,45 @@ def _call_storyboard_llm(prompt: str, backend: str = "ollama", model: Optional[s
     return response.json()["response"]
 
 
+_SYSTEM_KEYWORDS = ("system", "architecture", "pipeline", "flow", "layer", "chain", "stack", "kette", "architektur")
+_CONCEPT_KEYWORDS = ("concept", "loop", "why", "how", "principle", "algorithm", "konzept", "warum", "prinzip")
+
+
+def detect_didactic_strategy(task: str) -> str:
+    """
+    Auto-detect "minimal_visual" (concept-first: narration carries the
+    content, 150-250 chars/scene) vs "rich_visual" (system/architecture:
+    diagrams carry the content, 300-400 chars/scene).
+
+    Heuristic derived from measuring /home/shumway/projects/videos: the
+    adscale-LDD series (concept explainers) averaged 1.6 shapes/slide and
+    177 chars/slide; the Compliance series (system/architecture) averaged
+    16-20 shapes/slide and 335-345 chars/slide. Task keywords are the only
+    signal available before a single scene exists.
+    """
+    task_lower = task.lower()
+    if any(kw in task_lower for kw in _SYSTEM_KEYWORDS):
+        return "rich_visual"
+    if any(kw in task_lower for kw in _CONCEPT_KEYWORDS):
+        return "minimal_visual"
+    return "rich_visual"  # default: most tasks describe a system/process
+
+
 async def generate_storyboard_with_llm(
     task: str,
     max_duration_minutes: int = 60,
     backend: str = "ollama",
     model: Optional[str] = None,
+    didactic_strategy: Optional[str] = None,
 ) -> Storyboard:
     """
     LLM: Task → Storyboard (JSON)
 
     Generates a detailed video storyboard from natural language task.
-    Enforces constraints: max duration, max 100 scenes, structured format.
+    Enforces constraints: max duration, max scenes, per-scene text budget,
+    per-scene timing — all via narration_validator.validate_storyboard_dict(),
+    the single validation primitive (ADR-0004). This function no longer
+    duplicates those checks inline.
     """
     # A hard ceiling of 100 exists for the API contract, but the *requested* count
     # stays small and duration-independent: max_duration_minutes is a ceiling the
@@ -126,30 +156,50 @@ async def generate_storyboard_with_llm(
     # (no GPU on this host) needs a small scene count to finish in reasonable time.
     max_scenes = min(100, 6)
 
+    strategy = didactic_strategy or detect_didactic_strategy(task)
+    from narration_validator import CHAR_BUDGETS  # re-import ok: already a sys.modules hit
+    budget = CHAR_BUDGETS.get(strategy, CHAR_BUDGETS["rich_visual"])
+
     prompt = f"""
-You are a video storyboard generator. Given a task, generate a detailed video storyboard as JSON.
+You are a didactic video storyboard generator. Given a task, generate a detailed,
+pedagogically effective video storyboard as JSON.
 
 Task: {task}
 Max Duration: {max_duration_minutes} minutes (~{max_duration_minutes * 60000} ms)
+Didactic strategy: {strategy} — target {budget['min']}-{budget['max']} characters of
+narration per scene (sweet spot {budget['target']}).
 
-Generate scenes of types: "title", "narration", "screenshot", "animation", "screencast".
+Generate scenes of types: "title", "opening", "problem", "solution", "example",
+"summary", "anchor" (use "screenshot"/"screencast"/"animation" only if the task
+is literally about a UI walkthrough).
+
+DESIGN RULES (measured from real didactic videos, apply them):
+- Scene 1 is "title" (short hook, under {budget['min']}ch).
+- Scene 2 is "opening" or "problem": set context, state why this matters.
+- Middle scenes are "solution"/"example": one idea per scene.
+- Last scene is "summary" or "anchor": a memorable one-sentence takeaway.
+- Each scene duration: 8000-20000 ms (8-20 seconds) — long enough to read,
+  short enough to hold attention.
+- Narration per scene: {budget['min']}-{budget['max']} characters (hard ceiling 500).
+- Write narration_text in the SAME language as the Task above.
+- visual_description should name a concrete icon or diagram concept (e.g.
+  "shield icon" for security, "chain with four links" for a 4-step process),
+  not a vague mood description.
 
 CONSTRAINTS (MUST ENFORCE):
 - Total duration ≤ {max_duration_minutes * 60000} ms
 - Maximum {max_scenes} scenes
 - Each scene must have: id, kind, duration_ms, narration_text, visual_description
-- Narration per scene ≤ 500 characters
-- Each scene duration 1000–30000 ms (1–30 seconds)
-- Write narration_text in the SAME language as the Task above.
 
 OUTPUT FORMAT (valid JSON only, no markdown):
 {{
   "id": "sb_{uuid.uuid4().hex[:8]}",
+  "didactic_strategy": "{strategy}",
   "scenes": [
     {{
       "id": "s1",
       "kind": "title",
-      "duration_ms": 3000,
+      "duration_ms": 8000,
       "narration_text": "Welcome to Corvin",
       "visual_description": "Corvin logo on dark background"
     }},
@@ -169,26 +219,27 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
             raw = re.sub(r"^```[a-zA-Z]*\n?", "", raw)
             raw = re.sub(r"\n?```$", "", raw)
         storyboard_json = json.loads(raw)
+        storyboard_json.setdefault("didactic_strategy", strategy)
 
-        # Validate storyboard
         if not storyboard_json.get("scenes"):
             raise ValueError("No scenes in storyboard")
 
-        if len(storyboard_json["scenes"]) > 100:
-            raise ValueError(f"Too many scenes: {len(storyboard_json['scenes'])} > 100")
+        # Single validation primitive (ADR-0004): structural errors (scene
+        # count, total duration, hard char/duration ceilings) raise here.
+        # Didactic warnings (soft text-budget/timing/flow) do not block
+        # generation — they are returned to the caller via emit_feedback()
+        # in orchestrate_video() so the operator sees them without the
+        # pipeline refusing a usable-but-imperfect storyboard.
+        validation = validate_storyboard_dict(storyboard_json, max_duration_minutes)
+        validation.raise_if_invalid()
 
-        total_duration = sum(s.get("duration_ms", 0) for s in storyboard_json["scenes"])
-        max_ms = max_duration_minutes * 60000
-        if total_duration > max_ms:
-            raise ValueError(f"Storyboard too long: {total_duration}ms > {max_ms}ms")
-
-        # Create Storyboard object
-        scenes = [Scene(**s) for s in storyboard_json["scenes"]]
+        scenes = [Scene.from_dict(s) for s in storyboard_json["scenes"]]
         return Storyboard(
             id=storyboard_json.get("id", f"sb_{uuid.uuid4().hex[:8]}"),
             task=task,
             scenes=scenes,
-            generated_at=datetime.now()
+            generated_at=datetime.now(),
+            didactic_strategy=storyboard_json["didactic_strategy"],
         )
 
     except json.JSONDecodeError as e:
@@ -250,15 +301,114 @@ _FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 _FONT_BOLD_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 
-def _render_slide_image(scene: Scene, out_path: Path, w: int = 1280, h: int = 720) -> None:
+# Color-to-meaning system (ADR-0004, measured from /home/shumway/projects/videos
+# Compliance series): orange/trust=solution, red=risk/problem, steel=neutral.
+_COLOR_NAVY = (29, 42, 68)
+_COLOR_NAVY_DARK = (18, 32, 43)
+_COLOR_ICE = (232, 238, 247)
+_COLOR_STEEL = (91, 107, 130)
+_COLOR_RISK = (214, 69, 80)
+_COLOR_TRUST = (0, 168, 150)
+_COLOR_WARN = (224, 160, 50)
+
+_KIND_ACCENT = {
+    "problem": _COLOR_RISK,
+    "solution": _COLOR_TRUST,
+    "summary": _COLOR_TRUST,
+    "anchor": _COLOR_TRUST,
+    "opening": _COLOR_WARN,
+    "example": _COLOR_STEEL,
+}
+
+# Vector icon keywords → drawing function name. DejaVuSans has NO emoji
+# glyphs (verified: U+1F512 lock, U+26D3 chains, U+1F6E1 shield, U+1F50D
+# magnifier, U+1F4CB clipboard are all MISSING — they would render as empty
+# tofu boxes). Icons are therefore drawn as PIL vector primitives, not text
+# glyphs, so they render identically regardless of font coverage.
+_ICON_KEYWORDS = {
+    "shield": "shield", "security": "shield", "identity": "shield",
+    "chain": "chain", "link": "chain", "kette": "chain",
+    "audit": "magnifier", "search": "magnifier", "review": "magnifier",
+    "policy": "document", "document": "document", "rule": "document",
+    "warning": "warning", "risk": "warning", "danger": "warning",
+    "check": "check", "success": "check", "solved": "check", "trust": "check",
+    "arrow": "arrow", "process": "arrow", "flow": "arrow",
+    "loop": "loop", "cycle": "loop",
+}
+
+
+def _detect_icon(visual_description: str) -> Optional[str]:
+    """Parse visual_description for a known icon keyword (English or German)."""
+    desc_lower = (visual_description or "").lower()
+    for keyword, icon_name in _ICON_KEYWORDS.items():
+        if keyword in desc_lower:
+            return icon_name
+    return None
+
+
+def _draw_icon(draw: "ImageDraw.ImageDraw", icon_name: str, cx: int, cy: int, size: int, color: tuple) -> None:
+    """Draw a vector icon centered at (cx, cy), roughly `size` px across.
+    Primitives only (ellipse/polygon/line/rectangle) — no glyph dependency."""
+    r = size // 2
+    if icon_name == "shield":
+        pts = [
+            (cx, cy - r), (cx + r, cy - r // 2), (cx + r, cy + r // 4),
+            (cx, cy + r), (cx - r, cy + r // 4), (cx - r, cy - r // 2),
+        ]
+        draw.polygon(pts, outline=color, width=6)
+    elif icon_name == "chain":
+        link_r = size // 5
+        for i, dx in enumerate((-2, -1, 0, 1)):
+            lx = cx + dx * link_r * 2
+            draw.ellipse([lx - link_r, cy - link_r, lx + link_r, cy + link_r], outline=color, width=6)
+    elif icon_name == "magnifier":
+        glass_r = int(r * 0.7)
+        draw.ellipse([cx - glass_r, cy - glass_r - r // 4, cx + glass_r, cy + glass_r - r // 4], outline=color, width=6)
+        draw.line([cx + glass_r // 2, cy + glass_r - r // 4, cx + r, cy + r], fill=color, width=8)
+    elif icon_name == "document":
+        draw.rectangle([cx - r // 2, cy - r, cx + r // 2, cy + r], outline=color, width=5)
+        for i in range(3):
+            ly = cy - r // 2 + i * (r // 2)
+            draw.line([cx - r // 3, ly, cx + r // 3, ly], fill=color, width=4)
+    elif icon_name == "warning":
+        draw.polygon([(cx, cy - r), (cx + r, cy + r), (cx - r, cy + r)], outline=color, width=6)
+        draw.line([cx, cy - r // 3, cx, cy + r // 4], fill=color, width=6)
+        draw.ellipse([cx - 3, cy + r // 2, cx + 3, cy + r // 2 + 6], fill=color)
+    elif icon_name == "check":
+        draw.line([cx - r, cy, cx - r // 4, cy + r // 2], fill=color, width=10)
+        draw.line([cx - r // 4, cy + r // 2, cx + r, cy - r // 2], fill=color, width=10)
+    elif icon_name == "arrow":
+        draw.line([cx - r, cy, cx + r // 2, cy], fill=color, width=8)
+        draw.polygon([(cx + r, cy), (cx + r // 3, cy - r // 2), (cx + r // 3, cy + r // 2)], fill=color)
+    elif icon_name == "loop":
+        draw.arc([cx - r, cy - r, cx + r, cy + r], start=30, end=300, fill=color, width=8)
+        draw.polygon([(cx + r, cy - r // 3), (cx + int(r * 1.3), cy - r // 2), (cx + int(r * 0.9), cy - int(r * 0.9))], fill=color)
+    else:
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, width=6)
+
+
+def _render_slide_image(scene: Scene, out_path: Path, w: int = 1280, h: int = 720, strategy: Optional[str] = None) -> None:
     """
     Render a real 1280x720 PNG slide via Pillow (this ffmpeg static build ships
     without the drawtext filter — confirmed via `ffmpeg -filters`).
+
+    ``strategy`` ("minimal_visual" | "rich_visual", ADR-0004) selects the
+    layout: rich_visual draws a vector icon derived from visual_description
+    plus a kind-colored accent bar; minimal_visual stays text-first (the
+    narration carries the content, per the video-production analysis of
+    /home/shumway/projects/videos — the adscale-LDD series averaged 1.6
+    shapes/slide vs. the Compliance series' 16-20).
     """
     from PIL import Image, ImageDraw, ImageFont
 
     kind_label = {
         "title": "TITLE",
+        "opening": "OPENING",
+        "problem": "PROBLEM",
+        "solution": "SOLUTION",
+        "example": "EXAMPLE",
+        "summary": "SUMMARY",
+        "anchor": "ANCHOR",
         "narration": "NARRATION",
         "screenshot": "SCREENSHOT (placeholder — no live capture in this pipeline yet)",
         "screencast": "SCREENCAST (placeholder — no live capture in this pipeline yet)",
@@ -268,7 +418,9 @@ def _render_slide_image(scene: Scene, out_path: Path, w: int = 1280, h: int = 72
     body_source = scene.visual_description if scene.kind in ("screenshot", "screencast", "animation") else scene.narration_text
     body_lines = _wrap_text(body_source or scene.narration_text or "")
 
-    bg_color = (29, 42, 68) if scene.kind == "title" else (20, 20, 28)
+    bg_color = _COLOR_NAVY_DARK if scene.kind == "title" else _COLOR_NAVY
+    accent_color = _KIND_ACCENT.get(scene.kind, (138, 180, 255))
+
     img = Image.new("RGB", (w, h), color=bg_color)
     draw = ImageDraw.Draw(img)
 
@@ -279,14 +431,27 @@ def _render_slide_image(scene: Scene, out_path: Path, w: int = 1280, h: int = 72
         bbox = draw.textbbox((0, 0), text, font=font)
         return (w - (bbox[2] - bbox[0])) // 2
 
-    draw.text((centered_x(kind_label, title_font), 90), kind_label, font=title_font, fill=(138, 180, 255))
+    icon_name = _detect_icon(scene.visual_description or "")
 
-    line_height = 42
-    total_height = line_height * len(body_lines)
-    y = (h - total_height) // 2
-    for line in body_lines:
-        draw.text((centered_x(line, body_font), y), line, font=body_font, fill=(255, 255, 255))
-        y += line_height
+    if strategy == "rich_visual" and icon_name:
+        # Icon-rich layout: icon top, label below icon, narration at bottom.
+        _draw_icon(draw, icon_name, w // 2, 180, 140, accent_color)
+        draw.text((centered_x(kind_label, title_font), 280), kind_label, font=title_font, fill=accent_color)
+        line_height = 42
+        total_height = line_height * len(body_lines)
+        y = h - 80 - total_height
+        for line in body_lines:
+            draw.text((centered_x(line, body_font), y), line, font=body_font, fill=_COLOR_ICE)
+            y += line_height
+    else:
+        # Minimal/default layout: kind label (kind-colored) + centered narration.
+        draw.text((centered_x(kind_label, title_font), 90), kind_label, font=title_font, fill=accent_color)
+        line_height = 42
+        total_height = line_height * len(body_lines)
+        y = (h - total_height) // 2
+        for line in body_lines:
+            draw.text((centered_x(line, body_font), y), line, font=body_font, fill=_COLOR_ICE)
+            y += line_height
 
     img.save(out_path)
 
@@ -428,6 +593,14 @@ async def orchestrate_video(
             total_scenes=len(storyboard.scenes),
         )
 
+        # Didactic validation (ADR-0004): re-runs the same cheap, LLM-free
+        # primitive generate_storyboard_with_llm() already used for the hard
+        # gate, this time to surface soft warnings (text-budget, timing,
+        # narrative flow) into the audit/feedback trail. Never raises here —
+        # a storyboard that passed the hard gate is usable; warnings inform,
+        # they don't block.
+        didactic_validation = validate_storyboard(storyboard, max_duration_minutes)
+
         emit_feedback(
             job_id=job_id,
             event_type="storyboard_generated",
@@ -435,8 +608,16 @@ async def orchestrate_video(
                 "scenes_count": len(storyboard.scenes),
                 "total_duration_ms": sum(s.duration_ms for s in storyboard.scenes),
                 "quality_score": 0.8,
+                "didactic_strategy": storyboard.didactic_strategy,
+                "didactic_warnings": len(didactic_validation.warnings),
+                **didactic_validation.metrics,
             }
         )
+        if didactic_validation.warnings:
+            logger.info(
+                "[%s] Didactic warnings (%d): %s", job_id, len(didactic_validation.warnings),
+                "; ".join(f"{w.scene_id}:{w.rule}" for w in didactic_validation.warnings),
+            )
 
         # Step 2: Real per-scene synthesis (audio + slide + clip)
         _update_job_progress(storage, job, "skills_running", 0, "Starting scene production...")
@@ -470,7 +651,7 @@ async def orchestrate_video(
                 f"Scene {i}/{total}: rendering slide...",
                 current_scene=i, total_scenes=total,
             )
-            _render_slide_image(scene, image_path)
+            _render_slide_image(scene, image_path, strategy=storyboard.didactic_strategy)
 
             _update_job_progress(
                 storage, job, "skills_running", pct,
