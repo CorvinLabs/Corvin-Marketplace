@@ -350,48 +350,114 @@ def _detect_icon(visual_description: str) -> Optional[str]:
     return None
 
 
-def _draw_icon(draw: "ImageDraw.ImageDraw", icon_name: str, cx: int, cy: int, size: int, color: tuple) -> None:
-    """Draw a vector icon centered at (cx, cy), roughly `size` px across.
-    Primitives only (ellipse/polygon/line/rectangle) — no glyph dependency."""
-    r = size // 2
+def _draw_vertical_gradient(img: "Image.Image", top_color: tuple, bottom_color: tuple) -> None:
+    """Paint a vertical gradient in place (flat fills read as a slide
+    template placeholder, not a produced video — the /home/shumway/projects/videos
+    reference series never uses flat single-color backgrounds)."""
+    from PIL import ImageDraw
+
+    w, h = img.size
+    draw = ImageDraw.Draw(img)
+    for y in range(h):
+        t = y / max(1, h - 1)
+        row = tuple(int(top_color[c] + (bottom_color[c] - top_color[c]) * t) for c in range(3))
+        draw.line([(0, y), (w, y)], fill=row)
+
+
+def _draw_progress_dots(draw: "ImageDraw.ImageDraw", w: int, h: int, scene_index: int, total_scenes: int, accent_color: tuple) -> None:
+    """Small dot row near the bottom edge showing position in the storyboard
+    (filled = current/passed, hollow = upcoming) — the one orientation cue a
+    viewer otherwise only gets from counting narration beats."""
+    if total_scenes <= 1:
+        return
+    dot_r = 5
+    gap = 22
+    total_width = (total_scenes - 1) * gap
+    start_x = (w - total_width) // 2
+    y = h - 28
+    for i in range(total_scenes):
+        cx = start_x + i * gap
+        if i < scene_index:
+            draw.ellipse([cx - dot_r, y - dot_r, cx + dot_r, y + dot_r], fill=accent_color)
+        else:
+            draw.ellipse([cx - dot_r, y - dot_r, cx + dot_r, y + dot_r], outline=accent_color, width=2)
+
+
+_ICON_SUPERSAMPLE = 4  # shared by _draw_icon and _draw_icon_primitives' stroke widths
+
+
+def _draw_icon(draw_unused: "ImageDraw.ImageDraw", icon_name: str, cx: int, cy: int, size: int, color: tuple) -> None:
+    """Draw a vector icon centered at (cx, cy), roughly `size` px across,
+    anti-aliased via 4x supersampling (PIL's draw primitives have no AA —
+    at native resolution icon edges/curves came out visibly jagged) then
+    alpha-composited onto the caller's image. `draw_unused` kept so the
+    call site in _render_slide_image doesn't need to change."""
+    from PIL import Image, ImageDraw
+
+    img = draw_unused._image  # the Image.Image backing the caller's ImageDraw
+    ss = _ICON_SUPERSAMPLE
+    r = (size * ss) // 2
+    layer = Image.new("RGBA", (size * ss, size * ss), (0, 0, 0, 0))
+    ldraw = ImageDraw.Draw(layer)
+    ccx = ccy = (size * ss) // 2
+    rgba = color + (255,) if len(color) == 3 else color
+    _draw_icon_primitives(ldraw, icon_name, ccx, ccy, r, rgba)
+    layer = layer.resize((size, size), Image.LANCZOS)
+    img.paste(layer, (cx - size // 2, cy - size // 2), layer)
+
+
+def _draw_icon_primitives(draw: "ImageDraw.ImageDraw", icon_name: str, cx: int, cy: int, r: int, color: tuple) -> None:
+    """The actual icon geometry, parameterized by radius `r` (half of the
+    target bounding box). Stroke widths are scaled by _ICON_SUPERSAMPLE since
+    this always runs at supersampled resolution (called only from _draw_icon)."""
+    size = r * 2
+    ss = _ICON_SUPERSAMPLE
     if icon_name == "shield":
         pts = [
             (cx, cy - r), (cx + r, cy - r // 2), (cx + r, cy + r // 4),
             (cx, cy + r), (cx - r, cy + r // 4), (cx - r, cy - r // 2),
         ]
-        draw.polygon(pts, outline=color, width=6)
+        draw.polygon(pts, outline=color, width=6 * ss)
     elif icon_name == "chain":
         link_r = size // 5
         for i, dx in enumerate((-2, -1, 0, 1)):
             lx = cx + dx * link_r * 2
-            draw.ellipse([lx - link_r, cy - link_r, lx + link_r, cy + link_r], outline=color, width=6)
+            draw.ellipse([lx - link_r, cy - link_r, lx + link_r, cy + link_r], outline=color, width=6 * ss)
     elif icon_name == "magnifier":
         glass_r = int(r * 0.7)
-        draw.ellipse([cx - glass_r, cy - glass_r - r // 4, cx + glass_r, cy + glass_r - r // 4], outline=color, width=6)
-        draw.line([cx + glass_r // 2, cy + glass_r - r // 4, cx + r, cy + r], fill=color, width=8)
+        draw.ellipse([cx - glass_r, cy - glass_r - r // 4, cx + glass_r, cy + glass_r - r // 4], outline=color, width=6 * ss)
+        draw.line([cx + glass_r // 2, cy + glass_r - r // 4, cx + r, cy + r], fill=color, width=8 * ss)
     elif icon_name == "document":
-        draw.rectangle([cx - r // 2, cy - r, cx + r // 2, cy + r], outline=color, width=5)
+        draw.rectangle([cx - r // 2, cy - r, cx + r // 2, cy + r], outline=color, width=5 * ss)
         for i in range(3):
             ly = cy - r // 2 + i * (r // 2)
-            draw.line([cx - r // 3, ly, cx + r // 3, ly], fill=color, width=4)
+            draw.line([cx - r // 3, ly, cx + r // 3, ly], fill=color, width=4 * ss)
     elif icon_name == "warning":
-        draw.polygon([(cx, cy - r), (cx + r, cy + r), (cx - r, cy + r)], outline=color, width=6)
-        draw.line([cx, cy - r // 3, cx, cy + r // 4], fill=color, width=6)
-        draw.ellipse([cx - 3, cy + r // 2, cx + 3, cy + r // 2 + 6], fill=color)
+        draw.polygon([(cx, cy - r), (cx + r, cy + r), (cx - r, cy + r)], outline=color, width=6 * ss)
+        draw.line([cx, cy - r // 3, cx, cy + r // 4], fill=color, width=6 * ss)
+        draw.ellipse([cx - 3 * ss, cy + r // 2, cx + 3 * ss, cy + r // 2 + 6 * ss], fill=color)
     elif icon_name == "check":
-        draw.line([cx - r, cy, cx - r // 4, cy + r // 2], fill=color, width=10)
-        draw.line([cx - r // 4, cy + r // 2, cx + r, cy - r // 2], fill=color, width=10)
+        draw.line([cx - r, cy, cx - r // 4, cy + r // 2], fill=color, width=10 * ss)
+        draw.line([cx - r // 4, cy + r // 2, cx + r, cy - r // 2], fill=color, width=10 * ss)
     elif icon_name == "arrow":
-        draw.line([cx - r, cy, cx + r // 2, cy], fill=color, width=8)
+        draw.line([cx - r, cy, cx + r // 2, cy], fill=color, width=8 * ss)
         draw.polygon([(cx + r, cy), (cx + r // 3, cy - r // 2), (cx + r // 3, cy + r // 2)], fill=color)
     elif icon_name == "loop":
-        draw.arc([cx - r, cy - r, cx + r, cy + r], start=30, end=300, fill=color, width=8)
+        draw.arc([cx - r, cy - r, cx + r, cy + r], start=30, end=300, fill=color, width=8 * ss)
         draw.polygon([(cx + r, cy - r // 3), (cx + int(r * 1.3), cy - r // 2), (cx + int(r * 0.9), cy - int(r * 0.9))], fill=color)
     else:
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, width=6)
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, width=6 * ss)
 
 
-def _render_slide_image(scene: Scene, out_path: Path, w: int = 1280, h: int = 720, strategy: Optional[str] = None) -> None:
+def _render_slide_image(
+    scene: Scene,
+    out_path: Path,
+    w: int = 1280,
+    h: int = 720,
+    strategy: Optional[str] = None,
+    scene_index: Optional[int] = None,
+    total_scenes: Optional[int] = None,
+) -> None:
     """
     Render a real 1280x720 PNG slide via Pillow (this ffmpeg static build ships
     without the drawtext filter — confirmed via `ffmpeg -filters`).
@@ -402,6 +468,11 @@ def _render_slide_image(scene: Scene, out_path: Path, w: int = 1280, h: int = 72
     narration carries the content, per the video-production analysis of
     /home/shumway/projects/videos — the adscale-LDD series averaged 1.6
     shapes/slide vs. the Compliance series' 16-20).
+
+    ``scene_index``/``total_scenes`` (both 1-based, optional) draw a
+    progress-dot row — omitted entirely when the caller doesn't have them
+    (e.g. a standalone test rendering a single scene), so this stays
+    backward compatible.
     """
     from PIL import Image, ImageDraw, ImageFont
 
@@ -428,10 +499,12 @@ def _render_slide_image(scene: Scene, out_path: Path, w: int = 1280, h: int = 72
     body_source = scene.visual_description if scene.kind in ("screenshot", "screencast", "animation") else scene.narration_text
     body_lines = _wrap_text(body_source or scene.narration_text or "")
 
-    bg_color = _COLOR_NAVY_DARK if scene.kind == "title" else _COLOR_NAVY
+    bg_top = _COLOR_NAVY_DARK if scene.kind == "title" else tuple(c + 6 for c in _COLOR_NAVY)
+    bg_bottom = (8, 14, 22) if scene.kind == "title" else _COLOR_NAVY_DARK
     accent_color = _KIND_ACCENT.get(scene.kind, (138, 180, 255))
 
-    img = Image.new("RGB", (w, h), color=bg_color)
+    img = Image.new("RGB", (w, h))
+    _draw_vertical_gradient(img, bg_top, bg_bottom)
     draw = ImageDraw.Draw(img)
 
     title_font = ImageFont.truetype(_FONT_BOLD_PATH, 40)
@@ -441,12 +514,23 @@ def _render_slide_image(scene: Scene, out_path: Path, w: int = 1280, h: int = 72
         bbox = draw.textbbox((0, 0), text, font=font)
         return (w - (bbox[2] - bbox[0])) // 2
 
+    def draw_label_with_divider(y: int) -> None:
+        # Kind label plus a short accent-colored rule beneath it — the one
+        # hierarchy cue the flat-text layout was missing entirely (label and
+        # body previously read as the same visual weight once narration ran
+        # past one line).
+        draw.text((centered_x(kind_label, title_font), y), kind_label, font=title_font, fill=accent_color)
+        bbox = draw.textbbox((0, y), kind_label, font=title_font)
+        divider_y = bbox[3] + 10
+        divider_half_w = min(90, (bbox[2] - bbox[0]) // 2)
+        draw.line([(w // 2 - divider_half_w, divider_y), (w // 2 + divider_half_w, divider_y)], fill=accent_color, width=3)
+
     icon_name = _detect_icon(scene.visual_description or "")
 
     if strategy == "rich_visual" and icon_name:
         # Icon-rich layout: icon top, label below icon, narration at bottom.
         _draw_icon(draw, icon_name, w // 2, 180, 140, accent_color)
-        draw.text((centered_x(kind_label, title_font), 280), kind_label, font=title_font, fill=accent_color)
+        draw_label_with_divider(280)
         line_height = 42
         total_height = line_height * len(body_lines)
         y = h - 80 - total_height
@@ -455,13 +539,16 @@ def _render_slide_image(scene: Scene, out_path: Path, w: int = 1280, h: int = 72
             y += line_height
     else:
         # Minimal/default layout: kind label (kind-colored) + centered narration.
-        draw.text((centered_x(kind_label, title_font), 90), kind_label, font=title_font, fill=accent_color)
+        draw_label_with_divider(90)
         line_height = 42
         total_height = line_height * len(body_lines)
-        y = (h - total_height) // 2
+        y = (h - total_height) // 2 + 20
         for line in body_lines:
             draw.text((centered_x(line, body_font), y), line, font=body_font, fill=_COLOR_ICE)
             y += line_height
+
+    if scene_index is not None and total_scenes is not None:
+        _draw_progress_dots(draw, w, h, scene_index, total_scenes, accent_color)
 
     img.save(out_path)
 
@@ -696,7 +783,10 @@ async def orchestrate_video(
             if scene.kind == "screenshot":
                 await _render_screenshot_scene(scene, image_path)
             else:
-                _render_slide_image(scene, image_path, strategy=storyboard.didactic_strategy)
+                _render_slide_image(
+                    scene, image_path, strategy=storyboard.didactic_strategy,
+                    scene_index=i, total_scenes=total,
+                )
 
             _update_job_progress(
                 storage, job, "skills_running", pct,
