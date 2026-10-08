@@ -26,12 +26,16 @@ try:
     from .narration_validator import validate_storyboard_dict, validate_storyboard, CHAR_BUDGETS
     from .screenshot_capturer import capture_screenshot, ScreenshotCaptureError
     from .screenshot_annotator import annotate_screenshot
+    from .web_templates import TEMPLATES, THEMES, WebSceneError, load_tokens, validate_scene_data
+    from .web_renderer import FPS_DEFAULT, MAX_SCENE_SECONDS, WebRenderError, WebSlideRenderer
 except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
     from narration_validator import validate_storyboard_dict, validate_storyboard, CHAR_BUDGETS
     from screenshot_capturer import capture_screenshot, ScreenshotCaptureError
     from screenshot_annotator import annotate_screenshot
+    from web_templates import TEMPLATES, THEMES, WebSceneError, load_tokens, validate_scene_data
+    from web_renderer import FPS_DEFAULT, MAX_SCENE_SECONDS, WebRenderError, WebSlideRenderer
 
 logger = logging.getLogger(__name__)
 
@@ -189,6 +193,21 @@ DESIGN RULES (measured from real didactic videos, apply them):
   "shield icon" for security, "chain with four links" for a 4-step process),
   not a vague mood description.
 
+WEB SLIDES (preferred visual for every scene): add "template" and "data".
+Templates and their data (plain text only, never HTML; keep texts short):
+- "hero":    {{"badge"?, "title", "accent"?, "subtitle"?}}  (title slide; accent = italic highlight line)
+- "content": {{"eyebrow"?, "title", "bullets": [1-5 short strings]}}
+- "stat":    {{"eyebrow"?, "value": number, "decimals"?: 0-2, "prefix"?, "suffix"?, "label", "caption"?, "locale"?: "de"|"en"}}
+             (only for a number stated in the task or narration; never invent figures)
+- "diagram": {{"eyebrow"?, "title", "nodes": [2-6 {{"label", "sub"?}}], "highlight"?: index}}  (left-to-right flow)
+- "chart":   {{"eyebrow"?, "title", "bars": [2-8 {{"label", "value": number >= 0}}], "unit"?, "decimals"?, "highlight"?, "locale"?}}
+             (only with real numbers from the task; never invent data)
+- "compare": {{"eyebrow"?, "title", "left": {{"title", "points": [1-4]}}, "right": {{"title", "points": [1-4]}}}}
+- "quote":   {{"eyebrow"?, "quote", "attribution"?, "locale"?}}
+- "code":    {{"eyebrow"?, "title", "language"?, "lines": [1-12 strings]}}
+Limits: title 70-80 chars, bullet 110, node label 28, bar label 24.
+Optional per scene: "theme": "dark" (default) or "light".
+
 CONSTRAINTS (MUST ENFORCE):
 - Total duration ≤ {max_duration_minutes * 60000} ms
 - Maximum {max_scenes} scenes
@@ -204,7 +223,9 @@ OUTPUT FORMAT (valid JSON only, no markdown):
       "kind": "title",
       "duration_ms": 8000,
       "narration_text": "Welcome to Corvin",
-      "visual_description": "Corvin logo on dark background"
+      "visual_description": "Corvin logo on dark background",
+      "template": "hero",
+      "data": {{"title": "Welcome to Corvin", "accent": "The agentic OS"}}
     }},
     ...
   ]
@@ -235,6 +256,11 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
         # pipeline refusing a usable-but-imperfect storyboard.
         validation = validate_storyboard_dict(storyboard_json, max_duration_minutes)
         validation.raise_if_invalid()
+
+        # LLM output is untrusted: an invalid web-slide spec is dropped (the
+        # scene then renders on the Pillow path), never passed through.
+        for warning in _apply_web_scene_contract(storyboard_json["scenes"], strict=False):
+            logger.info("storyboard web-slide warning: %s", warning)
 
         scenes = [Scene.from_dict(s) for s in storyboard_json["scenes"]]
         return Storyboard(
@@ -728,6 +754,63 @@ async def _render_screenshot_scene(scene: Scene, image_path: Path) -> None:
         os.replace(tmp_path, image_path)
 
 
+def _apply_web_scene_contract(scenes: List[Dict[str, Any]], strict: bool) -> List[str]:
+    """Validate each scene's web-slide fields (template/data/theme) in place.
+
+    strict=True (operator-supplied storyboard): the first violation raises
+    ValueError before any work starts. strict=False (LLM output): an invalid
+    spec is removed from the scene, which then renders on the Pillow path;
+    the returned warnings say what was dropped and why.
+    """
+    warnings: List[str] = []
+    for scene in scenes:
+        if not isinstance(scene, dict):
+            continue
+        sid = scene.get("id", "?")
+        template, data, theme = scene.get("template"), scene.get("data"), scene.get("theme")
+        try:
+            if theme is not None and theme not in THEMES:
+                raise WebSceneError(f"unknown theme {theme!r}")
+            if template is None:
+                if data is not None:
+                    raise WebSceneError("'data' given without a 'template'")
+                continue
+            scene["data"] = validate_scene_data(template, data if data is not None else {})
+        except WebSceneError as e:
+            if strict:
+                raise ValueError(f"scene {sid}: {e}") from None
+            warnings.append(f"scene {sid}: {e} (rendered without web template)")
+            for key in ("template", "data", "theme"):
+                scene.pop(key, None)
+    return warnings
+
+
+def _video_args() -> List[str]:
+    """Encoder settings shared by every scene clip, so the concat demuxer can
+    stream-copy them: 1920x1080, 30 fps, yuv420p, H.264 CRF 18, AAC 160k."""
+    return [
+        "-c:v", "libx264", "-crf", "18", "-preset", "slow", "-pix_fmt", "yuv420p", "-r", "30",
+        "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2",
+    ]
+
+
+def _assemble_frames_clip(frames_dir: Path, audio_path: Path, audio_duration: float, out_path: Path, fps: int) -> None:
+    """Animated frame sequence + narration -> scene clip. The sequence ends when the
+    slide's entrance animations end; its last frame is held for the rest of the audio."""
+    cmd = [
+        "ffmpeg", "-y",
+        "-framerate", str(fps), "-i", str(frames_dir / "%05d.png"),
+        "-i", str(audio_path),
+        "-filter_complex",
+        f"[0:v]tpad=stop_mode=clone:stop_duration={audio_duration + 1.0:.3f},fps=30,format=yuv420p[v]",
+        "-map", "[v]", "-map", "1:a",
+        *_video_args(),
+        "-shortest",
+        str(out_path),
+    ]
+    subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+
 def _assemble_scene_clip(image_path: Path, audio_path: Path, out_path: Path) -> None:
     """Combine one still image + narration audio into a scene mp4 (real ffmpeg encode).
 
@@ -739,10 +822,11 @@ def _assemble_scene_clip(image_path: Path, audio_path: Path, out_path: Path) -> 
         "ffmpeg", "-y",
         "-loop", "1", "-i", str(image_path),
         "-i", str(audio_path),
-        "-c:v", "libx264", "-tune", "stillimage", "-crf", "18", "-preset", "slow",
-        "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "160k",
-        "-shortest", "-vf", "fps=30",
+        "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease:flags=lanczos,"
+               "pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p",
+        *_video_args(),
+        "-tune", "stillimage",
+        "-shortest",
         str(out_path),
     ]
     subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -808,6 +892,67 @@ def emit_feedback(job_id: str, event_type: str, metrics: Dict[str, Any]):
 SUPPORTED_TTS_ENGINES = ("gtts", "openai", "auto")
 
 
+def _storyboard_from_operator(raw: Any, task: str, max_duration_minutes: int) -> Storyboard:
+    """An operator-supplied storyboard skips the LLM but not a single check:
+    the same validation primitive as LLM output, plus a strict web-slide contract."""
+    if not isinstance(raw, dict) or not isinstance(raw.get("scenes"), list) or not raw["scenes"]:
+        raise ValueError("storyboard must be an object with a non-empty 'scenes' list")
+    sb = json.loads(json.dumps(raw))  # deep copy, JSON types only
+    sb.setdefault("didactic_strategy", "rich_visual")
+    validate_storyboard_dict(sb, max_duration_minutes).raise_if_invalid()
+    _apply_web_scene_contract(sb["scenes"], strict=True)
+    return Storyboard(
+        id=str(sb.get("id") or f"sb_{uuid.uuid4().hex[:8]}"),
+        task=task,
+        scenes=[Scene.from_dict(sc) for sc in sb["scenes"]],
+        generated_at=datetime.now(),
+        didactic_strategy=sb["didactic_strategy"],
+    )
+
+
+class _WebRendererSession:
+    """Opens the browser on the first web scene and keeps it for the job.
+    A browser that cannot start disables web rendering for the rest of the job;
+    every affected scene is reported as a fallback, never silently swapped."""
+
+    def __init__(self, enabled: bool, fps: int, tokens: Optional[Dict[str, Any]]):
+        self.enabled = bool(enabled)
+        self.fps = fps
+        self.tokens = tokens
+        self._renderer: Optional[WebSlideRenderer] = None
+        self._unavailable: Optional[str] = None
+
+    async def render(self, scene: Scene, duration_s: float, out_dir: Path, **kw) -> tuple:
+        """(frames, None) on success; (None, reason) on a fallback; (None, None) when
+        web slides are switched off for the job (configuration, not a fallback)."""
+        if not self.enabled:
+            return None, None
+        if self._unavailable:
+            return None, self._unavailable
+        if duration_s > MAX_SCENE_SECONDS:
+            return None, f"narration longer than {MAX_SCENE_SECONDS:.0f}s"
+        if self._renderer is None:
+            renderer = WebSlideRenderer(fps=self.fps, tokens=self.tokens)
+            try:
+                self._renderer = await renderer.__aenter__()
+            except WebRenderError as e:
+                self._unavailable = f"browser unavailable: {e}"
+                logger.warning("web slides disabled for this job: %s", e)
+                return None, self._unavailable
+        try:
+            frames = await self._renderer.render(scene.template, scene.data or {}, duration_s, out_dir, **kw)
+            return frames, None
+        except (WebRenderError, WebSceneError) as e:
+            logger.warning("web slide render failed (%s), using classic slide", e)
+            shutil.rmtree(out_dir, ignore_errors=True)
+            return None, f"{type(e).__name__}: {e}"[:200]
+
+    async def close(self) -> None:
+        if self._renderer is not None:
+            await self._renderer.__aexit__(None, None, None)
+            self._renderer = None
+
+
 async def orchestrate_video(
     job_id: str,
     task: str,
@@ -816,6 +961,11 @@ async def orchestrate_video(
     max_duration_minutes: int = 60,
     storyboard_backend: str = "ollama",
     storyboard_model: Optional[str] = None,
+    storyboard: Optional[Dict[str, Any]] = None,
+    web_slides: bool = True,
+    web_theme: str = "dark",
+    web_fps: int = FPS_DEFAULT,
+    web_tokens_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Main orchestrator Skill:
@@ -845,6 +995,11 @@ async def orchestrate_video(
             raise ValueError("max_duration_minutes must be an integer between 1 and 60")
         if shutil.which("ffmpeg") is None:
             raise RuntimeError("ffmpeg binary not found on PATH — required for real video assembly")
+        if web_theme not in THEMES:
+            raise ValueError(f"web_theme must be one of {THEMES}")
+        if isinstance(web_fps, bool) or not isinstance(web_fps, int) or not 12 <= web_fps <= 60:
+            raise ValueError("web_fps must be an integer between 12 and 60")
+        web_tokens = load_tokens(Path(web_tokens_path)) if web_tokens_path else None
 
         # Output always lives in this store's own directory — the host cannot
         # be talked into writing a tenant's video anywhere else.
@@ -855,9 +1010,12 @@ async def orchestrate_video(
         # Step 1: Generate Storyboard via LLM
         _update_job_progress(storage, job, "storyboard_generating", 0, "Analyzing task...")
 
-        storyboard = await generate_storyboard_with_llm(
-            task, max_duration_minutes, backend=storyboard_backend, model=storyboard_model,
-        )
+        if storyboard is not None:
+            storyboard = _storyboard_from_operator(storyboard, task, max_duration_minutes)
+        else:
+            storyboard = await generate_storyboard_with_llm(
+                task, max_duration_minutes, backend=storyboard_backend, model=storyboard_model,
+            )
         job.storyboard = storyboard
         _update_job_progress(
             storage, job, "storyboard_generating", 100,
@@ -898,60 +1056,93 @@ async def orchestrate_video(
         clip_paths: List[Path] = []
         srt_entries: List[Dict[str, Any]] = []
         tts_providers_used: List[str] = []
+        renderers_used: List[str] = []
+        web_fallbacks: List[Dict[str, Any]] = []
+        web = _WebRendererSession(enabled=web_slides, fps=web_fps, tokens=web_tokens)
 
-        for i, scene in enumerate(storyboard.scenes, start=1):
-            pct = int(((i - 1) / total) * 90)  # 0..90% spans scene production
-            _update_job_progress(
-                storage, job, "skills_running", pct,
-                f"Scene {i}/{total}: synthesizing narration...",
-                current_scene=i, total_scenes=total,
-            )
-
-            audio_path = scenes_dir / f"scene_{i:03d}.mp3"
-            image_path = scenes_dir / f"scene_{i:03d}.png"
-            clip_path = scenes_dir / f"scene_{i:03d}.mp4"
-
-            narration = scene.narration_text or scene.visual_description or scene.id
-            # Detect per-scene (not per-task): the LLM doesn't always honor the
-            # "answer in the task's language" instruction, especially the small
-            # local fallback model — matching the actual narration text avoids
-            # e.g. German TTS phonetics being applied to English narration.
-            lang = _detect_lang(narration)
-            if tts_engine == "auto":
-                tts_provider_used = _synthesize_narration_chain(narration, audio_path, lang)
-            elif tts_engine == "openai":
-                _synthesize_narration_openai(narration, audio_path, lang)
-                tts_provider_used = "openai"
-            else:
-                _synthesize_narration(narration, audio_path, lang)
-                tts_provider_used = "gtts"
-            audio_duration = _ffprobe_duration(audio_path)
-
-            _update_job_progress(
-                storage, job, "skills_running", pct,
-                f"Scene {i}/{total}: rendering slide...",
-                current_scene=i, total_scenes=total,
-            )
-            if scene.kind == "screenshot":
-                await _render_screenshot_scene(scene, image_path)
-            else:
-                _render_slide_image(
-                    scene, image_path, strategy=storyboard.didactic_strategy,
-                    scene_index=i, total_scenes=total,
+        try:
+            for i, scene in enumerate(storyboard.scenes, start=1):
+                pct = int(((i - 1) / total) * 90)  # 0..90% spans scene production
+                _update_job_progress(
+                    storage, job, "skills_running", pct,
+                    f"Scene {i}/{total}: synthesizing narration...",
+                    current_scene=i, total_scenes=total,
                 )
 
-            _update_job_progress(
-                storage, job, "skills_running", pct,
-                f"Scene {i}/{total}: encoding clip...",
-                current_scene=i, total_scenes=total,
-            )
-            _assemble_scene_clip(image_path, audio_path, clip_path)
+                audio_path = scenes_dir / f"scene_{i:03d}.mp3"
+                image_path = scenes_dir / f"scene_{i:03d}.png"
+                clip_path = scenes_dir / f"scene_{i:03d}.mp4"
 
-            clip_paths.append(clip_path)
-            srt_entries.append({"narration_text": narration, "duration_s": audio_duration})
-            tts_providers_used.append(tts_provider_used)
+                narration = scene.narration_text or scene.visual_description or scene.id
+                # Detect per-scene (not per-task): the LLM doesn't always honor the
+                # "answer in the task's language" instruction, especially the small
+                # local fallback model — matching the actual narration text avoids
+                # e.g. German TTS phonetics being applied to English narration.
+                lang = _detect_lang(narration)
+                if tts_engine == "auto":
+                    tts_provider_used = _synthesize_narration_chain(narration, audio_path, lang)
+                elif tts_engine == "openai":
+                    _synthesize_narration_openai(narration, audio_path, lang)
+                    tts_provider_used = "openai"
+                else:
+                    _synthesize_narration(narration, audio_path, lang)
+                    tts_provider_used = "gtts"
+                audio_duration = _ffprobe_duration(audio_path)
 
-        measured_s = sum(e["duration_s"] for e in srt_entries)
+                _update_job_progress(
+                    storage, job, "skills_running", pct,
+                    f"Scene {i}/{total}: rendering slide...",
+                    current_scene=i, total_scenes=total,
+                )
+                frames: Optional[List[Path]] = None
+                if scene.kind == "screenshot":
+                    await _render_screenshot_scene(scene, image_path)
+                    renderers_used.append("screenshot")
+                else:
+                    if scene.template:
+                        frames, reason = await web.render(
+                            scene, audio_duration, scenes_dir / f"scene_{i:03d}_frames",
+                            theme=scene.theme or web_theme, scene_index=i, total_scenes=total, lang=lang,
+                        )
+                        if frames is None and reason:
+                            web_fallbacks.append({"scene": i, "reason": reason})
+                            emit_feedback(job_id=job_id, event_type="web_render_fallback",
+                                          metrics={"scene": i, "reason": reason})
+                            _update_job_progress(
+                                storage, job, "skills_running", pct,
+                                f"Scene {i}/{total}: web slide unavailable ({reason}) — using classic slide",
+                                current_scene=i, total_scenes=total,
+                            )
+                    if frames:
+                        shutil.copyfile(frames[-1], image_path)
+                        renderers_used.append("web")
+                    else:
+                        _render_slide_image(
+                            scene, image_path, strategy=storyboard.didactic_strategy,
+                            scene_index=i, total_scenes=total,
+                        )
+                        renderers_used.append("pillow")
+
+                _update_job_progress(
+                    storage, job, "skills_running", pct,
+                    f"Scene {i}/{total}: encoding clip...",
+                    current_scene=i, total_scenes=total,
+                )
+                if frames:
+                    _assemble_frames_clip(frames[0].parent, audio_path, audio_duration, clip_path, web_fps)
+                else:
+                    _assemble_scene_clip(image_path, audio_path, clip_path)
+
+                clip_paths.append(clip_path)
+                # Captions follow the encoded clip, not the raw audio: AAC priming and
+                # -shortest make a clip a few frames longer, and those frames add up.
+                srt_entries.append({"narration_text": narration, "duration_s": _ffprobe_duration(clip_path),
+                                    "audio_s": audio_duration})
+                tts_providers_used.append(tts_provider_used)
+        finally:
+            await web.close()
+
+        measured_s = sum(e["audio_s"] for e in srt_entries)
         if measured_s > max_duration_minutes * 60:
             raise ValueError(
                 f"Narrated length {measured_s:.0f}s exceeds the {max_duration_minutes}-minute limit"
@@ -965,7 +1156,8 @@ async def orchestrate_video(
         _concat_clips(clip_paths, video_path, out_root)
         _generate_srt(srt_entries, srt_path)
 
-        duration_seconds = int(sum(e["duration_s"] for e in srt_entries))
+        # The artifact is the truth: report what ffprobe measures on the final file.
+        duration_seconds = round(_ffprobe_duration(video_path))
         file_size_mb = round(video_path.stat().st_size / (1024 * 1024), 2)
 
         # ADR-2211 auditability: record which TTS tier actually spoke each
@@ -982,12 +1174,15 @@ async def orchestrate_video(
             srt_path=str(srt_path),
             metadata={
                 "duration_seconds": duration_seconds,
-                "resolution": "1280x720",
+                "resolution": "1920x1080",
                 "fps": 30,
                 "file_size_mb": file_size_mb,
                 "scenes": total,
                 "tts_engine": tts_engine,
                 "tts_provider_used": provider_used,
+                "renderers": renderers_used,
+                "web_scenes": renderers_used.count("web"),
+                "web_render_fallbacks": web_fallbacks,
             },
         )
         storage.save_video_output(video_output)
@@ -1058,4 +1253,9 @@ async def start_video_production(
         max_duration_minutes=config.get("max_duration_minutes", 60),
         storyboard_backend=config.get("storyboard_backend", "ollama"),
         storyboard_model=config.get("storyboard_model"),
+        storyboard=config.get("storyboard"),
+        web_slides=config.get("web_slides", True),
+        web_theme=config.get("web_theme", "dark"),
+        web_fps=config.get("web_fps", FPS_DEFAULT),
+        web_tokens_path=config.get("web_tokens_path"),
     )

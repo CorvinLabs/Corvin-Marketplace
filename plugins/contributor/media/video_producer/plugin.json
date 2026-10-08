@@ -8,7 +8,7 @@
   "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
   "tier": "contributor",
   "category": "media",
-  "description": "Create short narrated MP4s from a task description: LLM-written storyboard, per-scene TTS narration, ffmpeg assembly. See docs/ADR-0953 for the current (consolidated) scope versus earlier design plans.",
+  "description": "Create narrated MP4s from a task description: LLM-written storyboard, per-scene TTS narration, animated web slides in the corvin-labs.com design (deterministic headless-Chromium rendering, Pillow fallback), ffmpeg assembly. See docs/WEB-SLIDES.md and docs/ADR-0953.",
   "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/media/video_producer/README.md",
   "documentation": "docs/README.md",
   "adr_prefix": "video-producer",
@@ -31,9 +31,10 @@
     "ai-learning"
   ],
   "capabilities": [
+    "video-assembly",
     "video-production",
     "voice-narration",
-    "video-assembly"
+    "web-slides"
   ],
   "_entry_points_note": "Neither this field nor its contents are read by any CorvinOS loader (importlib.metadata.entry_points() reads Python packaging metadata, not this JSON field; the console route loads src/__init__.py directly by path) -- kept only for marketplace manifest schema conformance (tests/test_plugin_registration.py). The 'renderers' sub-block that named now-deleted renderers_skill_2_0/ modules was removed per ADR-0953; 'console_panels'/'skills' are labels, not module paths, so they don't point at dead code the way 'renderers' did.",
   "entry_points": {
@@ -59,7 +60,10 @@
     "tts_engine": "gtts",
     "youtube_upload_supported": false,
     "max_video_length_minutes": 60,
-    "audit_enabled": true
+    "audit_enabled": true,
+    "web_slides": true,
+    "web_theme": "dark",
+    "web_fps": 30
   },
   "permissions": [
     "console:read",

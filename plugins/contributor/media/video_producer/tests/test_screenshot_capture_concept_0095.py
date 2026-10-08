@@ -85,7 +85,7 @@ class TestCallSiteWiring:
     def test_render_screenshot_scene_is_called_from_orchestrate_video(self):
         src = SKILL_PY.read_text()
         fn_start = src.index("async def orchestrate_video")
-        fn_body = src[fn_start:fn_start + 6000]
+        fn_body = src[fn_start:src.index("\nasync def start_video_production", fn_start)]
         assert "_render_screenshot_scene(" in fn_body, (
             "orchestrate_video() must call _render_screenshot_scene() for "
             "kind=='screenshot' scenes — a regression that removes this call "
@@ -106,7 +106,7 @@ class TestCallSiteWiring:
         otherwise every screenshot scene silently gets the placeholder."""
         src = SKILL_PY.read_text()
         fn_start = src.index("async def orchestrate_video")
-        fn_body = src[fn_start:fn_start + 6000]
+        fn_body = src[fn_start:src.index("\nasync def start_video_production", fn_start)]
         m = re.search(
             r'if scene\.kind == "screenshot":\s*\n\s*await _render_screenshot_scene',
             fn_body,

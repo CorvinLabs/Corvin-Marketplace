@@ -1,102 +1,184 @@
-:root {
-  --accent: #e8a83a;
-  --accent-dim: rgba(232, 168, 58, 0.06);
-  --accent-border: rgba(232, 168, 58, 0.2);
-  --bg: #0b0f1a;
-  --bg-card: #1a1f2e;
-  --border: #2a3342;
-  --text: #e8e4d8;
-  --text-muted: #8a9ab5;
+/* Web-slide stylesheet (ADR-2238). Colours, families and timing arrive as
+   custom properties injected by web_templates.build_document(); this file
+   holds layout and motion only. It references no external resource: the
+   page renders with JavaScript and network disabled. */
 
-  --heading-family: 'Newsreader', Georgia, serif;
-  --body-family: 'Instrument Sans', -apple-system, sans-serif;
-  --mono-family: 'JetBrains Mono', 'Monaco', monospace;
-
-  --margin: 160px;
-  --padding: 40px;
-  --radius: 8px;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
   width: 1920px;
   height: 1080px;
+  overflow: hidden;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--body-family);
-  line-height: 1.6;
-  overflow: hidden;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
 }
 
-.slide {
-  width: 100%;
-  height: 100%;
-  padding: var(--margin);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  position: relative;
+.stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+
+.glow {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(1100px 700px at 50% 36%, var(--glow), transparent 68%),
+    radial-gradient(700px 500px at 88% 96%, var(--glow), transparent 70%);
+  opacity: 0;
+  animation: fade 1400ms ease-out both;
 }
 
-h1, h2 {
-  font-family: var(--heading-family);
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  line-height: 1.04;
+.ring {
+  position: absolute; left: 50%; top: 40%;
+  width: 1040px; height: 1040px; margin: -520px 0 0 -520px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  opacity: 0;
+  animation: ring 1800ms var(--ease) both;
 }
 
-h1 { font-size: 96px; }
-h2 { font-size: 64px; }
-h3 { font-size: 48px; }
+.stars { position: absolute; inset: 0; }
+.stars circle { fill: var(--accent); }
+.stars line { stroke: var(--accent); stroke-width: 1; opacity: .35; }
 
-p, .text {
-  font-family: var(--body-family);
-  font-size: 24px;
-  color: var(--text-muted);
-  margin-top: 24px;
+.frame {
+  position: absolute; inset: 0;
+  padding: 110px 170px 150px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.frame.center { align-items: center; text-align: center; }
+
+.chrome {
+  position: absolute; left: 170px; right: 170px; bottom: 56px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--font-mono); font-size: 20px; letter-spacing: .08em;
+  color: var(--text-faint);
+  opacity: 0; animation: fade 900ms ease-out 200ms both;
+}
+.wordmark { font-family: var(--font-heading); font-size: 30px; letter-spacing: 0; color: var(--text); }
+.wordmark b { font-family: var(--font-mono); font-weight: 500; color: var(--accent); margin-right: 12px; font-size: 24px; }
+
+.eyebrow {
+  font-family: var(--font-mono); font-size: 22px; font-weight: 500;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--accent);
+  margin-bottom: 28px;
 }
 
-.accent-bar {
-  height: 6px;
-  background: var(--accent);
-  margin-top: 40px;
-  border-radius: 3px;
-  max-width: 600px;
+.badge {
+  display: inline-flex; align-items: center; gap: 14px;
+  padding: 12px 26px; margin-bottom: 44px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg-card);
+  font-size: 24px; color: var(--text-muted);
 }
+.badge i { width: 10px; height: 10px; border-radius: 50%; background: var(--success); display: inline-block; }
 
-.stat {
-  font-size: 96px;
-  font-weight: 600;
-  color: var(--accent);
-  font-family: var(--mono-family);
+.display {
+  font-family: var(--font-heading); font-weight: 400;
+  font-size: 128px; line-height: 1.02; letter-spacing: -.035em;
 }
-
-.stat-label {
-  font-size: 24px;
-  color: var(--text-muted);
-  margin-top: 16px;
+.display.md { font-size: 96px; }
+.title { font-family: var(--font-heading); font-weight: 400; font-size: 76px; line-height: 1.06; letter-spacing: -.03em; }
+.accent-italic {
+  font-style: italic; color: var(--accent);
+  background: linear-gradient(95deg, var(--accent-hi), var(--accent));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
+.lead { font-size: 34px; line-height: 1.5; color: var(--text-muted); max-width: 1180px; margin-top: 40px; }
+.center .lead { margin-left: auto; margin-right: auto; }
+.rule { height: 3px; width: 220px; margin-top: 44px; background: linear-gradient(90deg, var(--accent), transparent); transform-origin: left; }
+.center .rule { margin-left: auto; margin-right: auto; transform-origin: center; }
 
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(40px); }
-  to { opacity: 1; transform: translateY(0); }
+/* bullets */
+.bullets { list-style: none; margin-top: 56px; display: flex; flex-direction: column; gap: 30px; }
+.bullets li { display: flex; align-items: baseline; gap: 34px; font-size: 38px; line-height: 1.35; color: var(--text); max-width: 1500px; }
+.bullets .n { font-family: var(--font-mono); font-size: 24px; color: var(--accent); min-width: 48px; }
+
+/* stat / odometer */
+.stat-value { font-family: var(--font-heading); font-size: 260px; line-height: 1; letter-spacing: -.04em; color: var(--accent); display: flex; align-items: flex-end; justify-content: center; }
+.stat-value .ch { display: inline-block; }
+.odo { display: inline-block; height: 1em; overflow: hidden; line-height: 1; }
+.odo .strip { display: flex; flex-direction: column; animation-fill-mode: both; animation-delay: calc(var(--t0) + var(--i) * 90ms); animation-duration: 1500ms; animation-timing-function: cubic-bezier(.15,.8,.2,1); }
+.odo .d0 { animation-name: roll0; }
+.odo .d1 { animation-name: roll1; }
+.odo .d2 { animation-name: roll2; }
+.odo .d3 { animation-name: roll3; }
+.odo .d4 { animation-name: roll4; }
+.odo .d5 { animation-name: roll5; }
+.odo .d6 { animation-name: roll6; }
+.odo .d7 { animation-name: roll7; }
+.odo .d8 { animation-name: roll8; }
+.odo .d9 { animation-name: roll9; }
+.odo .strip span { height: 1em; display: block; }
+.stat-label { font-size: 44px; color: var(--text); margin-top: 26px; font-family: var(--font-heading); }
+.stat-caption { font-size: 28px; color: var(--text-muted); margin-top: 18px; max-width: 1100px; }
+
+/* diagram */
+.flow { position: relative; margin-top: 70px; height: 300px; }
+.node {
+  position: absolute; top: 40px; height: 220px;
+  border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card);
+  padding: 30px 28px; display: flex; flex-direction: column; justify-content: center;
 }
+.node.hl { border-color: var(--accent); box-shadow: 0 0 60px var(--glow); }
+.node .k { font-family: var(--font-mono); font-size: 20px; color: var(--accent); }
+.node .l { font-family: var(--font-heading); font-size: 40px; line-height: 1.1; margin-top: 14px; color: var(--text); }
+.node .s { font-size: 22px; line-height: 1.35; color: var(--text-muted); margin-top: 12px; }
+.flow svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.flow path.edge { fill: none; stroke: var(--accent); stroke-width: 3; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 700ms ease-in-out both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger) + 250ms); }
+.flow path.head { fill: var(--accent); opacity: 0; animation: fade 200ms ease-out both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger) + 850ms); }
 
-@keyframes grow {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
+/* chart */
+.chart { position: relative; margin-top: 50px; height: 500px; display: flex; align-items: flex-end; gap: 48px; border-bottom: 2px solid var(--border); padding: 0 20px; }
+.bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative; }
+.bar .col { width: 100%; max-width: 170px; border-radius: 10px 10px 0 0; background: linear-gradient(180deg, var(--accent-hi), var(--accent)); opacity: .55; transform-origin: bottom; animation: grow-y 1100ms var(--ease) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+.bar.hl .col { opacity: 1; box-shadow: 0 0 70px var(--glow); }
+.bar .v { font-family: var(--font-mono); font-size: 30px; color: var(--text); margin-bottom: 16px; }
+.bar .lb { position: absolute; bottom: -62px; font-size: 26px; color: var(--text-muted); white-space: nowrap; }
 
-@keyframes draw {
-  from { stroke-dashoffset: 1; }
-  to { stroke-dashoffset: 0; }
-}
+/* compare */
+.compare { display: flex; gap: 60px; margin-top: 64px; }
+.card { flex: 1; border: 1px solid var(--border); border-radius: 22px; background: var(--bg-card); padding: 48px 52px; }
+.card.after { border-color: var(--accent); box-shadow: 0 0 80px var(--glow); }
+.card h3 { font-family: var(--font-mono); font-weight: 500; font-size: 24px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted); }
+.card.after h3 { color: var(--accent); }
+.card ul { list-style: none; margin-top: 30px; display: flex; flex-direction: column; gap: 22px; }
+.card li { font-size: 32px; line-height: 1.35; color: var(--text); padding-left: 34px; position: relative; }
+.card li::before { content: ""; position: absolute; left: 0; top: .55em; width: 12px; height: 12px; border-radius: 50%; background: var(--text-faint); }
+.card.after li::before { background: var(--accent); }
 
-.animate-fade-in { animation: fade-in 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) forwards; }
-.animate-grow { animation: grow 1.2s 0.4s ease-out forwards; }
+/* quote */
+.quote { font-family: var(--font-heading); font-style: italic; font-size: 84px; line-height: 1.18; letter-spacing: -.02em; max-width: 1450px; }
+.quote .mark { color: var(--accent); }
+.attribution { font-family: var(--font-mono); font-size: 26px; color: var(--text-muted); margin-top: 52px; letter-spacing: .06em; }
+
+/* code */
+.term { margin-top: 56px; border: 1px solid var(--border); border-radius: 20px; background: var(--bg-card); overflow: hidden; max-width: 1580px; }
+.term .bar-top { display: flex; align-items: center; gap: 12px; padding: 20px 28px; border-bottom: 1px solid var(--border); }
+.term .bar-top i { width: 14px; height: 14px; border-radius: 50%; background: var(--border); display: inline-block; }
+.term .bar-top span { margin-left: 18px; font-family: var(--font-mono); font-size: 20px; color: var(--text-muted); }
+.term pre { padding: 34px 40px; font-family: var(--font-mono); font-size: 30px; line-height: 1.6; color: var(--text); white-space: pre; }
+.term .ln { display: block; clip-path: inset(0 100% 0 0); animation: type 700ms steps(28, end) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+.term .ln.c { color: var(--text-muted); }
+.term .ln .p { color: var(--accent); }
+
+/* entrance motion: every revealed element carries .r and an index --i */
+.r { opacity: 0; animation: rise var(--rise) var(--ease) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+.r.grow { animation-name: grow-x; opacity: 1; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(34px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ring { from { opacity: 0; transform: scale(.86); } to { opacity: .55; transform: none; } }
+@keyframes grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes grow-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes type { to { clip-path: inset(0 0 0 0); } }
+@keyframes roll0 { from { transform: translateY(0); } to { transform: translateY(-10em); } }
+@keyframes roll1 { from { transform: translateY(0); } to { transform: translateY(-11em); } }
+@keyframes roll2 { from { transform: translateY(0); } to { transform: translateY(-12em); } }
+@keyframes roll3 { from { transform: translateY(0); } to { transform: translateY(-13em); } }
+@keyframes roll4 { from { transform: translateY(0); } to { transform: translateY(-14em); } }
+@keyframes roll5 { from { transform: translateY(0); } to { transform: translateY(-15em); } }
+@keyframes roll6 { from { transform: translateY(0); } to { transform: translateY(-16em); } }
+@keyframes roll7 { from { transform: translateY(0); } to { transform: translateY(-17em); } }
+@keyframes roll8 { from { transform: translateY(0); } to { transform: translateY(-18em); } }
+@keyframes roll9 { from { transform: translateY(0); } to { transform: translateY(-19em); } }

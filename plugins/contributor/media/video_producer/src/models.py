@@ -143,6 +143,12 @@ class Scene:
     # silently un-annotated screenshot.
     screenshot_url: Optional[str] = None
     highlight_selector: Optional[str] = None
+    # Web slide (ADR-2238): a scene carrying a template is rendered as an
+    # animated HTML slide; ``kind`` keeps its didactic meaning. ``data`` is
+    # validated against the template contract in web_templates before use.
+    template: Optional[str] = None
+    data: Optional[dict] = None
+    theme: Optional[str] = None
 
     def to_dict(self):
         return asdict(self)

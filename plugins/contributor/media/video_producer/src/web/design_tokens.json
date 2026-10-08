@@ -1,49 +1,37 @@
 {
-  "version": "1.0.0",
-  "light": {
+  "version": "1.1.0",
+  "source": "Corvin-Website/styles.css + index.html (corvin-labs.com), 2026-10-08",
+  "dark": {
+    "bg": "#0b0f1a",
+    "bg_card": "#111827",
+    "border": "#1f2d3d",
+    "text": "#e8e4d8",
+    "text_muted": "#8a9ab5",
+    "text_faint": "#4a5568",
     "accent": "#e8a83a",
-    "accent_dim": "rgba(232, 168, 58, 0.06)",
-    "accent_border": "rgba(232, 168, 58, 0.2)",
+    "accent_hi": "#f3c77a",
+    "glow": "rgba(232, 168, 58, 0.16)",
+    "success": "#2ecc71"
+  },
+  "light": {
     "bg": "#f8f7f4",
     "bg_card": "#ffffff",
     "border": "#ede8e0",
     "text": "#2a2520",
-    "text_muted": "#7a7066"
-  },
-  "dark": {
-    "accent": "#e8a83a",
-    "accent_dim": "rgba(232, 168, 58, 0.06)",
-    "accent_border": "rgba(232, 168, 58, 0.2)",
-    "bg": "#0b0f1a",
-    "bg_card": "#1a1f2e",
-    "border": "#2a3342",
-    "text": "#e8e4d8",
-    "text_muted": "#8a9ab5"
+    "text_muted": "#7a7066",
+    "text_faint": "#b5aca2",
+    "accent": "#b47a1c",
+    "accent_hi": "#e8a83a",
+    "glow": "rgba(232, 168, 58, 0.20)",
+    "success": "#1f9d55"
   },
   "typography": {
     "heading_family": "Newsreader",
-    "heading_weight": 400,
-    "heading_size_xl": 96,
-    "heading_size_lg": 64,
-    "heading_size_md": 48,
     "body_family": "Instrument Sans",
-    "body_weight": 400,
-    "body_size": 24,
-    "mono_family": "JetBrains Mono",
-    "mono_size": 16
-  },
-  "layout": {
-    "slide_width": 1920,
-    "slide_height": 1080,
-    "margin": 160,
-    "padding": 40,
-    "corner_radius": 8,
-    "spacing_grid": 8
+    "mono_family": "JetBrains Mono"
   },
   "animation": {
-    "fade_duration_ms": 300,
-    "slide_duration_ms": 500,
-    "draw_duration_ms": 1600,
-    "easing": "cubic-bezier(0.4, 0, 0.2, 1)"
+    "rise_ms": 900,
+    "easing": "cubic-bezier(0.2, 0.7, 0.2, 1)"
   }
 }

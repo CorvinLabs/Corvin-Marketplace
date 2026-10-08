@@ -24,7 +24,10 @@ Nothing else under `src/` is reachable from there.
    total-duration ceiling.
 2. **Narration:** each scene's text is synthesized with **gTTS** (Google's public
    Translate TTS endpoint — not a paid API, no SLA).
-3. **Slide image:** a simple text slide is rendered per scene (PIL, not a renderer tier).
+3. **Slide image:** a scene with a `template` is rendered as an animated web slide in
+   the corvin-labs.com design (headless Chromium, deterministic frames — see
+   [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md), ADR-2238); any other scene, or any scene
+   when Chromium is unavailable, gets the classic Pillow slide. Output is 1920x1080.
 4. **Assembly:** `ffmpeg` encodes each scene's audio+image into a clip, then concatenates
    all clips into `output.mp4` + an `.srt` caption file.
 5. **Storage:** jobs and outputs are persisted per-tenant (`storage.py`, atomic writes).
@@ -51,6 +54,10 @@ and the `tests/test_orchestrator_e2e.py` CLI test below all exercise the **dead*
 extraction review, not an alternative way to run this plugin.)
 
 ## Configuration
+
+- Web slides: `web_slides`, `web_theme`, `web_fps`, `web_tokens_path`, `storyboard`
+  (operator-written storyboard) in the job config — see [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md)
+- Design tokens from Figma (optional): `python -m src.figma_sync --file-key <KEY> --token-stdin`
 
 - `ANTHROPIC_API_KEY` — optional; storyboard backend falls back to local Ollama without it
 - No OpenAI key is used on the live path (narration is gTTS, not OpenAI TTS)
