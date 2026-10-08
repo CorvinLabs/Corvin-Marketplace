@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import base64
 import html
+import os
+import stat as stat_mod
 import json
 import math
 import random
@@ -39,9 +41,10 @@ BUNDLED_FONTS: Dict[str, List[Tuple[str, str]]] = {
 }
 
 THEME_KEYS = ("bg", "bg_card", "border", "text", "text_muted", "text_faint", "accent", "accent_hi", "glow", "success")
-_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
-_RGBA = re.compile(r"^rgba\((\d{1,3}), ?(\d{1,3}), ?(\d{1,3}), ?(0|1|0?\.\d{1,3}|1\.0)\)$")
-_EASING = re.compile(r"^cubic-bezier\((-?\d(?:\.\d{1,3})?), ?(-?\d(?:\.\d{1,3})?), ?(-?\d(?:\.\d{1,3})?), ?(-?\d(?:\.\d{1,3})?)\)$")
+_HEX = re.compile(r"#[0-9a-fA-F]{6}")
+_RGBA = re.compile(r"rgba\((\d{1,3}), ?(\d{1,3}), ?(\d{1,3}), ?(0|1|0?\.\d{1,3}|1\.0)\)")
+_EASING = re.compile(r"cubic-bezier\((-?\d(?:\.\d{1,3})?), ?(-?\d(?:\.\d{1,3})?), ?(-?\d(?:\.\d{1,3})?), ?(-?\d(?:\.\d{1,3})?)\)")
+MAX_TOKENS_BYTES = 64 * 1024
 
 
 class WebSceneError(ValueError):
@@ -53,9 +56,9 @@ class WebSceneError(ValueError):
 def _valid_color(value: Any) -> bool:
     if not isinstance(value, str):
         return False
-    if _HEX.match(value):
+    if _HEX.fullmatch(value):
         return True
-    m = _RGBA.match(value)
+    m = _RGBA.fullmatch(value)
     return bool(m) and all(int(m.group(i)) <= 255 for i in (1, 2, 3))
 
 
@@ -85,17 +88,23 @@ def validate_tokens(tokens: Any) -> Dict[str, Any]:
     rise = anim.get("rise_ms")
     if not isinstance(rise, int) or isinstance(rise, bool) or not 200 <= rise <= 3000:
         raise WebSceneError("design tokens: animation.rise_ms must be an integer in [200, 3000]")
-    if not isinstance(anim.get("easing"), str) or not _EASING.match(anim["easing"]):
+    if not isinstance(anim.get("easing"), str) or not _EASING.fullmatch(anim["easing"]):
         raise WebSceneError("design tokens: animation.easing must be cubic-bezier(a, b, c, d)")
     return tokens
 
 
 def load_tokens(path: Optional[Path] = None) -> Dict[str, Any]:
+    """Read a token file: a regular file of at most 64 KB (no FIFO/device that could
+    block or exhaust the host process), then strict validation."""
     p = Path(path) if path else DEFAULT_TOKENS_PATH
     try:
-        tokens = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as e:
-        raise WebSceneError(f"design tokens unreadable at {p}: {e}") from None
+        st = os.stat(p)
+        if not stat_mod.S_ISREG(st.st_mode) or st.st_size > MAX_TOKENS_BYTES:
+            raise OSError
+        with open(p, "rb") as f:
+            tokens = json.loads(f.read(MAX_TOKENS_BYTES + 1).decode("utf-8"))
+    except (OSError, ValueError):
+        raise WebSceneError("design tokens file is not a readable JSON regular file under 64 KB") from None
     return validate_tokens(tokens)
 
 
@@ -120,7 +129,17 @@ def _base_css() -> str:
 # ── scene data validation ───────────────────────────────────────────────────
 
 _WS = re.compile(r"\s+")
-_CTRL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+# control characters, plus bidi overrides/isolates and zero-width characters, which
+# would let generated text display differently from what it contains
+_CTRL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]")
+
+
+def _encodable(value: str, key: str) -> str:
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise WebSceneError(f"field {key!r} contains an invalid character (lone surrogate)") from None
+    return value
 
 
 def _text(data: dict, key: str, limit: int, required: bool = True) -> Optional[str]:
@@ -131,7 +150,7 @@ def _text(data: dict, key: str, limit: int, required: bool = True) -> Optional[s
         return None
     if not isinstance(value, str):
         raise WebSceneError(f"field {key!r} must be a string")
-    value = _WS.sub(" ", _CTRL.sub("", value)).strip()
+    value = _WS.sub(" ", _CTRL.sub("", _encodable(value, key))).strip()
     if not value and required:
         raise WebSceneError(f"missing required field {key!r}")
     if len(value) > limit:
@@ -142,7 +161,7 @@ def _text(data: dict, key: str, limit: int, required: bool = True) -> Optional[s
 def _code_line(value: Any, limit: int) -> str:
     if not isinstance(value, str):
         raise WebSceneError("code lines must be strings")
-    value = _CTRL.sub("", value.replace("\t", "    ")).rstrip()
+    value = _CTRL.sub("", _encodable(value, "lines").replace("\t", "    ")).rstrip()
     if "\n" in value or "\r" in value:
         raise WebSceneError("a code line must not contain a line break")
     if len(value) > limit:
@@ -156,11 +175,17 @@ def _number(data: dict, key: str, required: bool = True) -> Optional[float]:
         if required:
             raise WebSceneError(f"missing required field {key!r}")
         return None
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise WebSceneError(f"field {key!r} must be a finite number")
+    try:
+        value = float(value)
+    except OverflowError:
+        raise WebSceneError(f"field {key!r} is out of range") from None
+    if not math.isfinite(value):
         raise WebSceneError(f"field {key!r} must be a finite number")
     if abs(value) > 1e12:
         raise WebSceneError(f"field {key!r} is out of range")
-    return float(value)
+    return value + 0.0  # -0.0 -> 0.0
 
 
 def _int(data: dict, key: str, lo: int, hi: int, default: Optional[int]) -> Optional[int]:

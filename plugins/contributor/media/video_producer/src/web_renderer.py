@@ -47,6 +47,18 @@ _LOAD_FONTS_JS = """() => Promise.allSettled([
 _SEEK_JS = "t => { for (const a of document.getAnimations()) { a.pause(); a.currentTime = t; } }"
 
 
+# Transform/opacity animations otherwise run on the compositor thread, which can
+# draw a frame that lags the paused currentTime: measured 54 of 149 frames
+# differing between two browser instances (and a flaky in-process test). With
+# animations ticked on the main thread and every compositor stage run before a
+# draw, repeated cross-instance renders were identical.
+_CHROMIUM_ARGS = (
+    "--disable-threaded-animation",
+    "--run-all-compositor-stages-before-draw",
+    "--disable-checker-imaging",
+)
+
+
 class WebRenderError(RuntimeError):
     """Rendering failed after validation (browser unavailable, timeout, crash)."""
 
@@ -72,7 +84,7 @@ class WebSlideRenderer:
             raise WebRenderError("playwright is not installed (pip install playwright && playwright install chromium)") from e
         try:
             self._pw = await async_playwright().start()
-            self._browser = await self._pw.chromium.launch(headless=True)
+            self._browser = await self._pw.chromium.launch(headless=True, args=list(_CHROMIUM_ARGS))
         except Exception as e:  # noqa: BLE001 — any launch failure means "no web renderer"
             await self._close()
             raise WebRenderError(f"chromium could not be launched: {type(e).__name__}: {e}") from None
@@ -128,7 +140,7 @@ class WebSlideRenderer:
         try:
             return await asyncio.wait_for(self._capture(document, float(duration_s), out_dir), SCENE_TIMEOUT_S)
         except asyncio.TimeoutError:
-            raise WebRenderError(f"scene render exceeded {SCENE_TIMEOUT_S:.0f}s") from None
+            raise WebRenderError(f"scene render exceeded {SCENE_TIMEOUT_S:g}s") from None
         except WebRenderError:
             raise
         except Exception as e:  # noqa: BLE001
@@ -149,9 +161,11 @@ class WebSlideRenderer:
             missing = await page.evaluate(_LOAD_FONTS_JS)
             if missing:
                 raise WebRenderError(f"bundled fonts did not load: {missing}")
+            # Always render the complete entrance animation, even when the narration is
+            # shorter: a frame cut mid-reveal can show a half-rolled number. The assembler
+            # pads the audio instead (see skill._assemble_frames_clip).
             anim_end_ms = float(await page.evaluate(_ANIM_END_JS))
-            span_ms = min(anim_end_ms, duration_s * 1000.0)
-            n_frames = min(MAX_FRAMES_PER_SCENE, max(1, math.ceil(span_ms / 1000.0 * self.fps) + 1))
+            n_frames = min(MAX_FRAMES_PER_SCENE, max(1, math.ceil(anim_end_ms / 1000.0 * self.fps) + 1))
             frames: List[Path] = []
             for i in range(n_frames):
                 await page.evaluate(_SEEK_JS, i * 1000.0 / self.fps)

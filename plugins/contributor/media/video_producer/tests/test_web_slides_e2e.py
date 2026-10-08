@@ -169,8 +169,27 @@ async def test_llm_storyboard_invalid_web_spec_is_dropped_not_passed_through(sto
     assert "<script>" not in doc and "&lt;script&gt;" in doc
 
 
-def test_render_call_site_is_inside_orchestrate_video():
-    """PLAN-0940 DoD 4: the renderer is reached from the production path."""
-    import inspect
-    src = inspect.getsource(skill.orchestrate_video)
-    assert "_WebRendererSession(" in src and "web.render(" in src and "_assemble_frames_clip(" in src
+async def test_frames_are_deleted_and_a_short_narration_keeps_the_full_reveal(store):
+    sb = {"id": "sb_short", "scenes": [
+        {"id": "s1", "kind": "title", "duration_ms": 1000, "narration_text": "Kurz.",
+         "template": "stat", "data": {"value": 98765, "label": "Zahl"}},
+    ]}
+    result = await _run(store, "job_web_short", storyboard=sb)
+    scenes = Path(result["video_path"]).parent / "scenes"
+    assert not list(scenes.glob("*_frames")), "frame directories must be removed after encoding"
+    audio = float(_ffprobe(scenes / "scene_001.mp3")["format"]["duration"])
+    video = float(_ffprobe(Path(result["video_path"]))["format"]["duration"])
+    assert video > audio + 1.0, "the clip must run until the odometer has finished, padding the audio"
+
+
+async def test_llm_values_that_used_to_crash_the_job_are_dropped(store, monkeypatch):
+    raw = (
+        '{"id": "sb_llm2", "scenes": ['
+        '{"id": "s1", "kind": "title", "duration_ms": 8000, "narration_text": "Erste Szene mit Text.",'
+        ' "template": "hero", "data": {"title": "A\\ud800"}},'
+        '{"id": "s2", "kind": "summary", "duration_ms": 8000, "narration_text": "Zweite Szene mit Text.",'
+        ' "template": "stat", "data": {"value": 1' + "0" * 400 + ', "label": "x"}}]}'
+    )
+    monkeypatch.setattr(skill, "_call_storyboard_llm", lambda *a, **k: raw)
+    result = await _run(store, "job_web_llm2")
+    assert result["metadata"]["renderers"] == ["pillow", "pillow"]

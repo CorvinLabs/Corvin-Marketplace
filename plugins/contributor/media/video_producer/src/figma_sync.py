@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import http.client
 import json
 import os
 import re
@@ -50,6 +51,17 @@ TYPO_KEYS = ("heading_family", "body_family", "mono_family")
 EXIT_OK, EXIT_USAGE, EXIT_AUTH, EXIT_NOT_FOUND, EXIT_HTTP, EXIT_INVALID, EXIT_EMPTY = 0, 2, 3, 4, 5, 6, 7
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """The token travels in a header; following a redirect would hand it to the
+    redirect target. The Variables API does not redirect, so none is followed."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 class FigmaSyncError(Exception):
     def __init__(self, message: str, exit_code: int):
         super().__init__(message)
@@ -61,18 +73,21 @@ def _printable(s: Any, limit: int = 160) -> str:
 
 
 def fetch_variables(file_key: str, token: str, api_base: str = FIGMA_API, timeout: float = 20.0) -> Dict[str, Any]:
-    if not _FILE_KEY.match(file_key or ""):
+    if not _FILE_KEY.fullmatch(file_key or ""):
         raise FigmaSyncError("file key must be 8-64 letters/digits (the part after /file/ or /design/ in the URL)", EXIT_USAGE)
-    if api_base != FIGMA_API and not _LOOPBACK.match(api_base):
+    if api_base != FIGMA_API and not _LOOPBACK.fullmatch(api_base or ""):
         raise FigmaSyncError(f"api base must be {FIGMA_API} (or a loopback URL for tests)", EXIT_USAGE)
     req = urllib.request.Request(
         f"{api_base}/v1/files/{file_key}/variables/local",
         headers={"X-Figma-Token": token, "Accept": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — scheme/host checked above
+        with _OPENER.open(req, timeout=timeout) as resp:  # noqa: S310 — scheme/host checked above
             body = resp.read(_MAX_BODY + 1)
     except urllib.error.HTTPError as e:
+        if 300 <= e.code < 400:
+            raise FigmaSyncError(f"Figma API answered with a redirect (HTTP {e.code}) — refused, the token "
+                                 "is never sent to another location", EXIT_HTTP) from None
         detail = ""
         try:
             detail = _printable(json.loads(e.read(4096) or b"{}").get("err") or "", 120)
@@ -85,7 +100,7 @@ def fetch_variables(file_key: str, token: str, api_base: str = FIGMA_API, timeou
         if e.code == 404:
             raise FigmaSyncError("Figma file not found (HTTP 404) — check the file key", EXIT_NOT_FOUND) from None
         raise FigmaSyncError(f"Figma API error HTTP {e.code}{': ' + detail if detail else ''}", EXIT_HTTP) from None
-    except (urllib.error.URLError, TimeoutError, OSError) as e:
+    except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException, ValueError) as e:
         raise FigmaSyncError(f"Figma API unreachable: {_printable(getattr(e, 'reason', e), 120)}", EXIT_HTTP) from None
     if len(body) > _MAX_BODY:
         raise FigmaSyncError("Figma response larger than 5 MB — refusing", EXIT_HTTP)
@@ -191,7 +206,7 @@ def map_variables(payload: Dict[str, Any], current: Dict[str, Any]) -> Tuple[Dic
                 mapped += 1
             else:
                 notes.append(f"ignored {rtype} variable {_printable(var.get('name', ''), 60)!r}")
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError, OverflowError) as e:
             notes.append(f"skipped {_printable(var.get('name', ''), 60)!r}: {e}")
     if mapped == 0:
         raise FigmaSyncError("no Figma variable matched a design token name — nothing to sync", EXIT_EMPTY)
@@ -200,8 +215,14 @@ def map_variables(payload: Dict[str, Any], current: Dict[str, Any]) -> Tuple[Dic
 
 def write_tokens_atomic(path: Path, tokens: Dict[str, Any]) -> None:
     path = Path(path)
+    try:
+        mode = os.stat(path).st_mode & 0o777
+    except OSError:
+        mode = 0o644
     fd, tmp = tempfile.mkstemp(prefix=".design_tokens.", suffix=".json", dir=str(path.parent))
     try:
+        if hasattr(os, "fchmod"):  # POSIX; Windows keeps its default ACL
+            os.fchmod(fd, mode)
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(tokens, f, indent=2, ensure_ascii=False)
             f.write("\n")
@@ -242,7 +263,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = ap.parse_args(argv)
 
     token = sys.stdin.readline().strip()
-    if not _TOKEN.match(token):
+    if not _TOKEN.fullmatch(token):
         print("error: no valid token on stdin", file=sys.stderr)
         return EXIT_USAGE
     try:

@@ -158,3 +158,60 @@ def test_input_validation_blocks_traversal_and_ssrf(figma_server, tokens_file, a
 def test_token_only_from_stdin(tokens_file):
     r = run_cli("--file-key", KEY, "--out", str(tokens_file), token=None)
     assert r.returncode == 2 and "no valid token" in r.stderr
+
+
+# ── review round 1 regressions ──
+
+def test_a_redirect_is_refused_and_the_token_never_reaches_the_target(tokens_file):
+    received = []
+
+    class Target(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_GET(self):
+            received.append(self.headers.get("X-Figma-Token"))
+            self.send_response(200)
+            self.end_headers()
+
+    target = HTTPServer(("127.0.0.1", 0), Target)
+    threading.Thread(target=target.serve_forever, daemon=True).start()
+
+    class Redirector(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_GET(self):
+            self.send_response(302)
+            self.send_header("Location", f"http://127.0.0.1:{target.server_address[1]}/steal")
+            self.end_headers()
+
+    redirector = HTTPServer(("127.0.0.1", 0), Redirector)
+    threading.Thread(target=redirector.serve_forever, daemon=True).start()
+    try:
+        r = run_cli("--file-key", KEY, "--out", str(tokens_file), "--api-base", f"http://127.0.0.1:{redirector.server_address[1]}")
+    finally:
+        redirector.shutdown()
+        target.shutdown()
+    assert r.returncode == 5 and "redirect" in r.stderr
+    assert received == []
+
+
+def test_infinite_values_are_reported_not_a_crash(figma_server, tokens_file):
+    figma_server["payload"] = payload(variables={"v4": _var("v4", "motion/rise-ms", "c3", "FLOAT", {"m-one": 1e309})})
+    r = run_cli("--file-key", KEY, "--out", str(tokens_file), "--api-base", figma_server["base"])
+    assert "Traceback" not in r.stderr
+    assert r.returncode == 0 and "skipped 'motion/rise-ms'" in r.stdout
+
+
+def test_file_mode_is_preserved(figma_server, tokens_file):
+    import os
+    os.chmod(tokens_file, 0o644)
+    r = run_cli("--file-key", KEY, "--out", str(tokens_file), "--api-base", figma_server["base"])
+    assert r.returncode == 0
+    assert os.stat(tokens_file).st_mode & 0o777 == 0o644
+
+
+def test_file_key_with_trailing_newline_is_rejected(figma_server, tokens_file):
+    r = run_cli("--file-key", KEY + "\n", "--out", str(tokens_file), "--api-base", figma_server["base"])
+    assert r.returncode == 2

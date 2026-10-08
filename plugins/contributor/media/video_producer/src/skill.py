@@ -776,7 +776,7 @@ def _apply_web_scene_contract(scenes: List[Dict[str, Any]], strict: bool) -> Lis
                     raise WebSceneError("'data' given without a 'template'")
                 continue
             scene["data"] = validate_scene_data(template, data if data is not None else {})
-        except WebSceneError as e:
+        except (WebSceneError, ValueError, TypeError, OverflowError) as e:
             if strict:
                 raise ValueError(f"scene {sid}: {e}") from None
             warnings.append(f"scene {sid}: {e} (rendered without web template)")
@@ -794,21 +794,28 @@ def _video_args() -> List[str]:
     ]
 
 
-def _assemble_frames_clip(frames_dir: Path, audio_path: Path, audio_duration: float, out_path: Path, fps: int) -> None:
-    """Animated frame sequence + narration -> scene clip. The sequence ends when the
-    slide's entrance animations end; its last frame is held for the rest of the audio."""
+def _assemble_frames_clip(frames_dir: Path, n_frames: int, audio_path: Path, audio_duration: float,
+                          out_path: Path, fps: int) -> float:
+    """Animated frame sequence + narration -> scene clip; returns the clip length.
+
+    The sequence ends with the slide's entrance animation. If the narration is
+    longer, the last frame is held; if it is shorter, the audio is padded with
+    silence so the reveal is never cut off mid-animation."""
+    total = max(audio_duration, n_frames / fps)
     cmd = [
         "ffmpeg", "-y",
         "-framerate", str(fps), "-i", str(frames_dir / "%05d.png"),
         "-i", str(audio_path),
         "-filter_complex",
-        f"[0:v]tpad=stop_mode=clone:stop_duration={audio_duration + 1.0:.3f},fps=30,format=yuv420p[v]",
-        "-map", "[v]", "-map", "1:a",
+        f"[0:v]tpad=stop_mode=clone:stop_duration={total + 1.0:.3f},fps=30,format=yuv420p[v];"
+        f"[1:a]apad=whole_dur={total:.3f}[a]",
+        "-map", "[v]", "-map", "[a]",
         *_video_args(),
-        "-shortest",
+        "-t", f"{total:.3f}",
         str(out_path),
     ]
     subprocess.run(cmd, capture_output=True, text=True, check=True)
+    return total
 
 
 def _assemble_scene_clip(image_path: Path, audio_path: Path, out_path: Path) -> None:
@@ -942,8 +949,8 @@ class _WebRendererSession:
         try:
             frames = await self._renderer.render(scene.template, scene.data or {}, duration_s, out_dir, **kw)
             return frames, None
-        except (WebRenderError, WebSceneError) as e:
-            logger.warning("web slide render failed (%s), using classic slide", e)
+        except Exception as e:  # noqa: BLE001 — specs may come from an LLM: any failure = classic slide
+            logger.warning("web slide render failed (%s), using classic slide", type(e).__name__)
             shutil.rmtree(out_dir, ignore_errors=True)
             return None, f"{type(e).__name__}: {e}"[:200]
 
@@ -1129,7 +1136,12 @@ async def orchestrate_video(
                     current_scene=i, total_scenes=total,
                 )
                 if frames:
-                    _assemble_frames_clip(frames[0].parent, audio_path, audio_duration, clip_path, web_fps)
+                    try:
+                        _assemble_frames_clip(frames[0].parent, len(frames), audio_path, audio_duration,
+                                              clip_path, web_fps)
+                    finally:
+                        # ~0.5-1 MB per frame; the clip is the artifact, the frames are scratch
+                        shutil.rmtree(frames[0].parent, ignore_errors=True)
                 else:
                     _assemble_scene_clip(image_path, audio_path, clip_path)
 

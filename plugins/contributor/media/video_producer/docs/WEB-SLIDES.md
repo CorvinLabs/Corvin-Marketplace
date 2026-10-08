@@ -26,10 +26,17 @@ Pipeline per web scene (`skill.orchestrate_video`):
    JavaScript disabled and every network request aborted, waits until the
    bundled fonts have loaded (a font that fails stops the render instead of
    silently falling back), then pauses all Web Animations and steps
-   `currentTime` frame by frame. Time is an input, so two renders are
-   bit-identical.
-3. Frames stop when the last entrance animation ends; ffmpeg holds the last
-   frame for the rest of the narration (`_assemble_frames_clip`).
+   `currentTime` frame by frame. Chromium runs with
+   `--disable-threaded-animation --run-all-compositor-stages-before-draw`:
+   without them the compositor thread could draw a frame that lagged the
+   paused time (measured: up to 54 of 149 frames differing between two
+   browser instances). With them, renders in separate browser instances were
+   bit-identical in every run (tested per frame with SHA-256).
+3. Frames always cover the complete entrance animation. If the narration is
+   longer, ffmpeg holds the last frame; if it is shorter, the audio is padded
+   with silence, so a reveal (e.g. the rolling digits of `stat`) is never cut
+   off mid-way (`_assemble_frames_clip`). The frame directory is deleted as
+   soon as the clip is encoded.
 
 Every clip is 1920x1080, 30 fps, H.264 + AAC with identical parameters, so web,
 classic and screenshot scenes concatenate without re-encoding. Reported
@@ -68,8 +75,19 @@ everything is on screen by about 55% of the scene's audio.
 | `web_tokens_path` | bundled file | alternative design-token file, validated like the bundled one |
 | `storyboard` | — | an operator-written storyboard; skips the LLM, same validation, web-slide contract enforced strictly (an invalid scene fails the job before any work) |
 
+These are plugin API keys, set by the host in the job config. The CorvinOS
+console route passes none of them today: console jobs run with the defaults
+(web slides on, dark theme) and the templates the storyboard LLM picks. A host
+that starts passing `storyboard` must run its narration text through the same
+pre-spawn gates as the task text (L44 acceptable use, L34 classification),
+because that text is sent to the TTS service. `web_tokens_path` is a host-side
+setting, never tenant input; it must be a regular JSON file of at most 64 KB.
+
 LLM-written storyboards are untrusted: an invalid web-slide spec is removed
 from that scene (it renders classic) and logged; it is never passed through.
+Bidi overrides, zero-width characters and lone surrogates are stripped or
+rejected, and any unexpected error in a web scene falls back to the classic
+slide instead of failing the job.
 
 ## Fallback
 
@@ -108,8 +126,9 @@ It reads the file's local Variables (REST `GET /v1/files/:key/variables/local`),
 maps them by name (see the module docstring: theme colours by mode name
 light/dark, `heading_family`/`body_family`/`mono_family`, `rise_ms`),
 resolves aliases, lists every variable it ignored, prints a diff and writes
-the file atomically only if the merged result passes token validation. The
-token is read from stdin only and never printed. Exit codes: 0 ok, 2 usage,
+the file atomically (keeping its file mode) only if the merged result passes
+token validation. The token is read from stdin only, never printed, and HTTP
+redirects are refused so the token header is never sent to another host. Exit codes: 0 ok, 2 usage,
 3 refused by Figma (token scope or plan — the Variables API is plan-gated),
 4 file not found, 5 network/HTTP, 6 result failed validation, 7 nothing
 matched.

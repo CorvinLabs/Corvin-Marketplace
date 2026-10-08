@@ -27,9 +27,17 @@ async def renderer():
         pytest.skip(f"chromium unavailable: {e}")
 
 
-async def test_two_renders_are_bit_identical_and_animated(renderer, tmp_path):
-    a = await renderer.render("diagram", DIAGRAM, 6.0, tmp_path / "a")
-    b = await renderer.render("diagram", DIAGRAM, 6.0, tmp_path / "b")
+async def test_renders_in_separate_browsers_are_bit_identical_and_animated(tmp_path):
+    """Two independent browser instances, as two jobs or two hosts would use.
+    Before the compositor flags this differed in up to 54 of 149 frames."""
+    paths = []
+    for name in ("a", "b"):
+        try:
+            async with WebSlideRenderer() as r:
+                paths.append(await r.render("diagram", DIAGRAM, 6.0, tmp_path / name))
+        except WebRenderError as e:
+            pytest.skip(f"chromium unavailable: {e}")
+    a, b = paths
     assert len(a) == len(b) > 30, "an animated slide must yield many frames"
     assert _sha(a) == _sha(b)
     assert len(set(_sha(a))) > 20, "frames must actually change over time"
@@ -39,11 +47,14 @@ async def test_two_renders_are_bit_identical_and_animated(renderer, tmp_path):
     assert ImageStat.Stat(last.convert("L")).stddev[0] > 8
 
 
-async def test_frame_count_stops_at_the_last_animation(renderer, tmp_path):
-    short = await renderer.render("quote", {"quote": "q"}, 1.0, tmp_path / "s")
-    long = await renderer.render("quote", {"quote": "q"}, 30.0, tmp_path / "l")
-    assert len(short) <= 31  # capped by the 1 s narration
-    assert len(long) < 30 * 30, "frames end with the entrance animations, not the narration"
+async def test_short_narration_still_gets_the_complete_animation(renderer, tmp_path):
+    """A 1 s narration must not freeze the odometer mid-roll (review finding 3)."""
+    data = {"value": 98765, "label": "frozen?", "caption": "c"}
+    short = await renderer.render("stat", data, 1.0, tmp_path / "s")
+    long = await renderer.render("stat", data, 30.0, tmp_path / "l")
+    assert len(short) > 30, "frames must cover the whole entrance animation"
+    assert len(long) < 30 * 30, "frames end with the animation, not the narration"
+    assert _sha([short[-1]]) == _sha([long[-1]]), "the final state must be the same, whatever the narration length"
 
 
 async def test_a_font_that_fails_to_load_stops_the_render(renderer, tmp_path, monkeypatch):
@@ -83,30 +94,43 @@ async def test_refuses_a_non_empty_frame_directory(renderer, tmp_path):
         await renderer.render("hero", {"title": "t"}, 2.0, d)
 
 
-async def test_no_network_and_no_javascript_in_the_render_context(renderer, tmp_path):
-    """A document with an external image and a script: the request is aborted, the script never runs."""
+async def test_production_capture_blocks_network_and_scripts(renderer, tmp_path, monkeypatch):
+    """Feeds a hostile document through WebSlideRenderer.render itself (review finding 6):
+    the external request must never arrive and the script must never run."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
     from src import web_renderer as wr
+    from src import web_templates as wt
 
-    seen = []
-    doc = ('<!doctype html><html><body style="background:#000">'
-           '<img src="https://example.com/beacon.png"><script>document.body.style.background="#fff"</script>'
-           '</body></html>')
-    context = await renderer._browser.new_context(viewport=wr.VIEWPORT, java_script_enabled=False)
+    hits = []
+
+    class H(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_GET(self):
+            hits.append(self.path)
+            self.send_response(200)
+            self.end_headers()
+
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{srv.server_address[1]}"
+    doc = (f'<!doctype html><html><head><style>{wt._font_faces()}'
+           f'body{{margin:0;background:#000;font-family:"Instrument Sans"}}'
+           f'@keyframes f{{from{{opacity:0}}}}p{{animation:f 300ms both}}</style>'
+           f'<link rel="stylesheet" href="{url}/style.css"></head><body>'
+           f'<img src="{url}/beacon.png"><p>x</p>'
+           f'<script>document.body.style.background="#fff";fetch("{url}/fetch")</script></body></html>')
+    monkeypatch.setattr(wr, "build_document", lambda *a, **k: doc)
     try:
-        async def handler(route):
-            seen.append(route.request.url)
-            await route.abort()
-        await context.route("**/*", handler)
-        page = await context.new_page()
-        await page.set_content(doc, wait_until="load")
-        assert await page.evaluate("getComputedStyle(document.body).backgroundColor") == "rgb(0, 0, 0)"
-        assert seen == ["https://example.com/beacon.png"]
+        frames = await renderer.render("hero", {"title": "t"}, 1.0, tmp_path / "hostile")
     finally:
-        await context.close()
-    # and the production capture path uses exactly these settings
-    import inspect
-    src = inspect.getsource(wr.WebSlideRenderer._capture)
-    assert "java_script_enabled=False" in src and 'route("**/*"' in src and "route.abort()" in src
+        srv.shutdown()
+    assert hits == [], f"the render page reached the network: {hits}"
+    # (the aborted <img> leaves a broken-image icon top-left; sample the open background)
+    last = Image.open(frames[-1]).convert("RGB")
+    assert sum(last.getpixel((960, 900))) < 30 and sum(last.getpixel((1900, 1060))) < 30, "the page script ran"
 
 
 async def test_closed_renderer_refuses_work(tmp_path):

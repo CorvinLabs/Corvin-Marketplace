@@ -140,3 +140,53 @@ def test_bundled_fonts_and_licences_ship_with_the_plugin():
             assert (wt.WEB_DIR / "fonts" / filename).stat().st_size > 10_000
     for lic in ("newsreader", "instrumentsans", "jetbrainsmono"):
         assert "SIL Open Font License" in (wt.WEB_DIR / "fonts" / f"OFL-{lic}.txt").read_text()
+
+
+# ── review round 1 regressions ──
+
+def test_lone_surrogate_is_a_validation_error_not_a_crash():
+    with pytest.raises(WebSceneError, match="invalid character"):
+        validate_scene_data("hero", {"title": "A\ud800"})
+    with pytest.raises(WebSceneError, match="invalid character"):
+        validate_scene_data("code", {"title": "t", "lines": ["x\udfff"]})
+
+
+def test_bidi_and_zero_width_characters_are_removed():
+    d = validate_scene_data("hero", {"title": "safe\u202etxt.exe\u200b\ufeff"})
+    assert d["title"] == "safetxt.exe"
+
+
+@pytest.mark.parametrize("value", [10 ** 400, -(10 ** 400)])
+def test_huge_integers_are_rejected(value):
+    with pytest.raises(WebSceneError, match="range"):
+        validate_scene_data("stat", {"value": value, "label": "l"})
+
+
+def test_negative_zero_renders_as_zero():
+    assert validate_scene_data("stat", {"value": -0.0, "label": "l"})["value"] == 0.0
+    body = build_document("stat", {"value": -0.0, "label": "l"}, duration_s=3).split("</style>", 1)[1]
+    assert ">-<" not in body
+
+
+@pytest.mark.parametrize("path,value", [(("dark", "accent"), "#000000\n"), (("animation", "easing"), "cubic-bezier(0, 0, 1, 1)\n")])
+def test_token_patterns_match_the_whole_value(path, value):
+    tokens = copy.deepcopy(load_tokens())
+    tokens[path[0]][path[1]] = value
+    with pytest.raises(WebSceneError):
+        validate_tokens(tokens)
+
+
+def test_token_file_must_be_a_small_regular_file(tmp_path):
+    import os
+    big = tmp_path / "big.json"
+    big.write_text(" " * (wt.MAX_TOKENS_BYTES + 10))
+    with pytest.raises(WebSceneError, match="64 KB"):
+        load_tokens(big)
+    fifo = tmp_path / "fifo"
+    if hasattr(os, "mkfifo"):
+        os.mkfifo(fifo)
+        with pytest.raises(WebSceneError, match="regular file"):
+            load_tokens(fifo)  # must not block on open
+    with pytest.raises(WebSceneError) as e:
+        load_tokens(tmp_path / "missing.json")
+    assert "No such file" not in str(e.value)
