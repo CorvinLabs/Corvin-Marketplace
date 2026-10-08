@@ -119,8 +119,16 @@ pre-spawn gates as the task text (L44 acceptable use, L34 classification),
 because that text is sent to the TTS service. `web_tokens_path` is a host-side
 setting, never tenant input; it must be a regular JSON file of at most 64 KB.
 
-LLM-written storyboards are untrusted: an invalid web-slide spec is removed
-from that scene (it renders classic) and logged; it is never passed through.
+LLM-written storyboards are untrusted: an invalid web-slide spec is never
+passed through. When a remote model (`claude_cli`/`anthropic`) wrote it, the
+scenes that failed go back to the same model once, with their exact
+validation errors and the template contract; a repaired spec is kept only if
+it passes the same validation, and the repair may touch only the scenes that
+failed. Whatever still fails renders on the classic slide. The job metadata
+records both: `storyboard_template_repairs` (count) and
+`storyboard_template_warnings` (what stayed classic, and why). In the first
+live run Sonnet produced 1 invalid spec in 8 scenes; that scene became the
+plain classic slide, which is what the repair pass exists to prevent.
 Bidi overrides, zero-width characters and lone surrogates are stripped or
 rejected, and any unexpected error in a web scene falls back to the classic
 slide instead of failing the job.

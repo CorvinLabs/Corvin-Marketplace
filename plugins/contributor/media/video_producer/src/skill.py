@@ -198,6 +198,46 @@ def detect_didactic_strategy(task: str) -> str:
     return "rich_visual"  # default: most tasks describe a system/process
 
 
+_TEMPLATE_GUIDE = """WEB SLIDES (preferred visual for every scene): add "template" and "data".
+Templates and their data (plain text only, never HTML; keep texts short):
+- "hero":    {"badge"?, "title", "accent"?, "subtitle"?}  (title slide; accent = italic highlight line)
+- "content": {"eyebrow"?, "title", "bullets": [1-5 short strings]}
+- "stat":    {"eyebrow"?, "value": number, "decimals"?: 0-2, "prefix"?, "suffix"?, "label", "caption"?, "locale"?: "de"|"en"}
+             (only for a number stated in the task or narration; never invent figures)
+- "diagram": {"eyebrow"?, "title", "nodes": [2-6 {"label", "sub"?}], "highlight"?: index}  (left-to-right flow)
+- "chart":   {"eyebrow"?, "title", "bars": [2-8 {"label", "value": number >= 0}], "unit"?, "decimals"?, "highlight"?, "locale"?}
+             (only with real numbers from the task; never invent data)
+- "compare": {"eyebrow"?, "title", "left": {"title", "points": [1-4]}, "right": {"title", "points": [1-4]}}
+- "quote":   {"eyebrow"?, "quote", "attribution"?, "locale"?}
+- "code":    {"eyebrow"?, "title", "language"?, "lines": [1-12 strings]}
+- "flow":    {"eyebrow"?, "title", "nodes": [2-8 {"id": "a-z0-9_", "label", "sub"?}],
+              "edges": [1-12 {"from": id, "to": id, "label"?}], "highlight"?: id}
+             (a graph with branches/merges, laid out left to right; no cycles; at most 5 columns
+              and 4 nodes per column; data pulses run along the edges)
+- "cycle":   {"eyebrow"?, "title", "caption"?, "center"?, "steps": [3-6 {"label", "sub"?}], "highlight"?: index}
+             (a loop: feedback, learning, iteration)
+- "layers":  {"eyebrow"?, "title", "layers": [2-6 {"label", "sub"?, "tag"?}], "highlight"?: index}
+             (a stack, first = top: architecture layers, tiers)
+- "timeline": {"eyebrow"?, "title", "events": [2-6 {"when", "label", "sub"?}], "current"?: index}
+             (history, roadmap, phases)
+- "line":    {"eyebrow"?, "title", "labels": [3-12 x-axis labels], "series": [1-3 {"name", "values": [numbers, one per label]}],
+              "unit"?, "decimals"?, "highlight"?: index, "locale"?}  (a trend; only with real numbers from the task)
+- "donut":   {"eyebrow"?, "title", "segments": [2-6 {"label", "value": number >= 0}], "center_value"?, "center_label"?,
+              "unit"?, "decimals"?, "highlight"?: index, "locale"?}  (shares of a whole; only real numbers)
+Limits: title 70-80 chars (cycle 60), bullet 110, node label 28 (flow 24), bar label 24, layer label 32.
+Optional per scene: "theme": "dark" (default) or "light".
+
+CHOOSING A VISUAL — pick the template that SHOWS the idea instead of listing it:
+- branching process / architecture with several parts -> "flow"; a straight 2-6 step pipeline -> "diagram"
+- feedback loop / iteration -> "cycle"; layered architecture / tiers -> "layers"; history / roadmap -> "timeline"
+- a trend over time -> "line"; parts of a whole -> "donut"; quantities side by side -> "chart"; one key number -> "stat"
+- before/after or option A vs. B -> "compare"; a command or config -> "code"; one memorable sentence -> "quote"
+- "content" (bullets) only when nothing above fits — at most once per video; "hero" for the title scene.
+- Never invent numbers: "line", "donut", "chart" and "stat" only with figures stated in the task.
+- Write template text in the same language as the narration ("locale": "de" for German numbers).
+"""
+
+
 async def generate_storyboard_with_llm(
     task: str,
     max_duration_minutes: int = 60,
@@ -251,43 +291,7 @@ DESIGN RULES (measured from real didactic videos, apply them):
   "shield icon" for security, "chain with four links" for a 4-step process),
   not a vague mood description.
 
-WEB SLIDES (preferred visual for every scene): add "template" and "data".
-Templates and their data (plain text only, never HTML; keep texts short):
-- "hero":    {{"badge"?, "title", "accent"?, "subtitle"?}}  (title slide; accent = italic highlight line)
-- "content": {{"eyebrow"?, "title", "bullets": [1-5 short strings]}}
-- "stat":    {{"eyebrow"?, "value": number, "decimals"?: 0-2, "prefix"?, "suffix"?, "label", "caption"?, "locale"?: "de"|"en"}}
-             (only for a number stated in the task or narration; never invent figures)
-- "diagram": {{"eyebrow"?, "title", "nodes": [2-6 {{"label", "sub"?}}], "highlight"?: index}}  (left-to-right flow)
-- "chart":   {{"eyebrow"?, "title", "bars": [2-8 {{"label", "value": number >= 0}}], "unit"?, "decimals"?, "highlight"?, "locale"?}}
-             (only with real numbers from the task; never invent data)
-- "compare": {{"eyebrow"?, "title", "left": {{"title", "points": [1-4]}}, "right": {{"title", "points": [1-4]}}}}
-- "quote":   {{"eyebrow"?, "quote", "attribution"?, "locale"?}}
-- "code":    {{"eyebrow"?, "title", "language"?, "lines": [1-12 strings]}}
-- "flow":    {{"eyebrow"?, "title", "nodes": [2-8 {{"id": "a-z0-9_", "label", "sub"?}}],
-              "edges": [1-12 {{"from": id, "to": id, "label"?}}], "highlight"?: id}}
-             (a graph with branches/merges, laid out left to right; no cycles; at most 5 columns
-              and 4 nodes per column; data pulses run along the edges)
-- "cycle":   {{"eyebrow"?, "title", "caption"?, "center"?, "steps": [3-6 {{"label", "sub"?}}], "highlight"?: index}}
-             (a loop: feedback, learning, iteration)
-- "layers":  {{"eyebrow"?, "title", "layers": [2-6 {{"label", "sub"?, "tag"?}}], "highlight"?: index}}
-             (a stack, first = top: architecture layers, tiers)
-- "timeline": {{"eyebrow"?, "title", "events": [2-6 {{"when", "label", "sub"?}}], "current"?: index}}
-             (history, roadmap, phases)
-- "line":    {{"eyebrow"?, "title", "labels": [3-12 x-axis labels], "series": [1-3 {{"name", "values": [numbers, one per label]}}],
-              "unit"?, "decimals"?, "highlight"?: index, "locale"?}}  (a trend; only with real numbers from the task)
-- "donut":   {{"eyebrow"?, "title", "segments": [2-6 {{"label", "value": number >= 0}}], "center_value"?, "center_label"?,
-              "unit"?, "decimals"?, "highlight"?: index, "locale"?}}  (shares of a whole; only real numbers)
-Limits: title 70-80 chars (cycle 60), bullet 110, node label 28 (flow 24), bar label 24, layer label 32.
-Optional per scene: "theme": "dark" (default) or "light".
-
-CHOOSING A VISUAL — pick the template that SHOWS the idea instead of listing it:
-- branching process / architecture with several parts -> "flow"; a straight 2-6 step pipeline -> "diagram"
-- feedback loop / iteration -> "cycle"; layered architecture / tiers -> "layers"; history / roadmap -> "timeline"
-- a trend over time -> "line"; parts of a whole -> "donut"; quantities side by side -> "chart"; one key number -> "stat"
-- before/after or option A vs. B -> "compare"; a command or config -> "code"; one memorable sentence -> "quote"
-- "content" (bullets) only when nothing above fits — at most once per video; "hero" for the title scene.
-- Never invent numbers: "line", "donut", "chart" and "stat" only with figures stated in the task.
-- Write template text in the same language as the narration ("locale": "de" for German numbers).
+{_TEMPLATE_GUIDE}
 
 CONSTRAINTS (MUST ENFORCE):
 - Total duration ≤ {max_duration_minutes * 60000} ms
@@ -340,9 +344,11 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
         validation.raise_if_invalid()
 
         # LLM output is untrusted: an invalid web-slide spec is dropped (the
-        # scene then renders on the Pillow path), never passed through.
-        for warning in _apply_web_scene_contract(storyboard_json["scenes"], strict=False):
-            logger.info("storyboard web-slide warning: %s", warning)
+        # scene then renders on the Pillow path), never passed through. A remote
+        # model gets one chance to repair exactly the scenes that failed.
+        template_warnings = _repair_web_scenes(storyboard_json["scenes"], report, model)
+        for warning in template_warnings:
+            logger.warning("storyboard web-slide warning: %s", warning)
 
         scenes = [Scene.from_dict(s) for s in storyboard_json["scenes"]]
         return Storyboard(
@@ -352,6 +358,8 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
             generated_at=datetime.now(),
             didactic_strategy=storyboard_json["didactic_strategy"],
             llm_backend=report.get("backend", backend),
+            template_warnings=template_warnings,
+            template_repairs=report.get("repaired", 0),
         )
 
     except json.JSONDecodeError as e:
@@ -871,6 +879,57 @@ async def _render_screenshot_scene(scene: Scene, image_path: Path) -> None:
         os.replace(tmp_path, image_path)
 
 
+def _repair_web_scenes(scenes: List[Dict[str, Any]], report: Dict[str, Any], model: Optional[str]) -> List[str]:
+    """Validate LLM web-slide specs; when a remote model wrote them, send the
+    scenes that failed back once with their exact validation errors and keep
+    the repaired specs that now pass. Returns the warnings that remain.
+
+    The repair answer is as untrusted as the first one: it is validated by the
+    same contract, may only touch the failed scenes' template/data, and any
+    failure of the repair call leaves those scenes on the classic slide."""
+    originals = {s.get("id"): (s.get("template"), s.get("data")) for s in scenes if isinstance(s, dict)}
+    warnings = _apply_web_scene_contract(scenes, strict=False)
+    used = str(report.get("backend", ""))
+    if not warnings or not used.startswith(("claude_cli:", "anthropic:")):
+        return warnings
+    failed = []
+    for s in scenes:
+        sid = s.get("id") if isinstance(s, dict) else None
+        tmpl, data = originals.get(sid, (None, None))
+        if sid is not None and tmpl is not None and s.get("template") is None:
+            err = next((w for w in warnings if w.startswith(f"scene {sid}: ")), "")
+            failed.append({"id": sid, "template": tmpl, "data": data, "error": err})
+    if not failed:
+        return warnings
+    prompt = (
+        "Some web-slide specs in a video storyboard failed validation. Fix ONLY these scenes: keep "
+        "their meaning and language, satisfy the contract below exactly (field names, list sizes, "
+        "character limits), or switch to a template that fits better. Never invent numbers.\n\n"
+        + _TEMPLATE_GUIDE
+        + "\nFAILED SCENES (JSON):\n" + json.dumps(failed, ensure_ascii=False)
+        + '\n\nReturn ONLY JSON: {"scenes": [{"id": "...", "template": "...", "data": {...}}]}'
+    )
+    backend, _, used_model = used.partition(":")
+    try:
+        raw = _call_storyboard_llm(prompt, backend=backend, model=used_model or model, report={})
+        raw = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", raw.strip())
+        fixes = {f.get("id"): f for f in json.loads(raw).get("scenes", []) if isinstance(f, dict)}
+    except Exception as e:  # noqa: BLE001 — a failed repair keeps the classic slide
+        logger.warning("web-slide repair call failed (%s)", type(e).__name__)
+        return warnings
+    remaining = list(warnings)
+    for s in scenes:
+        fix = fixes.get(s.get("id")) if isinstance(s, dict) else None
+        if not fix or s.get("template") is not None or s.get("id") not in {f["id"] for f in failed}:
+            continue
+        trial = {"id": s["id"], "template": fix.get("template"), "data": fix.get("data")}
+        if not _apply_web_scene_contract([trial], strict=False):
+            s["template"], s["data"] = trial["template"], trial["data"]
+            remaining = [w for w in remaining if not w.startswith(f"scene {s['id']}: ")]
+            report["repaired"] = report.get("repaired", 0) + 1
+    return remaining
+
+
 def _apply_web_scene_contract(scenes: List[Dict[str, Any]], strict: bool) -> List[str]:
     """Validate each scene's web-slide fields (template/data/theme) in place.
 
@@ -1306,6 +1365,8 @@ async def orchestrate_video(
                 "web_scenes": renderers_used.count("web"),
                 "web_render_fallbacks": web_fallbacks,
                 "storyboard_llm": storyboard.llm_backend or "operator",
+                "storyboard_template_repairs": storyboard.template_repairs,
+                "storyboard_template_warnings": storyboard.template_warnings,
             },
         )
         storage.save_video_output(video_output)

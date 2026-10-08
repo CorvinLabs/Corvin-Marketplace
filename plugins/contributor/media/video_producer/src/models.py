@@ -174,6 +174,10 @@ class Storyboard:
     # Which LLM actually wrote it ("claude_cli:<model>", "ollama:<model>", ...);
     # None for an operator-supplied storyboard. Job metadata, not serialised.
     llm_backend: Optional[str] = None
+    # Web-slide specs the LLM got wrong: how many one repair pass fixed, and
+    # what still renders on the classic slide (and why). Job metadata only.
+    template_repairs: int = 0
+    template_warnings: List[str] = field(default_factory=list)
 
     def to_json(self) -> str:
         return json.dumps({

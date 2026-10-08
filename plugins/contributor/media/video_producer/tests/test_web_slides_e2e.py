@@ -138,9 +138,10 @@ async def test_ambient_motion_keeps_moving_until_the_narration_ends(store, tmp_p
     assert moved > 300, f"the slide froze after its entrance ({moved} px moved; held frame instead of ambient loop)"
 
 
-def _fake_claude(tmp_path: Path, monkeypatch, storyboard: dict, exit_code: int = 0) -> Path:
+def _fake_claude(tmp_path: Path, monkeypatch, storyboard: dict, exit_code: int = 0, repair: dict = None) -> Path:
     """An executable standing in for the Claude Code CLI at the real process
-    boundary: it records argv + stdin and answers like `claude -p --output-format json`."""
+    boundary: it records argv + stdin and answers like `claude -p --output-format json`
+    — with ``repair`` when the prompt is the web-slide repair request."""
     log = tmp_path / "claude_calls.jsonl"
     script = tmp_path / "claude"
     script.write_text(
@@ -148,8 +149,10 @@ def _fake_claude(tmp_path: Path, monkeypatch, storyboard: dict, exit_code: int =
         "import json, os, sys\n"
         f"log = {str(log)!r}\n"
         "prompt = sys.stdin.read()\n"
-        "with open(log, 'a') as f: f.write(json.dumps({'argv': sys.argv[1:], 'stdin_len': len(prompt), 'cwd': os.getcwd()}) + '\\n')\n"
-        f"sys.stdout.write(json.dumps({{'type': 'result', 'is_error': False, 'result': {json.dumps(json.dumps(storyboard))}}}))\n"
+        "is_repair = 'FAILED SCENES' in prompt\n"
+        "with open(log, 'a') as f: f.write(json.dumps({'argv': sys.argv[1:], 'stdin_len': len(prompt), 'cwd': os.getcwd(), 'repair': is_repair, 'prompt': prompt[-2000:]}) + '\\n')\n"
+        f"answer = {json.dumps(json.dumps(repair or {}))} if is_repair else {json.dumps(json.dumps(storyboard))}\n"
+        "sys.stdout.write(json.dumps({'type': 'result', 'is_error': False, 'result': answer}))\n"
         f"sys.exit({exit_code})\n"
     )
     script.chmod(0o755)
@@ -184,6 +187,42 @@ async def test_claude_cli_backend_writes_the_storyboard(store, tmp_path, monkeyp
     assert argv[argv.index("--tools") + 1] == "" and argv[argv.index("--setting-sources") + 1] == ""
     assert call["stdin_len"] > 1000 and not any("Web slides E2E" in a for a in argv)
     assert "vp-storyboard-" in call["cwd"]
+
+
+BROKEN_DONUT = {"id": "sb_rep", "didactic_strategy": "rich_visual", "scenes": [
+    {"id": "s1", "kind": "title", "duration_ms": 8000, "narration_text": "Wofür die Zeit draufgeht.",
+     "visual_description": "title", "template": "hero", "data": {"title": "Zeitbudget"}},
+    {"id": "s2", "kind": "example", "duration_ms": 9000,
+     "narration_text": "Drei Viertel der Zeit gehen in das Rendern, ein Viertel in die Sprachausgabe.",
+     "visual_description": "donut", "template": "donut",
+     "data": {"title": "Zeitbudget", "center_value": "drei Viertel!",  # 13 chars > limit 10
+              "segments": [{"label": "Rendern", "value": 75}, {"label": "Sprache", "value": 25}]}},
+]}
+
+
+async def test_remote_model_repairs_an_invalid_web_slide_once(store, tmp_path, monkeypatch):
+    fixed = {"scenes": [{"id": "s2", "template": "donut", "data": {
+        "title": "Zeitbudget", "center_value": "75 %", "center_label": "Rendern",
+        "segments": [{"label": "Rendern", "value": 75}, {"label": "Sprache", "value": 25}]}}]}
+    log = _fake_claude(tmp_path, monkeypatch, BROKEN_DONUT, repair=fixed)
+    result = await _run(store, "job_repair", storyboard_backend="claude_cli", storyboard_model="claude-sonnet-5-5")
+    md = result["metadata"]
+    assert md["renderers"] == ["web", "web"]
+    assert md["storyboard_template_repairs"] == 1 and md["storyboard_template_warnings"] == []
+    calls = [json.loads(line) for line in log.read_text().splitlines()]
+    assert [c["repair"] for c in calls] == [False, True]
+    assert "center_value" in calls[1]["prompt"] and "limit 10" in calls[1]["prompt"]
+
+
+async def test_a_repair_that_is_still_invalid_keeps_the_classic_slide_and_says_why(store, tmp_path, monkeypatch):
+    still_bad = {"scenes": [{"id": "s2", "template": "donut", "data": {"title": "x", "html": "<b>"}},
+                            {"id": "s1", "template": "quote", "data": {"quote": "hijack a scene that was fine"}}]}
+    _fake_claude(tmp_path, monkeypatch, BROKEN_DONUT, repair=still_bad)
+    result = await _run(store, "job_repair_bad", storyboard_backend="claude_cli", storyboard_model="claude-sonnet-5-5")
+    md = result["metadata"]
+    assert md["renderers"] == ["web", "pillow"], "the repair may only touch the scene that failed"
+    assert md["storyboard_template_repairs"] == 0
+    assert len(md["storyboard_template_warnings"]) == 1 and "center_value" in md["storyboard_template_warnings"][0]
 
 
 async def test_claude_cli_failure_falls_back_to_local_and_is_reported(store, tmp_path, monkeypatch):
