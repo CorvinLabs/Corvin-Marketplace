@@ -40,7 +40,9 @@ Pipeline per web scene (`skill.orchestrate_video`):
 
 Every clip is 1920x1080, 30 fps, H.264 + AAC with identical parameters, so web,
 classic and screenshot scenes concatenate without re-encoding. Reported
-duration and captions are measured on the encoded files.
+duration is measured on the encoded file. Videos carry no subtitles: no caption
+file is written and the spoken text is never drawn on a slide (the classic slide
+shows only its label and icon).
 
 ## Templates
 

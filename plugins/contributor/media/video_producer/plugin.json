@@ -8,7 +8,7 @@
   "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
   "tier": "contributor",
   "category": "media",
-  "description": "Create narrated MP4s from a task description: LLM-written storyboard, per-scene TTS narration, animated web slides in the corvin-labs.com design (deterministic headless-Chromium rendering, Pillow fallback), ffmpeg assembly. See docs/WEB-SLIDES.md and docs/ADR-0953.",
+  "description": "Create narrated MP4s from a task description: LLM-written storyboard, per-scene OpenAI TTS narration (no subtitles), animated web slides in the corvin-labs.com design (deterministic headless-Chromium rendering, Pillow fallback), ffmpeg assembly. See docs/WEB-SLIDES.md and docs/ADR-0953.",
   "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/media/video_producer/README.md",
   "documentation": "docs/README.md",
   "adr_prefix": "video-producer",
@@ -57,7 +57,7 @@
     ]
   },
   "config": {
-    "tts_engine": "gtts",
+    "tts_engine": "openai",
     "youtube_upload_supported": false,
     "max_video_length_minutes": 60,
     "audit_enabled": true,

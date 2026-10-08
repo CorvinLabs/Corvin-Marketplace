@@ -39,14 +39,6 @@ def _frame_at(video: Path, t: float, out: Path) -> Image.Image:
     return Image.open(out).convert("RGB")
 
 
-def _srt_end_seconds(srt: Path) -> float:
-    last = [l for l in srt.read_text(encoding="utf-8").splitlines() if "-->" in l][-1]
-    end = last.split("-->")[1].strip()
-    h, m, rest = end.split(":")
-    s, ms = rest.split(",")
-    return int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000
-
-
 STORYBOARD = {
     "id": "sb_e2e_web",
     "didactic_strategy": "rich_visual",
@@ -99,7 +91,8 @@ async def test_operator_storyboard_renders_web_slides_into_a_real_mp4(store, tmp
 
     measured = float(probe["format"]["duration"])
     assert abs(measured - result["duration_seconds"]) <= 0.5, "reported duration must be the artifact's"
-    assert abs(_srt_end_seconds(Path(result["srt_path"])) - measured) <= 0.25, "captions drift from the video"
+    assert "srt_path" not in result and not list(video.parent.glob("*.srt")), "subtitles must not be produced"
+    assert [s["codec_type"] for s in probe["streams"] if s["codec_type"] == "subtitle"] == []
 
     # Scene 1 animates: an early frame differs from a later one, and neither is blank.
     early = _frame_at(video, 0.10, tmp_path / "early.png")

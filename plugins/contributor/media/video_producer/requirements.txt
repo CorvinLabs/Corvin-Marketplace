@@ -9,8 +9,8 @@
 # outright on a clean machine.
 anthropic>=0.40.0
 requests>=2.31.0
-gTTS>=2.5.0
-openai>=1.0.0
+gTTS>=2.5.0              # legacy engine (tts_engine="gtts")
+openai>=1.0.0            # default narration engine: OpenAI TTS (ADR-2211)
 Pillow>=10.0.0
 
 # TTS fallback chain (ADR-2211): openai -> edge-tts -> piper-tts -> mock.

@@ -303,16 +303,10 @@ class TestFullPipelineCorvinCompliance:
             f"Expected a real muxed video+audio stream, got codec_types={codec_types}"
         )
 
-        # SRT captions exist and cover the measured duration (sum check, not
-        # per-scene).
-        srt_path = Path(result["srt_path"])
-        assert srt_path.exists()
-        srt_text = srt_path.read_text(encoding="utf-8")
-        cue_count = srt_text.count(" --> ")
-        assert cue_count == len(final_job.storyboard.scenes), (
-            f"SRT has {cue_count} cues but storyboard has {len(final_job.storyboard.scenes)} scenes — "
-            "caption count must sum to scene count"
-        )
+        # No subtitles: no caption file, no subtitle stream.
+        assert "srt_path" not in result
+        assert not list(video_path.parent.glob("*.srt"))
+        assert "subtitle" not in codec_types
 
         # Compliance-content sanity: this video was commissioned to be ABOUT
         # Corvin + Compliance — assert the actual generated narration (not

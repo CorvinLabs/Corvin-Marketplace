@@ -22,14 +22,19 @@ Nothing else under `src/` is reachable from there.
    policy admits it for this job; otherwise a local Ollama instance) and turned into a
    JSON storyboard (scenes, narration text, durations), enforcing a scene-count and
    total-duration ceiling.
-2. **Narration:** each scene's text is synthesized with **gTTS** (Google's public
-   Translate TTS endpoint — not a paid API, no SLA).
+2. **Narration:** each scene's text is synthesized with **OpenAI TTS** (`tts-1-hd`, voice
+   `onyx`, ADR-2211) — the default engine. It needs `CORVIN_TTS_OPENAI_KEY` or
+   `OPENAI_API_KEY` in the host environment; without a key, or if the API fails, the job
+   fails with a clear message rather than switching the narrator. `tts_engine: "auto"` is
+   the fallback chain (OpenAI → edge-tts → Piper → silent mock, recorded per job in
+   `tts_provider_used`); `"gtts"` is the legacy no-key engine.
 3. **Slide image:** a scene with a `template` is rendered as an animated web slide in
    the corvin-labs.com design (headless Chromium, deterministic frames — see
    [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md), ADR-2238); any other scene, or any scene
    when Chromium is unavailable, gets the classic Pillow slide. Output is 1920x1080.
 4. **Assembly:** `ffmpeg` encodes each scene's audio+image into a clip, then concatenates
-   all clips into `output.mp4` + an `.srt` caption file.
+   all clips into `output.mp4`. **There are no subtitles**: no caption file, no subtitle
+   stream, and the spoken text is never drawn on a slide.
 5. **Storage:** jobs and outputs are persisted per-tenant (`storage.py`, atomic writes).
 
 **Not live, despite being described in older docs:** PPT/screenshot asset analysis,
@@ -60,7 +65,8 @@ extraction review, not an alternative way to run this plugin.)
 - Design tokens from Figma (optional): `python -m src.figma_sync --file-key <KEY> --token-stdin`
 
 - `ANTHROPIC_API_KEY` — optional; storyboard backend falls back to local Ollama without it
-- No OpenAI key is used on the live path (narration is gTTS, not OpenAI TTS)
+- `CORVIN_TTS_OPENAI_KEY` (wins) or `OPENAI_API_KEY` — the OpenAI TTS key; required by the default engine
+- `tts_engine` job config: `openai` (default) · `auto` · `gtts`
 
 ## Testing
 

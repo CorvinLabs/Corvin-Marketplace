@@ -290,24 +290,50 @@ def _detect_lang(text: str) -> str:
     return "en"
 
 
-def _synthesize_narration_openai(text: str, out_path: Path, lang: str) -> None:
-    """Real TTS via OpenAI API (requires OPENAI_API_KEY in environment)."""
-    try:
-        from openai import OpenAI
-    except ImportError:
-        logger.warning("openai package not available, falling back to gTTS")
-        _synthesize_narration(text, out_path, lang)
-        return
+OPENAI_TTS_MODEL = "tts-1-hd"
+OPENAI_TTS_VOICE = "onyx"  # ADR-2211: calm, low male voice — consistent across de/en
+_SECRET_RE = re.compile(r"(sk-[A-Za-z0-9_\-]{6,}|Bearer\s+\S+)")
 
-    text = (text or "").strip() or "..."
-    client = OpenAI()  # Uses OPENAI_API_KEY from environment
-    voice = "nova" if lang == "de" else "nova"
-    response = client.audio.speech.create(
-        model="tts-1-hd",
-        voice=voice,
-        input=text,
+
+def _scrub_secrets(text: str) -> str:
+    """Remove anything key-shaped from a message before it can reach a job record."""
+    return _SECRET_RE.sub("<redacted>", str(text))[:300]
+
+
+def _openai_api_key() -> Optional[str]:
+    return os.environ.get("CORVIN_TTS_OPENAI_KEY") or os.environ.get("OPENAI_API_KEY") or None
+
+
+def _openai_speech(text: str, out_path: Path, api_key: str) -> None:
+    """One OpenAI TTS call; raises on any failure (callers decide: decline or fail)."""
+    from openai import OpenAI
+
+    response = OpenAI(api_key=api_key).audio.speech.create(
+        model=OPENAI_TTS_MODEL, voice=OPENAI_TTS_VOICE, input=(text or "").strip() or "...",
     )
     response.stream_to_file(str(out_path))
+    if not out_path.exists() or out_path.stat().st_size == 0:
+        raise RuntimeError("OpenAI returned no audio")
+
+
+def _synthesize_narration_openai(text: str, out_path: Path, lang: str) -> None:
+    """Narration via OpenAI TTS, strictly: any problem fails the job with a clear message.
+
+    No silent substitution of another voice — a video whose narrator changes
+    mid-way is worse than a refused job. Use tts_engine="auto" for the
+    fallback chain (openai -> edge-tts -> piper -> mock, ADR-2211)."""
+    api_key = _openai_api_key()
+    if not api_key:
+        raise RuntimeError(
+            "OpenAI TTS is the narration engine, but no key is configured (CORVIN_TTS_OPENAI_KEY or "
+            "OPENAI_API_KEY in the host environment). Choose another engine in the Video Producer settings."
+        )
+    try:
+        _openai_speech(text, out_path, api_key)
+    except ImportError:
+        raise RuntimeError("OpenAI TTS needs the 'openai' Python package in the host environment") from None
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError(f"OpenAI TTS failed ({type(e).__name__}): {_scrub_secrets(e)}") from None
 
 
 def _synthesize_narration(text: str, out_path: Path, lang: str) -> None:
@@ -335,26 +361,17 @@ _PIPER_VOICE_MODELS = {
 
 def _tts_tier_openai(text: str, out_path: Path, lang: str) -> bool:
     """Tier 1: OpenAI TTS. Declines if no key or package, or the call fails."""
-    api_key = os.environ.get("CORVIN_TTS_OPENAI_KEY") or os.environ.get("OPENAI_API_KEY")
+    api_key = _openai_api_key()
     if not api_key:
         return False
     try:
-        from openai import OpenAI
+        _openai_speech(text, out_path, api_key)
+        return True
     except ImportError:
         logger.info("tts chain: openai package not installed, declining")
         return False
-
-    try:
-        client = OpenAI(api_key=api_key)
-        response = client.audio.speech.create(
-            model="tts-1-hd",
-            voice="onyx",  # ADR-2211: calm, low male voice — consistent across de/en
-            input=(text or "").strip() or "...",
-        )
-        response.stream_to_file(str(out_path))
-        return out_path.exists() and out_path.stat().st_size > 0
     except Exception as e:  # noqa: BLE001 — any failure declines, never crashes the chain
-        logger.warning("tts chain: openai tier declined (%s: %s)", type(e).__name__, e)
+        logger.warning("tts chain: openai tier declined (%s: %s)", type(e).__name__, _scrub_secrets(e))
         return False
 
 
@@ -680,8 +697,10 @@ def _render_slide_image(
         "animation": "ANIMATION (placeholder)",
     }.get(scene.kind, scene.kind.upper())
 
-    body_source = scene.visual_description if scene.kind in ("screenshot", "screencast", "animation") else scene.narration_text
-    body_lines = _wrap_text(body_source or scene.narration_text or "")
+    # The spoken text is never drawn on a slide — that would be a burned-in subtitle.
+    # Only the placeholder kinds show their visual_description (a description, not narration).
+    body_source = scene.visual_description if scene.kind in ("screenshot", "screencast", "animation") else ""
+    body_lines = _wrap_text(body_source) if body_source else []
 
     bg_top = _COLOR_NAVY_DARK if scene.kind == "title" else tuple(c + 6 for c in _COLOR_NAVY)
     bg_bottom = (8, 14, 22) if scene.kind == "title" else _COLOR_NAVY_DARK
@@ -722,8 +741,8 @@ def _render_slide_image(
             draw.text((centered_x(line, body_font), y), line, font=body_font, fill=_COLOR_ICE)
             y += line_height
     else:
-        # Minimal/default layout: kind label (kind-colored) + centered narration.
-        draw_label_with_divider(90)
+        # Minimal/default layout: the kind label, large and centred, plus any placeholder text.
+        draw_label_with_divider(90 if body_lines else (h - 100) // 2 - 20)
         line_height = 42
         total_height = line_height * len(body_lines)
         y = (h - total_height) // 2 + 20
@@ -872,29 +891,6 @@ def _concat_clips(clip_paths: List[Path], out_path: Path, work_dir: Path) -> Non
     subprocess.run(cmd, capture_output=True, text=True, check=True)
 
 
-def _format_srt_timestamp(seconds: float) -> str:
-    ms_total = max(0, round(seconds * 1000))
-    h, rem = divmod(ms_total, 3_600_000)
-    m, rem = divmod(rem, 60_000)
-    s, ms = divmod(rem, 1000)
-    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
-
-
-def _generate_srt(scenes_with_durations: List[Dict[str, Any]], out_path: Path) -> None:
-    lines = []
-    cursor = 0.0
-    for i, entry in enumerate(scenes_with_durations, start=1):
-        start = cursor
-        end = cursor + entry["duration_s"]
-        text = entry["narration_text"] or ""
-        lines.append(str(i))
-        lines.append(f"{_format_srt_timestamp(start)} --> {_format_srt_timestamp(end)}")
-        lines.append(text)
-        lines.append("")
-        cursor = end
-    out_path.write_text("\n".join(lines), encoding="utf-8")
-
-
 def has_screenshot_scenes(storyboard: Storyboard) -> bool:
     """Check if storyboard has screenshot or screencast scenes."""
     return any(s.kind in ["screenshot", "screencast"] for s in storyboard.scenes)
@@ -911,7 +907,8 @@ def emit_feedback(job_id: str, event_type: str, metrics: Dict[str, Any]):
     logger.info(f"[{job_id}] Feedback: {event_type} | {metrics}")
 
 
-SUPPORTED_TTS_ENGINES = ("gtts", "openai", "auto")
+SUPPORTED_TTS_ENGINES = ("openai", "auto", "gtts")
+DEFAULT_TTS_ENGINE = "openai"
 
 
 def _storyboard_from_operator(raw: Any, task: str, max_duration_minutes: int) -> Storyboard:
@@ -979,7 +976,7 @@ async def orchestrate_video(
     job_id: str,
     task: str,
     storage_base: str,
-    tts_engine: str = "gtts",
+    tts_engine: str = DEFAULT_TTS_ENGINE,
     max_duration_minutes: int = 60,
     storyboard_backend: str = "ollama",
     storyboard_model: Optional[str] = None,
@@ -993,7 +990,7 @@ async def orchestrate_video(
     Main orchestrator Skill:
     1. LLM: Task → Storyboard (JSON)
     2. Real synthesis per scene: TTS narration (gTTS) + slide image (ffmpeg drawtext) + scene clip
-    3. Real ffmpeg concat → final MP4 + SRT captions
+    3. Real ffmpeg concat → final MP4 (no subtitles: no caption file, nothing burned in)
     4. Collect feedback → Learning (ADR-0314)
     """
     storage = get_storage(storage_base)
@@ -1076,7 +1073,7 @@ async def orchestrate_video(
 
         total = len(storyboard.scenes)
         clip_paths: List[Path] = []
-        srt_entries: List[Dict[str, Any]] = []
+        scene_audio_s: List[float] = []
         tts_providers_used: List[str] = []
         renderers_used: List[str] = []
         web_fallbacks: List[Dict[str, Any]] = []
@@ -1161,27 +1158,22 @@ async def orchestrate_video(
                     _assemble_scene_clip(image_path, audio_path, clip_path)
 
                 clip_paths.append(clip_path)
-                # Captions follow the encoded clip, not the raw audio: AAC priming and
-                # -shortest make a clip a few frames longer, and those frames add up.
-                srt_entries.append({"narration_text": narration, "duration_s": _ffprobe_duration(clip_path),
-                                    "audio_s": audio_duration})
+                scene_audio_s.append(audio_duration)
                 tts_providers_used.append(tts_provider_used)
         finally:
             await web.close()
 
-        measured_s = sum(e["audio_s"] for e in srt_entries)
+        measured_s = sum(scene_audio_s)
         if measured_s > max_duration_minutes * 60:
             raise ValueError(
                 f"Narrated length {measured_s:.0f}s exceeds the {max_duration_minutes}-minute limit"
             )
 
-        # Step 3: Concat scenes + captions
+        # Step 3: Concat scenes
         _update_job_progress(storage, job, "skills_running", 92, "Assembling final video...")
 
         video_path = out_root / "output.mp4"
-        srt_path = out_root / "output.srt"
         _concat_clips(clip_paths, video_path, out_root)
-        _generate_srt(srt_entries, srt_path)
 
         # The artifact is the truth: report what ffprobe measures on the final file.
         duration_seconds = round(_ffprobe_duration(video_path))
@@ -1198,7 +1190,6 @@ async def orchestrate_video(
         video_output = VideoOutput(
             job_id=job_id,
             video_path=str(video_path),
-            srt_path=str(srt_path),
             metadata={
                 "duration_seconds": duration_seconds,
                 "resolution": "1920x1080",
@@ -1234,7 +1225,6 @@ async def orchestrate_video(
             "success": True,
             "job_id": job_id,
             "video_path": str(video_path),
-            "srt_path": str(srt_path),
             "duration_seconds": duration_seconds,
             "metadata": video_output.metadata,
         }
@@ -1276,7 +1266,7 @@ async def start_video_production(
         job_id=job_id,
         task=task,
         storage_base=config["storage_base"],
-        tts_engine=config.get("tts_engine", "gtts"),
+        tts_engine=config.get("tts_engine", DEFAULT_TTS_ENGINE),
         max_duration_minutes=config.get("max_duration_minutes", 60),
         storyboard_backend=config.get("storyboard_backend", "ollama"),
         storyboard_model=config.get("storyboard_model"),
