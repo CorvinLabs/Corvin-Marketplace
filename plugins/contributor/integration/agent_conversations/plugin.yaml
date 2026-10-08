@@ -1,0 +1,27 @@
+plugin_id: agent_conversations
+plugin_type: context_retriever
+version: 1.0.0
+display_name: Agent Conversations
+description: "Moderated conversations between one of your agents and an agent on a paired
+  installation, in a peer-chat style console panel: you can join at any time (interjections,
+  pause/resume, live settings). Adds the Agent conversations panel under Marketplace.
+  Contributor plugin: installs from this checkout, enabling records the operator's consent."
+origin: community
+boot_layer: installed
+locality: local
+network_egress: none
+pii_risk: low
+requires_consent: true
+audit_required: true
+infrastructure_plugin: false
+orchestration_support: false
+settings_schema:
+  type: object
+  properties: {}
+console_panel:
+  label: Agent conversations
+  route: agent-conversations
+  icon: MessagesSquare
+  group: marketplace
+  element_kind: react-component
+  component: AgentConversationsPage

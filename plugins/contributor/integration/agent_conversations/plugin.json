@@ -1,0 +1,38 @@
+{
+  "id": "plugin:contributor-integration-agent_conversations",
+  "type": "plugin",
+  "name": "Agent Conversations",
+  "version": "1.0.0",
+  "author": "CorvinLabs (Shumway + Claude)",
+  "license": "Apache-2.0",
+  "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+  "tier": "contributor",
+  "category": "integration",
+  "description": "Moderated conversations between one of your agents and an agent on a paired installation, in a peer-chat style panel: join at any time with interjections, pause/resume and live settings.",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/contributor/integration/agent_conversations/README.md",
+  "documentation": "docs/CONCEPT-0001-peer-chat-patterns-for-agent-conversations.md",
+  "adr_prefix": "agent-conversations",
+  "docs_location": "docs/",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": false,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/contributor/integration/agent_conversations"
+  },
+  "dependencies": [],
+  "requires_version": ">=1.0.0",
+  "boot_layer": "installed",
+  "sla_level": "contributor",
+  "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace",
+  "tags": ["integration"],
+  "capabilities": ["agent_conversation_panel", "operator_interjection", "live_settings"],
+  "entry_points": {
+    "console_panels": [
+      {
+        "id": "agent-conversations",
+        "title": "Agent conversations",
+        "route": "agent-conversations",
+        "component": "AgentConversationsPage"
+      }
+    ]
+  }
+}
