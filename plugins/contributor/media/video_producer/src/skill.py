@@ -358,6 +358,21 @@ def _tts_tier_openai(text: str, out_path: Path, lang: str) -> bool:
         return False
 
 
+def _run_coroutine_blocking(make_coro, timeout: float = 180.0):
+    """Run a coroutine to completion from synchronous code, whether or not this
+    thread already runs an event loop. The TTS tiers are sync and are called from
+    orchestrate_video, which the job runner executes under asyncio.run in a worker
+    thread; a bare asyncio.run() there raises "cannot be called from a running
+    event loop" — which made the edge-tts tier decline on every production job."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(make_coro())
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(lambda: asyncio.run(make_coro())).result(timeout=timeout)
+
+
 def _tts_tier_edge(text: str, out_path: Path, lang: str) -> bool:
     """Tier 2: edge-tts (Microsoft cloud voices, free, no API key, needs network)."""
     try:
@@ -372,7 +387,7 @@ def _tts_tier_edge(text: str, out_path: Path, lang: str) -> bool:
             communicate = edge_tts.Communicate((text or "").strip() or "...", voice)
             await communicate.save(str(out_path))
 
-        asyncio.run(_run())
+        _run_coroutine_blocking(_run)
         return out_path.exists() and out_path.stat().st_size > 0
     except Exception as e:  # noqa: BLE001
         logger.warning("tts chain: edge-tts tier declined (%s: %s)", type(e).__name__, e)
