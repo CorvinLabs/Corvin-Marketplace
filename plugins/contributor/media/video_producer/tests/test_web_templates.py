@@ -18,6 +18,13 @@ SAMPLES = {
     "compare": {"title": "T", "left": {"title": "L", "points": ["x"]}, "right": {"title": "R", "points": ["y"]}},
     "quote": {"quote": "Q", "attribution": "A", "locale": "de"},
     "code": {"title": "T", "language": "sh", "lines": ["$ echo hi", "# comment"]},
+    "line": {"title": "T", "labels": ["a", "b", "c"], "series": [{"values": [1, 3, 2]}], "highlight": 1},
+    "donut": {"title": "T", "segments": [{"label": "a", "value": 3}, {"label": "b", "value": 1}], "highlight": 0},
+    "flow": {"title": "T", "nodes": [{"id": "a", "label": "A"}, {"id": "b", "label": "B", "sub": "s"}],
+             "edges": [{"from": "a", "to": "b", "label": "x"}], "highlight": "b"},
+    "timeline": {"title": "T", "events": [{"when": "1", "label": "A"}, {"when": "2", "label": "B"}], "current": 0},
+    "cycle": {"title": "T", "center": "C", "steps": [{"label": "a"}, {"label": "b"}, {"label": "c"}]},
+    "layers": {"title": "T", "layers": [{"label": "a", "tag": "x"}, {"label": "b", "sub": "s"}], "highlight": 0},
 }
 
 
@@ -32,9 +39,11 @@ def test_every_template_has_a_sample_and_builds():
 def test_document_is_self_contained(name):
     doc = build_document(name, SAMPLES[name], duration_s=6)
     assert "<script" not in doc.lower()
-    # the only url() are the inlined font data URIs
+    # the only url() are the inlined font data URIs and same-document fragment
+    # references (an SVG gradient: "#id" resolves inside the page, never fetches)
     urls = re.findall(r"url\(([^)]*)\)", doc)
-    assert urls and all(u.startswith("data:font/woff2;base64,") for u in urls)
+    fonts = [u for u in urls if u.startswith("data:font/woff2;base64,")]
+    assert fonts and all(u in fonts or re.fullmatch(r"#[a-z][a-z0-9-]*", u) for u in urls)
     assert "http://" not in doc and "https://" not in doc
     assert "@import" not in doc
 
@@ -53,6 +62,18 @@ def test_text_fields_are_escaped_everywhere(payload):
         "compare": {"title": "t", "left": {"title": payload[:40], "points": [payload]}, "right": {"title": "r", "points": ["p"]}},
         "quote": {"quote": payload},
         "code": {"title": "t", "lines": [payload]},
+        "line": {"title": payload[:80], "labels": [payload[:12], "b", "c"], "unit": payload[:8],
+                 "series": [{"name": payload[:24], "values": [1, 2, 3]}, {"name": "n", "values": [3, 2, 1]}]},
+        "donut": {"title": "t", "center_label": payload[:28],
+                  "segments": [{"label": payload[:28], "value": 1}, {"label": "b", "value": 2}]},
+        "flow": {"title": "t", "nodes": [{"id": "a", "label": payload[:24], "sub": payload[:36]}, {"id": "b", "label": "b"}],
+                 "edges": [{"from": "a", "to": "b", "label": payload[:18]}]},
+        "timeline": {"title": "t", "events": [{"when": payload[:16], "label": payload[:28], "sub": payload[:60]},
+                                              {"when": "w", "label": "l"}]},
+        "cycle": {"title": payload[:60], "caption": payload, "center": payload[:24],
+                  "steps": [{"label": payload[:22], "sub": payload[:40]}, {"label": "b"}, {"label": "c"}]},
+        "layers": {"title": "t", "layers": [{"label": payload[:32], "sub": payload[:64], "tag": payload[:12]},
+                                            {"label": "b"}]},
     }
     for name, data in cases.items():
         doc = build_document(name, data, duration_s=5)

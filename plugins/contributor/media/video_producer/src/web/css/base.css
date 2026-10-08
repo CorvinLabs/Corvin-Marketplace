@@ -182,3 +182,139 @@ html, body {
 @keyframes roll7 { from { transform: translateY(0); } to { transform: translateY(-17em); } }
 @keyframes roll8 { from { transform: translateY(0); } to { transform: translateY(-18em); } }
 @keyframes roll9 { from { transform: translateY(0); } to { transform: translateY(-19em); } }
+
+/* ── data visuals (line, donut, flow, timeline, cycle, layers) ─────────────
+   Geometry is computed in Python (web_geometry); this block only styles and
+   times it. Categorical colours c0..c5 are identities, not a value ramp. */
+.c0 { --c: var(--accent); }
+.c1 { --c: var(--text-muted); }
+.c2 { --c: var(--success); }
+.c3 { --c: var(--text); }
+.c4 { --c: var(--accent-hi); }
+.c5 { --c: var(--text-faint); }
+.sw { display: inline-block; width: 18px; height: 18px; border-radius: 5px; background: var(--c); flex: none; }
+
+.viz { position: relative; margin-top: 44px; width: 1580px; }
+.viz-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.viz-svg text { font-family: var(--font-mono); }
+.legend { display: flex; gap: 44px; margin-top: 26px; font-size: 26px; color: var(--text-muted); }
+.legend span { display: inline-flex; align-items: center; gap: 14px; }
+
+/* line */
+.grid { stroke: var(--border); stroke-width: 1.5; opacity: 0; animation: fade 600ms ease-out both; animation-delay: calc(var(--t0) + var(--k) * 60ms); }
+.grid.zero { stroke: var(--text-faint); }
+.ytick, .xtick { fill: var(--text-muted); font-size: 22px; opacity: 0; animation: fade 600ms ease-out both; }
+.ytick { animation-delay: calc(var(--t0) + var(--k) * 60ms); }
+.xtick { animation-delay: calc(var(--t0) + var(--stagger) * 2 + var(--f) * var(--stagger) * 2.5); }
+.ln { fill: none; stroke: var(--c); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1;
+      animation: draw calc(var(--stagger) * 2.5) cubic-bezier(.45,.05,.25,1) both; animation-delay: calc(var(--t0) + var(--stagger) * 2); }
+.ln.c0 { filter: drop-shadow(0 0 14px var(--glow)); }
+.area { fill: url(#area-fill); opacity: 0; animation: fade 900ms ease-out both; animation-delay: calc(var(--t0) + var(--stagger) * 4.3); }
+.ag0 { stop-color: var(--accent); stop-opacity: .32; }
+.ag1 { stop-color: var(--accent); stop-opacity: 0; }
+.pt { fill: var(--bg); stroke: var(--c); stroke-width: 4; transform-box: fill-box; transform-origin: center;
+      animation: pop 420ms cubic-bezier(.3,1.6,.5,1) both; animation-delay: calc(var(--t0) + var(--stagger) * 2 + var(--f) * var(--stagger) * 2.5); }
+.endv { fill: var(--c); font-size: 30px; font-weight: 500; opacity: 0; animation: fade 500ms ease-out both; animation-delay: calc(var(--t0) + var(--stagger) * 4.5); }
+.callout { opacity: 0; animation: fade 500ms ease-out both; animation-delay: calc(var(--t0) + var(--stagger) * 4.8); }
+.callout .guide { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 8; }
+.callout rect { fill: var(--bg-card); stroke: var(--accent); stroke-width: 2; }
+.callout text { fill: var(--accent); font-size: 26px; }
+
+/* donut */
+.donut { display: flex; align-items: center; gap: 120px; margin-top: 30px; }
+.dn-chart { position: relative; width: 540px; height: 540px; flex: none; }
+.dn-chart svg { overflow: visible; }
+.track { fill: none; stroke: var(--border); stroke-width: 62; opacity: .6; }
+.seg { fill: none; stroke: var(--c); stroke-width: 62; animation: sweep 1000ms cubic-bezier(.45,.05,.25,1) both;
+       animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+.seg.hl { stroke-width: 80; filter: drop-shadow(0 0 22px var(--glow)); }
+@keyframes sweep { from { stroke-dasharray: 0 100; } }
+.dn-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.dn-v { font-family: var(--font-heading); font-size: 104px; line-height: 1; letter-spacing: -.03em; color: var(--text); }
+.dn-l { font-size: 26px; color: var(--text-muted); margin-top: 12px; max-width: 300px; }
+.dn-legend { display: flex; flex-direction: column; gap: 26px; flex: 1; }
+.lg-row { display: flex; align-items: center; gap: 24px; font-size: 32px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+.lg-row .lg-l { flex: 1; color: var(--text); }
+.lg-row .lg-v { font-family: var(--font-mono); font-size: 26px; color: var(--text-muted); }
+.lg-row .lg-p { font-family: var(--font-mono); font-size: 28px; color: var(--text); min-width: 96px; text-align: right; }
+.lg-row.hl .lg-l { color: var(--accent); }
+.lg-row.hl .lg-p { color: var(--accent); }
+
+/* flow graph */
+.gnode { position: absolute; border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card);
+         padding: 0 26px; display: flex; flex-direction: column; justify-content: center; }
+.gnode.hl { border-color: var(--accent); box-shadow: 0 0 60px var(--glow); }
+.gnode .l { font-family: var(--font-heading); font-size: 36px; line-height: 1.1; color: var(--text); }
+.gnode .s { font-size: 21px; line-height: 1.3; color: var(--text-muted); margin-top: 8px; }
+.viz path.edge { fill: none; stroke: var(--accent); stroke-width: 3; opacity: .85; stroke-dasharray: 1; stroke-dashoffset: 1;
+                 animation: draw 800ms ease-in-out both; animation-delay: calc(var(--t0) + (var(--i) + .6) * var(--stagger)); }
+.viz path.head { fill: var(--accent); opacity: 0; animation: fade 200ms ease-out both; animation-delay: calc(var(--t0) + (var(--i) + .6) * var(--stagger) + 750ms); }
+.elabel { position: absolute; width: 200px; text-align: center; }
+.elabel span { display: inline-block; padding: 6px 16px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border);
+               font-family: var(--font-mono); font-size: 19px; color: var(--text-muted); }
+
+/* ambient motion — loops once the entrance has settled (period divides 4s) */
+.amb { animation-iteration-count: infinite; animation-fill-mode: backwards; animation-delay: calc(var(--tend) + var(--ph, 0s)); }
+.pulse { position: absolute; left: 0; top: 0; width: 14px; height: 14px; border-radius: 50%; background: var(--accent-hi);
+         box-shadow: 0 0 18px 6px var(--glow), 0 0 6px 2px var(--accent); offset-rotate: 0deg; offset-anchor: center;
+         animation-name: travel; animation-duration: 2s; animation-timing-function: cubic-bezier(.45,.05,.55,.95); }
+.flow .pulse { z-index: 1; }
+@keyframes travel { 0% { offset-distance: 0%; opacity: 0; } 12% { opacity: 1; } 85% { opacity: 1; } 100% { offset-distance: 100%; opacity: 0; } }
+.ring-pulse { fill: none; stroke: var(--c); stroke-width: 3; transform-box: fill-box; transform-origin: center;
+              animation-name: ring-pulse; animation-duration: 2s; animation-timing-function: ease-out; }
+@keyframes ring-pulse { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(3.4); opacity: 0; } }
+.orbit { position: absolute; left: 0; top: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--accent-hi);
+         box-shadow: 0 0 22px 8px var(--glow), 0 0 8px 2px var(--accent); offset-anchor: center; offset-rotate: 0deg;
+         animation-name: orbit; animation-duration: 4s; animation-timing-function: linear; }
+@keyframes orbit { 0% { offset-distance: 0%; opacity: 0; } 6% { opacity: 1; } 94% { opacity: 1; } 100% { offset-distance: 100%; opacity: 0; } }
+.shine { position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+         background: linear-gradient(100deg, transparent 0%, transparent 38%, rgba(243,199,122,.22) 50%, transparent 62%, transparent 100%);
+         background-size: 300% 100%; animation-name: shine; animation-duration: 4s; animation-timing-function: ease-in-out; }
+@keyframes shine { 0% { background-position: 100% 0; } 55% { background-position: 0% 0; } 100% { background-position: 0% 0; } }
+
+/* timeline */
+.tl-base { stroke: var(--border); stroke-width: 3; stroke-dasharray: 2 10; stroke-linecap: round; opacity: 0; animation: fade 800ms ease-out both; animation-delay: var(--t0); }
+.tl-prog { stroke: var(--accent); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; filter: drop-shadow(0 0 10px var(--glow));
+           animation: draw calc(var(--stagger) * var(--n)) linear both; animation-delay: calc(var(--t0) + var(--stagger) * 1.6); }
+.tl-dot { fill: var(--bg); stroke: var(--text-faint); stroke-width: 4; transform-box: fill-box; transform-origin: center;
+          animation: pop 420ms cubic-bezier(.3,1.6,.5,1) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+.tl-dot.done { stroke: var(--accent); fill: var(--accent); }
+.tl-dot.cur { stroke: var(--accent); fill: var(--accent-hi); filter: drop-shadow(0 0 16px var(--accent)); }
+.tl-when, .tl-label { position: absolute; text-align: center; }
+.tl-when { font-family: var(--font-mono); font-size: 24px; letter-spacing: .08em; color: var(--text-muted); }
+.tl-when.done, .tl-when.cur { color: var(--accent); }
+.tl-label .l { font-family: var(--font-heading); font-size: 36px; line-height: 1.12; color: var(--text); }
+.tl-label.next .l { color: var(--text-muted); }
+.tl-label .s { font-size: 22px; line-height: 1.35; color: var(--text-muted); margin-top: 10px; }
+
+/* cycle */
+.frame.split { flex-direction: row; align-items: center; gap: 60px; }
+.split-text { width: 560px; flex: none; }
+.split-text .title { font-size: 68px; }
+.caption { font-size: 28px; line-height: 1.5; color: var(--text-muted); margin-top: 30px; }
+.cy-track { fill: none; stroke: var(--border); stroke-width: 2; stroke-dasharray: 3 9; opacity: 0; animation: fade 900ms ease-out both; animation-delay: var(--t0); }
+.cy-arc { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1;
+          animation: draw 700ms ease-in-out both; animation-delay: calc(var(--t0) + (var(--i) + .5) * var(--stagger)); }
+.cy-head { fill: var(--accent); opacity: 0; animation: fade 200ms ease-out both; animation-delay: calc(var(--t0) + (var(--i) + .5) * var(--stagger) + 650ms); }
+.cy-node { transform-box: fill-box; transform-origin: center; animation: pop 460ms cubic-bezier(.3,1.6,.5,1) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+.cy-node circle { fill: var(--bg-card); stroke: var(--accent); stroke-width: 3; }
+.cy-node text { fill: var(--accent); font-size: 22px; font-weight: 600; }
+.cy-node.hl circle { fill: var(--accent); filter: drop-shadow(0 0 18px var(--accent)); }
+.cy-node.hl text { fill: var(--bg); }
+.cy-label { position: absolute; }
+.cy-label .l { font-family: var(--font-heading); font-size: 34px; line-height: 1.1; color: var(--text); }
+.cy-label.hl .l { color: var(--accent); }
+.cy-label .s { font-size: 21px; line-height: 1.35; color: var(--text-muted); margin-top: 8px; }
+.cy-center { position: absolute; width: 320px; text-align: center; font-family: var(--font-heading); font-style: italic; font-size: 40px; line-height: 1.15; color: var(--text); }
+
+/* layers */
+.stack { margin-top: 54px; display: flex; flex-direction: column; gap: 14px; transform: perspective(2200px) rotateX(10deg); transform-origin: 50% 100%; }
+.slab { position: relative; height: 86px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card); overflow: hidden;
+        display: flex; align-items: center; gap: 30px; padding: 0 40px; }
+.slab .sl-l { font-family: var(--font-heading); font-size: 36px; color: var(--text); white-space: nowrap; }
+.slab .sl-s { font-size: 24px; color: var(--text-muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slab .sl-t { margin-left: auto; font-family: var(--font-mono); font-size: 20px; letter-spacing: .12em; color: var(--accent); border: 1px solid var(--border); border-radius: 999px; padding: 6px 16px; }
+.slab.hl { border-color: var(--accent); box-shadow: 0 0 70px var(--glow); }
+.slab.hl .sl-l { color: var(--accent); }
+
+@keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }

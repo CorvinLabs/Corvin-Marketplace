@@ -108,6 +108,99 @@ async def test_operator_storyboard_renders_web_slides_into_a_real_mp4(store, tmp
     assert sum(light.getpixel((20, 20))) > 600
 
 
+FLOW_NARRATION = " ".join(["Ein Auftrag läuft durch das Storyboard, von dort parallel in die Narration und in die"
+                           " Web-Folien, und beide Stränge treffen sich im fertigen Video."] * 2)
+
+
+async def test_ambient_motion_keeps_moving_until_the_narration_ends(store, tmp_path):
+    """A flow slide's data pulses keep travelling after the entrance animation, for
+    the whole narration — the clip repeats one rendered period instead of holding
+    the last frame."""
+    sb = {"id": "sb_amb", "didactic_strategy": "rich_visual", "scenes": [
+        {"id": "s1", "kind": "solution", "duration_ms": 20000, "narration_text": FLOW_NARRATION,
+         "template": "flow", "data": {"title": "Fluss", "nodes": [
+             {"id": "a", "label": "Auftrag"}, {"id": "b", "label": "Storyboard"},
+             {"id": "c", "label": "Narration"}, {"id": "d", "label": "Folien"}, {"id": "e", "label": "Video"}],
+             "edges": [{"from": "a", "to": "b"}, {"from": "b", "to": "c"}, {"from": "b", "to": "d"},
+                       {"from": "c", "to": "e"}, {"from": "d", "to": "e"}]}}]}
+    result = await _run(store, "job_ambient", storyboard=sb)
+    video = Path(result["video_path"])
+    duration = float(_ffprobe(video)["format"]["duration"])
+    assert duration > 14, "narration must outlast the entrance for this test to mean anything"
+    # Two frames half a pulse period (1 s) apart, both well after the entrance settled.
+    a = _frame_at(video, duration - 3.0, tmp_path / "a.png")
+    b = _frame_at(video, duration - 2.0, tmp_path / "b.png")
+    # Count strongly changed pixels: H.264 noise on a held frame is low-amplitude and
+    # scattered (measured: a held frame still differs by ~56k summed, but almost no
+    # pixel moves by more than 40 levels); a travelling pulse moves hundreds.
+    diff = ImageChops.difference(a, b).convert("L")
+    moved = sum(diff.point(lambda x: 255 if x > 40 else 0).histogram()[255:])
+    assert moved > 300, f"the slide froze after its entrance ({moved} px moved; held frame instead of ambient loop)"
+
+
+def _fake_claude(tmp_path: Path, monkeypatch, storyboard: dict, exit_code: int = 0) -> Path:
+    """An executable standing in for the Claude Code CLI at the real process
+    boundary: it records argv + stdin and answers like `claude -p --output-format json`."""
+    log = tmp_path / "claude_calls.jsonl"
+    script = tmp_path / "claude"
+    script.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, os, sys\n"
+        f"log = {str(log)!r}\n"
+        "prompt = sys.stdin.read()\n"
+        "with open(log, 'a') as f: f.write(json.dumps({'argv': sys.argv[1:], 'stdin_len': len(prompt), 'cwd': os.getcwd()}) + '\\n')\n"
+        f"sys.stdout.write(json.dumps({{'type': 'result', 'is_error': False, 'result': {json.dumps(json.dumps(storyboard))}}}))\n"
+        f"sys.exit({exit_code})\n"
+    )
+    script.chmod(0o755)
+    monkeypatch.setenv("CORVIN_CLAUDE_BIN", str(script))
+    return log
+
+
+CLAUDE_STORYBOARD = {"id": "sb_cli", "didactic_strategy": "rich_visual", "scenes": [
+    {"id": "s1", "kind": "title", "duration_ms": 8000, "narration_text": "Die Lernschleife von CorvinOS.",
+     "visual_description": "loop", "template": "hero", "data": {"title": "Die Lernschleife"}},
+    {"id": "s2", "kind": "solution", "duration_ms": 9000,
+     "narration_text": "Jede Entscheidung wird geprüft, bewertet und verbessert die nächste Ausführung.",
+     "visual_description": "cycle", "template": "cycle",
+     "data": {"title": "Kreislauf", "steps": [{"label": "Planen"}, {"label": "Prüfen"}, {"label": "Lernen"}]}},
+]}
+
+
+async def test_claude_cli_backend_writes_the_storyboard(store, tmp_path, monkeypatch):
+    log = _fake_claude(tmp_path, monkeypatch, CLAUDE_STORYBOARD)
+    monkeypatch.setattr(skill.requests, "post", lambda *a, **k: pytest.fail("fell back to Ollama"))
+    result = await _run(store, "job_cli", storyboard_backend="claude_cli", storyboard_model="claude-sonnet-5-5")
+
+    md = result["metadata"]
+    assert md["storyboard_llm"] == "claude_cli:claude-sonnet-5-5"
+    assert md["renderers"] == ["web", "web"]
+    call = json.loads(log.read_text().splitlines()[0])
+    argv = call["argv"]
+    # tool-less, settings-less, sessionless, and the prompt never on the command line
+    assert argv[:3] == ["-p", "--model", "claude-sonnet-5-5"]
+    for flag in ("--strict-mcp-config", "--no-session-persistence", "--disable-slash-commands"):
+        assert flag in argv
+    assert argv[argv.index("--tools") + 1] == "" and argv[argv.index("--setting-sources") + 1] == ""
+    assert call["stdin_len"] > 1000 and not any("Web slides E2E" in a for a in argv)
+    assert "vp-storyboard-" in call["cwd"]
+
+
+async def test_claude_cli_failure_falls_back_to_local_and_is_reported(store, tmp_path, monkeypatch):
+    _fake_claude(tmp_path, monkeypatch, CLAUDE_STORYBOARD, exit_code=1)
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"response": json.dumps(CLAUDE_STORYBOARD)}
+
+    monkeypatch.setattr(skill.requests, "post", lambda *a, **k: _Resp())
+    result = await _run(store, "job_cli_fb", storyboard_backend="claude_cli", storyboard_model="claude-sonnet-5-5")
+    assert result["metadata"]["storyboard_llm"] == f"ollama:{skill._OLLAMA_MODEL}"
+
+
 async def test_browser_unavailable_falls_back_to_classic_slides_and_says_so(store, monkeypatch):
     async def broken_enter(self):
         raise WebRenderError("chromium could not be launched: simulated")

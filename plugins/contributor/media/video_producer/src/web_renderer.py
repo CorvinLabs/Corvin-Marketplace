@@ -31,13 +31,21 @@ MAX_FRAMES_PER_SCENE = 900
 SCENE_TIMEOUT_S = 120.0
 VIEWPORT = {"width": 1920, "height": 1080}
 
-_ANIM_END_JS = """() => {
-  let end = 0;
+# [entrance end, ambient start, ambient period] in ms. Ambient = an animation with
+# infinite iterations; it never ends, so it is excluded from the entrance end.
+_ANIM_TIMING_JS = """() => {
+  let end = 0, loopStart = 0, period = 0;
   for (const a of document.getAnimations()) {
-    const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming().endTime : 0;
-    if (Number.isFinite(t) && t > end) end = t;
+    if (!a.effect || !a.effect.getComputedTiming) continue;
+    const t = a.effect.getComputedTiming();
+    if (t.iterations === Infinity) {
+      period = Math.max(period, Number(t.duration) || 0);
+      loopStart = Math.max(loopStart, Number(t.delay) || 0);
+    } else if (Number.isFinite(t.endTime) && t.endTime > end) {
+      end = t.endTime;
+    }
   }
-  return end;
+  return [end, loopStart, period];
 }"""
 _LOAD_FONTS_JS = """() => Promise.allSettled([
   "400 16px 'Newsreader'", "italic 400 16px 'Newsreader'",
@@ -61,6 +69,14 @@ _CHROMIUM_ARGS = (
 
 class WebRenderError(RuntimeError):
     """Rendering failed after validation (browser unavailable, timeout, crash)."""
+
+
+class FrameSequence(list):
+    """The rendered frame paths. ``loop_start`` is the index of the first frame
+    of one seamless ambient-motion period (frames[loop_start:] repeat), or None
+    when the slide has no ambient motion and its last frame is held."""
+
+    loop_start: Optional[int] = None
 
 
 class WebSlideRenderer:
@@ -118,7 +134,7 @@ class WebSlideRenderer:
         scene_index: Optional[int] = None,
         total_scenes: Optional[int] = None,
         lang: str = "en",
-    ) -> List[Path]:
+    ) -> FrameSequence:
         """Render one scene to ``out_dir/00000.png ...``; returns the frame paths.
 
         Raises WebSceneError for invalid data (before the browser is touched)
@@ -146,7 +162,7 @@ class WebSlideRenderer:
         except Exception as e:  # noqa: BLE001
             raise WebRenderError(f"scene render failed: {type(e).__name__}: {e}") from None
 
-    async def _capture(self, document: str, duration_s: float, out_dir: Path) -> List[Path]:
+    async def _capture(self, document: str, duration_s: float, out_dir: Path) -> FrameSequence:
         context = await self._browser.new_context(
             viewport=VIEWPORT, device_scale_factor=1, java_script_enabled=False,
             reduced_motion="no-preference", service_workers="block",
@@ -164,9 +180,19 @@ class WebSlideRenderer:
             # Always render the complete entrance animation, even when the narration is
             # shorter: a frame cut mid-reveal can show a half-rolled number. The assembler
             # pads the audio instead (see skill._assemble_frames_clip).
-            anim_end_ms = float(await page.evaluate(_ANIM_END_JS))
-            n_frames = min(MAX_FRAMES_PER_SCENE, max(1, math.ceil(anim_end_ms / 1000.0 * self.fps) + 1))
-            frames: List[Path] = []
+            anim_end_ms, loop_start_ms, period_ms = (float(x) for x in await page.evaluate(_ANIM_TIMING_JS))
+            n_frames = max(1, math.ceil(anim_end_ms / 1000.0 * self.fps) + 1)
+            frames = FrameSequence()
+            # Ambient motion: sample exactly one period after everything has started.
+            # Frame loop_start + period_frames equals frame loop_start only when the
+            # period is a whole number of frames — otherwise the loop would jump.
+            period_frames = period_ms / 1000.0 * self.fps
+            if period_ms > 0 and abs(period_frames - round(period_frames)) < 1e-6:
+                start = max(n_frames, math.ceil(loop_start_ms / 1000.0 * self.fps))
+                if start + round(period_frames) <= MAX_FRAMES_PER_SCENE:
+                    frames.loop_start = start
+                    n_frames = start + int(round(period_frames))
+            n_frames = min(MAX_FRAMES_PER_SCENE, n_frames)
             for i in range(n_frames):
                 await page.evaluate(_SEEK_JS, i * 1000.0 / self.fps)
                 path = out_dir / f"{i:05d}.png"

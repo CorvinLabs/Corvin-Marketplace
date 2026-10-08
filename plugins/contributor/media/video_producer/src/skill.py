@@ -3,10 +3,12 @@
 import asyncio
 import json
 import logging
+import math
 import os
 import re
 import shutil
 import subprocess
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -77,29 +79,82 @@ _OLLAMA_URL = "http://localhost:11434/api/generate"
 _OLLAMA_MODEL = "qwen3:1.7b"
 
 
-def _call_storyboard_llm(prompt: str, backend: str = "ollama", model: Optional[str] = None) -> str:
+_CLAUDE_CLI_TIMEOUT_S = 300
+_CLAUDE_MODEL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._\-\[\]]{0,79}")
+_STORYBOARD_SYSTEM = ("You write didactic explainer-video storyboards. Follow the user's "
+                      "format exactly and reply with one JSON object only.")
+
+
+def claude_cli_path() -> Optional[str]:
+    """The Claude Code CLI the host runs: its canonical pin CORVIN_CLAUDE_BIN, else PATH."""
+    pinned = (os.environ.get("CORVIN_CLAUDE_BIN") or "").strip()
+    if pinned:
+        return pinned if os.path.isfile(pinned) and os.access(pinned, os.X_OK) else None
+    return shutil.which("claude")
+
+
+def _call_claude_cli(prompt: str, model: str) -> str:
+    """One tool-less, settings-less ``claude -p`` call (the host's Claude Code login).
+
+    The prompt goes over stdin, never argv; the call runs in an empty temp dir with
+    no tools, no MCP servers, no settings files and no saved session, so the model
+    only ever sees the storyboard prompt."""
+    exe = claude_cli_path()
+    if not exe:
+        raise RuntimeError("claude CLI not found (CORVIN_CLAUDE_BIN or PATH)")
+    if not isinstance(model, str) or not _CLAUDE_MODEL_RE.fullmatch(model):
+        raise ValueError("invalid model id for the claude CLI")
+    with tempfile.TemporaryDirectory(prefix="vp-storyboard-") as cwd:
+        proc = subprocess.run(
+            [exe, "-p", "--model", model, "--output-format", "json", "--tools", "",
+             "--setting-sources", "", "--strict-mcp-config", "--no-session-persistence",
+             "--disable-slash-commands", "--system-prompt", _STORYBOARD_SYSTEM],
+            input=prompt, capture_output=True, text=True, timeout=_CLAUDE_CLI_TIMEOUT_S, cwd=cwd,
+        )
+    if proc.returncode != 0:
+        raise RuntimeError(f"claude CLI exited {proc.returncode}")
+    out = json.loads(proc.stdout)
+    if out.get("is_error") or not isinstance(out.get("result"), str):
+        raise RuntimeError(f"claude CLI reported an error ({out.get('terminal_reason') or out.get('subtype')})")
+    return out["result"]
+
+
+def _call_storyboard_llm(prompt: str, backend: str = "ollama", model: Optional[str] = None,
+                         report: Optional[Dict[str, Any]] = None) -> str:
     """
     Call an LLM to turn the prompt into a storyboard JSON string.
 
     ``backend`` is decided by the HOST, which ran its data-flow / egress gates
-    for exactly that destination before starting the job: "anthropic" (needs
+    for exactly that destination before starting the job: "claude_cli" (the
+    host's Claude Code login, needs ``model``), "anthropic" (API key, needs
     ``model``) or "ollama" (local). The plugin never upgrades a job to a
-    remote backend on its own. An "anthropic" call that fails falls back to
-    the local Ollama instance (strictly less egress). Both paths are real
-    inference — no mocked/fabricated storyboard content.
+    remote backend on its own. A remote call that fails falls back to the
+    local Ollama instance (strictly less egress). Both paths are real
+    inference — no mocked/fabricated storyboard content. ``report["backend"]``
+    receives the backend that actually answered.
     """
-    if backend not in ("anthropic", "ollama"):
+    if backend not in ("claude_cli", "anthropic", "ollama"):
         raise ValueError(f"unknown storyboard backend {backend!r}")
+    if backend != "ollama" and not model:
+        raise ValueError(f"storyboard backend {backend!r} needs a model id from the host")
+    if report is None:
+        report = {}
+    if backend == "claude_cli":
+        try:
+            text = _call_claude_cli(prompt, model)
+            report["backend"] = f"claude_cli:{model}"
+            return text
+        except Exception as e:  # noqa: BLE001
+            logger.warning("claude CLI storyboard call failed (%s), falling back to local Ollama", type(e).__name__)
     if backend == "anthropic":
-        if not model:
-            raise ValueError("storyboard backend 'anthropic' needs a model id from the host")
         try:
             client = anthropic.Anthropic()
             message = client.messages.create(
                 model=model,
-                max_tokens=3000,
+                max_tokens=6000,
                 messages=[{"role": "user", "content": prompt}],
             )
+            report["backend"] = f"anthropic:{model}"
             return message.content[0].text
         except Exception as e:  # noqa: BLE001
             logger.warning("Anthropic storyboard call failed (%s), falling back to local Ollama", type(e).__name__)
@@ -115,6 +170,7 @@ def _call_storyboard_llm(prompt: str, backend: str = "ollama", model: Optional[s
         timeout=180,
     )
     response.raise_for_status()
+    report["backend"] = f"ollama:{_OLLAMA_MODEL}"
     return response.json()["response"]
 
 
@@ -162,7 +218,9 @@ async def generate_storyboard_with_llm(
     # stays small and duration-independent: max_duration_minutes is a ceiling the
     # storyboard must not exceed, not a target, and the local Ollama CPU fallback
     # (no GPU on this host) needs a small scene count to finish in reasonable time.
-    max_scenes = min(100, 6)
+    # A remote model writes a longer storyboard in seconds; the CPU-only local
+    # fallback needs the small count.
+    max_scenes = 6 if backend == "ollama" else 8
 
     strategy = didactic_strategy or detect_didactic_strategy(task)
     budget = CHAR_BUDGETS.get(strategy, CHAR_BUDGETS["rich_visual"])
@@ -205,8 +263,31 @@ Templates and their data (plain text only, never HTML; keep texts short):
 - "compare": {{"eyebrow"?, "title", "left": {{"title", "points": [1-4]}}, "right": {{"title", "points": [1-4]}}}}
 - "quote":   {{"eyebrow"?, "quote", "attribution"?, "locale"?}}
 - "code":    {{"eyebrow"?, "title", "language"?, "lines": [1-12 strings]}}
-Limits: title 70-80 chars, bullet 110, node label 28, bar label 24.
+- "flow":    {{"eyebrow"?, "title", "nodes": [2-8 {{"id": "a-z0-9_", "label", "sub"?}}],
+              "edges": [1-12 {{"from": id, "to": id, "label"?}}], "highlight"?: id}}
+             (a graph with branches/merges, laid out left to right; no cycles; at most 5 columns
+              and 4 nodes per column; data pulses run along the edges)
+- "cycle":   {{"eyebrow"?, "title", "caption"?, "center"?, "steps": [3-6 {{"label", "sub"?}}], "highlight"?: index}}
+             (a loop: feedback, learning, iteration)
+- "layers":  {{"eyebrow"?, "title", "layers": [2-6 {{"label", "sub"?, "tag"?}}], "highlight"?: index}}
+             (a stack, first = top: architecture layers, tiers)
+- "timeline": {{"eyebrow"?, "title", "events": [2-6 {{"when", "label", "sub"?}}], "current"?: index}}
+             (history, roadmap, phases)
+- "line":    {{"eyebrow"?, "title", "labels": [3-12 x-axis labels], "series": [1-3 {{"name", "values": [numbers, one per label]}}],
+              "unit"?, "decimals"?, "highlight"?: index, "locale"?}}  (a trend; only with real numbers from the task)
+- "donut":   {{"eyebrow"?, "title", "segments": [2-6 {{"label", "value": number >= 0}}], "center_value"?, "center_label"?,
+              "unit"?, "decimals"?, "highlight"?: index, "locale"?}}  (shares of a whole; only real numbers)
+Limits: title 70-80 chars (cycle 60), bullet 110, node label 28 (flow 24), bar label 24, layer label 32.
 Optional per scene: "theme": "dark" (default) or "light".
+
+CHOOSING A VISUAL — pick the template that SHOWS the idea instead of listing it:
+- branching process / architecture with several parts -> "flow"; a straight 2-6 step pipeline -> "diagram"
+- feedback loop / iteration -> "cycle"; layered architecture / tiers -> "layers"; history / roadmap -> "timeline"
+- a trend over time -> "line"; parts of a whole -> "donut"; quantities side by side -> "chart"; one key number -> "stat"
+- before/after or option A vs. B -> "compare"; a command or config -> "code"; one memorable sentence -> "quote"
+- "content" (bullets) only when nothing above fits — at most once per video; "hero" for the title scene.
+- Never invent numbers: "line", "donut", "chart" and "stat" only with figures stated in the task.
+- Write template text in the same language as the narration ("locale": "de" for German numbers).
 
 CONSTRAINTS (MUST ENFORCE):
 - Total duration ≤ {max_duration_minutes * 60000} ms
@@ -234,7 +315,8 @@ OUTPUT FORMAT (valid JSON only, no markdown):
 RETURN ONLY THE JSON, NO EXPLANATIONS.
 """
 
-    raw = _call_storyboard_llm(prompt, backend=backend, model=model)
+    report: Dict[str, Any] = {}
+    raw = _call_storyboard_llm(prompt, backend=backend, model=model, report=report)
 
     try:
         raw = raw.strip()
@@ -269,6 +351,7 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
             scenes=scenes,
             generated_at=datetime.now(),
             didactic_strategy=storyboard_json["didactic_strategy"],
+            llm_backend=report.get("backend", backend),
         )
 
     except json.JSONDecodeError as e:
@@ -828,17 +911,37 @@ def _video_args() -> List[str]:
     ]
 
 
+def _link_or_copy(src: Path, dst: Path) -> None:
+    try:
+        os.link(src, dst)
+    except OSError:  # filesystem without hard links
+        shutil.copyfile(src, dst)
+
+
 def _assemble_frames_clip(frames_dir: Path, n_frames: int, audio_path: Path, audio_duration: float,
-                          out_path: Path, fps: int) -> float:
+                          out_path: Path, fps: int, loop_start: Optional[int] = None) -> float:
     """Animated frame sequence + narration -> scene clip; returns the clip length.
 
     The sequence ends with the slide's entrance animation. If the narration is
-    longer, the last frame is held; if it is shorter, the audio is padded with
-    silence so the reveal is never cut off mid-animation."""
+    longer, the last frame is held — or, when the slide has ambient motion
+    (``loop_start``), frames[loop_start:] repeat seamlessly until the narration
+    ends. If it is shorter, the audio is padded with silence so the reveal is
+    never cut off mid-animation."""
     total = max(audio_duration, n_frames / fps)
+    pattern = frames_dir / "%05d.png"
+    needed = math.ceil(total * fps) + 1
+    if loop_start is not None and 0 < loop_start < n_frames and needed > n_frames:
+        # Hard links, not copies: a 60 s scene is 1800 entries pointing at ~150 files.
+        seq = frames_dir / "seq"
+        seq.mkdir(exist_ok=True)
+        period = n_frames - loop_start
+        for j in range(needed):
+            src = j if j < n_frames else loop_start + (j - loop_start) % period
+            _link_or_copy(frames_dir / f"{src:05d}.png", seq / f"{j:05d}.png")
+        pattern = seq / "%05d.png"
     cmd = [
         "ffmpeg", "-y",
-        "-framerate", str(fps), "-i", str(frames_dir / "%05d.png"),
+        "-framerate", str(fps), "-i", str(pattern),
         "-i", str(audio_path),
         "-filter_complex",
         f"[0:v]tpad=stop_mode=clone:stop_duration={total + 1.0:.3f},fps=30,format=yuv420p[v];"
@@ -1133,7 +1236,8 @@ async def orchestrate_video(
                                 current_scene=i, total_scenes=total,
                             )
                     if frames:
-                        shutil.copyfile(frames[-1], image_path)
+                        loop_start = getattr(frames, "loop_start", None)
+                        shutil.copyfile(frames[loop_start - 1] if loop_start else frames[-1], image_path)
                         renderers_used.append("web")
                     else:
                         _render_slide_image(
@@ -1150,7 +1254,7 @@ async def orchestrate_video(
                 if frames:
                     try:
                         _assemble_frames_clip(frames[0].parent, len(frames), audio_path, audio_duration,
-                                              clip_path, web_fps)
+                                              clip_path, web_fps, loop_start=getattr(frames, "loop_start", None))
                     finally:
                         # ~0.5-1 MB per frame; the clip is the artifact, the frames are scratch
                         shutil.rmtree(frames[0].parent, ignore_errors=True)
@@ -1201,6 +1305,7 @@ async def orchestrate_video(
                 "renderers": renderers_used,
                 "web_scenes": renderers_used.count("web"),
                 "web_render_fallbacks": web_fallbacks,
+                "storyboard_llm": storyboard.llm_backend or "operator",
             },
         )
         storage.save_video_output(video_output)

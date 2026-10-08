@@ -25,11 +25,17 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    from .web_geometry import layer_dag, monotone_path, nice_ticks, order_layers, polar
+except ImportError:  # standalone script use (no package context)
+    from web_geometry import layer_dag, monotone_path, nice_ticks, order_layers, polar
+
 WEB_DIR = Path(__file__).parent / "web"
 DEFAULT_TOKENS_PATH = WEB_DIR / "design_tokens.json"
 BASE_CSS_PATH = WEB_DIR / "css" / "base.css"
 
-TEMPLATES = ("hero", "content", "stat", "diagram", "chart", "compare", "quote", "code")
+TEMPLATES = ("hero", "content", "stat", "diagram", "chart", "compare", "quote", "code",
+             "line", "donut", "flow", "timeline", "cycle", "layers")
 THEMES = ("dark", "light")
 LANGS = ("de", "en")
 
@@ -287,11 +293,137 @@ def validate_scene_data(template: Any, data: Any) -> Dict[str, Any]:
         _unknown(data, ("eyebrow", "title", "language", "lines"))
         out.update(title=_text(data, "title", 80), language=_text(data, "language", 24, False),
                    lines=[_code_line(l, 90) for l in _list(data, "lines", 1, 12)])
+    elif template == "line":
+        _unknown(data, ("eyebrow", "title", "labels", "series", "unit", "decimals", "highlight", "locale"))
+        labels = [_text({"x": x}, "x", 12) for x in _list(data, "labels", 3, 12)]
+        series = []
+        for sr in _list(data, "series", 1, 3):
+            if not isinstance(sr, dict):
+                raise WebSceneError("line series must be objects")
+            _unknown(sr, ("name", "values"))
+            values = [_number({"v": v}, "v") for v in _list(sr, "values", len(labels), len(labels))]
+            series.append({"name": _text(sr, "name", 24, required=len(_list(data, "series", 1, 3)) > 1),
+                           "values": values})
+        out.update(title=_text(data, "title", 80), labels=labels, series=series,
+                   unit=_text(data, "unit", 8, False), decimals=_int(data, "decimals", 0, 2, 0),
+                   locale=_locale(data), highlight=_int(data, "highlight", 0, len(labels) - 1, None))
+    elif template == "donut":
+        _unknown(data, ("eyebrow", "title", "segments", "center_value", "center_label", "unit",
+                        "decimals", "highlight", "locale"))
+        segs = []
+        for sg in _list(data, "segments", 2, 6):
+            if not isinstance(sg, dict):
+                raise WebSceneError("donut segments must be objects")
+            _unknown(sg, ("label", "value"))
+            v = _number(sg, "value")
+            if v < 0:
+                raise WebSceneError("donut values must be >= 0")
+            segs.append({"label": _text(sg, "label", 28), "value": v})
+        if sum(sg["value"] for sg in segs) <= 0:
+            raise WebSceneError("donut needs at least one value > 0")
+        out.update(title=_text(data, "title", 80), segments=segs,
+                   center_value=_text(data, "center_value", 10, False),
+                   center_label=_text(data, "center_label", 28, False),
+                   unit=_text(data, "unit", 8, False), decimals=_int(data, "decimals", 0, 2, 0),
+                   locale=_locale(data), highlight=_int(data, "highlight", 0, len(segs) - 1, None))
+    elif template == "flow":
+        _unknown(data, ("eyebrow", "title", "nodes", "edges", "highlight"))
+        nodes, ids = [], []
+        for nd in _list(data, "nodes", 2, 8):
+            if not isinstance(nd, dict):
+                raise WebSceneError("flow nodes must be objects")
+            _unknown(nd, ("id", "label", "sub"))
+            nid = nd.get("id")
+            if not isinstance(nid, str) or not _ID.fullmatch(nid):
+                raise WebSceneError("flow node id must match [a-z0-9_]{1,16}")
+            if nid in ids:
+                raise WebSceneError(f"duplicate flow node id {nid!r}")
+            ids.append(nid)
+            nodes.append({"id": nid, "label": _text(nd, "label", 24), "sub": _text(nd, "sub", 36, False)})
+        edges, seen = [], set()
+        for ed in _list(data, "edges", 1, 12):
+            if not isinstance(ed, dict):
+                raise WebSceneError("flow edges must be objects")
+            _unknown(ed, ("from", "to", "label"))
+            a, b = ed.get("from"), ed.get("to")
+            if a not in ids or b not in ids:
+                raise WebSceneError("flow edge endpoints must be node ids")
+            if a == b or (a, b) in seen:
+                raise WebSceneError("flow edges must not be self-loops or duplicates")
+            seen.add((a, b))
+            edges.append({"from": a, "to": b, "label": _text(ed, "label", 18, False)})
+        try:
+            layer = layer_dag(ids, [(e["from"], e["to"]) for e in edges])
+        except ValueError as e:
+            raise WebSceneError(str(e)) from None
+        groups = order_layers(ids, [(e["from"], e["to"]) for e in edges], layer)
+        if len(groups) > 5 or max(len(g) for g in groups) > 4:
+            raise WebSceneError("flow layout allows at most 5 columns and 4 nodes per column")
+        hl = data.get("highlight")
+        if hl is not None and hl not in ids:
+            raise WebSceneError("flow highlight must be a node id")
+        out.update(title=_text(data, "title", 80), nodes=nodes, edges=edges, highlight=hl)
+    elif template == "timeline":
+        _unknown(data, ("eyebrow", "title", "events", "current"))
+        events = []
+        for ev in _list(data, "events", 2, 6):
+            if not isinstance(ev, dict):
+                raise WebSceneError("timeline events must be objects")
+            _unknown(ev, ("when", "label", "sub"))
+            events.append({"when": _text(ev, "when", 16), "label": _text(ev, "label", 28),
+                           "sub": _text(ev, "sub", 60, False)})
+        out.update(title=_text(data, "title", 80), events=events,
+                   current=_int(data, "current", 0, len(events) - 1, None))
+    elif template == "cycle":
+        _unknown(data, ("eyebrow", "title", "caption", "center", "steps", "highlight"))
+        steps = []
+        for st in _list(data, "steps", 3, 6):
+            if not isinstance(st, dict):
+                raise WebSceneError("cycle steps must be objects")
+            _unknown(st, ("label", "sub"))
+            steps.append({"label": _text(st, "label", 22), "sub": _text(st, "sub", 40, False)})
+        out.update(title=_text(data, "title", 60), caption=_text(data, "caption", 180, False),
+                   center=_text(data, "center", 24, False), steps=steps,
+                   highlight=_int(data, "highlight", 0, len(steps) - 1, None))
+    elif template == "layers":
+        _unknown(data, ("eyebrow", "title", "layers", "highlight"))
+        layers = []
+        for ly in _list(data, "layers", 2, 6):
+            if not isinstance(ly, dict):
+                raise WebSceneError("layers entries must be objects")
+            _unknown(ly, ("label", "sub", "tag"))
+            layers.append({"label": _text(ly, "label", 32), "sub": _text(ly, "sub", 64, False),
+                           "tag": _text(ly, "tag", 12, False)})
+        out.update(title=_text(data, "title", 80), layers=layers,
+                   highlight=_int(data, "highlight", 0, len(layers) - 1, None))
     return out
+
+
+_ID = re.compile(r"[a-z0-9_]{1,16}")
+
+
+def _flow_layout(d: Dict[str, Any]) -> Tuple[Dict[str, int], List[List[str]]]:
+    ids = [n["id"] for n in d["nodes"]]
+    pairs = [(e["from"], e["to"]) for e in d["edges"]]
+    layer = layer_dag(ids, pairs)
+    return layer, order_layers(ids, pairs, layer)
+
+
+def _flow_columns(d: Dict[str, Any]) -> int:
+    return len(_flow_layout(d)[1]) if d.get("nodes") else 0
+
+
+def _locale(data: dict) -> str:
+    locale = data.get("locale", "en")
+    if locale not in LANGS:
+        raise WebSceneError(f"field 'locale' must be one of {LANGS}")
+    return locale
 
 
 def reveal_steps(template: str, data: Dict[str, Any]) -> int:
     """Number of staggered entrance steps (header steps excluded)."""
+    if template == "flow":
+        return _flow_columns(data) + 1
     return {
         "hero": 4,
         "content": len(data.get("bullets") or []),
@@ -301,7 +433,25 @@ def reveal_steps(template: str, data: Dict[str, Any]) -> int:
         "compare": 2,
         "quote": 2,
         "code": len(data.get("lines") or []),
+        "line": 4,
+        "donut": len(data.get("segments") or []),
+        "timeline": len(data.get("events") or []),
+        "cycle": len(data.get("steps") or []),
+        "layers": len(data.get("layers") or []),
     }[template]
+
+
+# Ambient motion (pulses, orbits, ring pulses) loops with this period once the
+# entrance has settled; every ambient animation's duration must divide it so
+# the renderer can sample exactly one seamless period (web_renderer).
+AMBIENT_PERIOD_S = 4.0
+
+
+def ambient_start(t0: float, stagger: float, steps: int, rise_ms: int) -> float:
+    """When ambient motion begins: once the last staggered entrance step (index
+    steps + 1, after eyebrow and title) has risen. Chart draws are scheduled
+    inside that window, so nothing ambient moves over a half-drawn graphic."""
+    return t0 + (steps + 2) * stagger + rise_ms / 1000.0
 
 
 def timing(duration_s: float, steps: int) -> Tuple[float, float]:
@@ -390,7 +540,7 @@ def _diagram(d):
     width, gap = 1580, 84
     w = min(340, (width - (n - 1) * gap) / n)
     x0 = (width - (n * w + (n - 1) * gap)) / 2
-    cards, edges = [], []
+    cards, edges, pulses = [], [], []
     for k, node in enumerate(nodes):
         x = x0 + k * (w + gap)
         hl = " hl" if d.get("highlight") == k else ""
@@ -403,8 +553,9 @@ def _diagram(d):
             ax, bx, y = x + w + 10, x + w + gap - 14, 150
             edges.append(f'<path class="edge" pathLength="1" style="--i:{2 + k}" d="M{ax:.1f} {y} L{bx:.1f} {y}"/>')
             edges.append(f'<path class="head" style="--i:{2 + k}" d="M{bx + 12:.1f} {y} L{bx - 2:.1f} {y - 9} L{bx - 2:.1f} {y + 9} Z"/>')
+            pulses.append(f'<i class="amb pulse" style="offset-path:path(\'M{ax:.1f} {y} L{bx:.1f} {y}\');--ph:{k * 0.5:.2f}s"></i>')
     svg = f'<svg width="{width}" height="300" viewBox="0 0 {width} 300">{"".join(edges)}</svg>'
-    return f'<div class="frame">{_header(d)}<div class="flow">{svg}{"".join(cards)}</div></div>'
+    return f'<div class="frame">{_header(d)}<div class="flow">{svg}{"".join(pulses)}{"".join(cards)}</div></div>'
 
 
 def _chart(d):
@@ -459,16 +610,277 @@ def _code(d):
             f'<div class="bar-top"><i></i><i></i><i></i>{lang}</div><pre>{"".join(lines)}</pre></div></div>')
 
 
+_VIZ_W = 1580
+
+
+def _tick_decimals(ticks: List[float], decimals: int) -> int:
+    step = ticks[1] - ticks[0] if len(ticks) > 1 else 1.0
+    need = 0 if step >= 1 else min(2, int(math.ceil(-math.log10(step) - 1e-9)))
+    return max(decimals, need)
+
+
+def _spread(ys: List[float], gap: float) -> List[float]:
+    """Push label baselines apart so no two are closer than ``gap`` (order kept)."""
+    order = sorted(range(len(ys)), key=lambda k: ys[k])
+    out = list(ys)
+    for a, b in zip(order, order[1:]):
+        if out[b] - out[a] < gap:
+            out[b] = out[a] + gap
+    return out
+
+
+def _line(d):
+    labels, series = d["labels"], d["series"]
+    W, H = _VIZ_W, 540
+    left, right, top, bottom = 110, 190, 34, 70
+    pw, ph = W - left - right, H - top - bottom
+    values = [v for sr in series for v in sr["values"]]
+    ticks = nice_ticks(min(min(values), 0.0), max(max(values), 0.0), 5)
+    lo, hi = ticks[0], ticks[-1]
+    n = len(labels)
+    unit = d.get("unit")
+    suffix = f" {unit}" if unit else ""
+
+    def X(i: int) -> float:
+        return left + pw * i / (n - 1)
+
+    def Y(v: float) -> float:
+        return top + ph * (1 - (v - lo) / (hi - lo))
+
+    tick_dec = _tick_decimals(ticks, d["decimals"])
+    svg = ['<defs><linearGradient id="area-fill" x1="0" y1="0" x2="0" y2="1">'
+           '<stop offset="0" class="ag0"/><stop offset="1" class="ag1"/></linearGradient></defs>']
+    for k, tv in enumerate(ticks):
+        y = Y(tv)
+        svg.append(f'<line class="grid{" zero" if tv == 0 else ""}" x1="{left}" x2="{W - right + 30}" '
+                   f'y1="{y:.1f}" y2="{y:.1f}" style="--k:{k}"/>')
+        svg.append(f'<text class="ytick" x="{left - 24}" y="{y + 8:.1f}" text-anchor="end" style="--k:{k}">'
+                   f'{_e(_fmt(tv, tick_dec, d["locale"]))}</text>')
+    for i, lab in enumerate(labels):
+        svg.append(f'<text class="xtick" x="{X(i):.1f}" y="{H - 18}" text-anchor="middle" '
+                   f'style="--f:{i / (n - 1):.3f}">{_e(lab)}</text>')
+    base = Y(0.0) if lo <= 0 <= hi else Y(lo)
+    ends = []
+    for k, sr in enumerate(series):
+        pts = [(X(i), Y(v)) for i, v in enumerate(sr["values"])]
+        path = monotone_path(pts)
+        if k == 0:
+            svg.append(f'<path class="area" d="{path}L{pts[-1][0]:.1f},{base:.1f}L{pts[0][0]:.1f},{base:.1f}Z"/>')
+        svg.append(f'<path class="ln c{k}" pathLength="1" d="{path}"/>')
+        for i, (x, y) in enumerate(pts):
+            svg.append(f'<circle class="pt c{k}" cx="{x:.1f}" cy="{y:.1f}" r="7" style="--f:{i / (n - 1):.3f}"/>')
+        ends.append((k, pts[-1], sr["values"][-1]))
+    label_ys = _spread([p[1] + 10 for _, p, _ in ends], 40)
+    for (k, (x, _), v), ly in zip(ends, label_ys):
+        svg.append(f'<text class="endv c{k}" x="{x + 24:.1f}" y="{ly:.1f}">'
+                   f'{_e(_fmt(v, d["decimals"], d["locale"]) + suffix)}</text>')
+    x_last, y_last = ends[0][1]
+    svg.append(f'<circle class="amb ring-pulse c0" cx="{x_last:.1f}" cy="{y_last:.1f}" r="7"/>')
+    h = d.get("highlight")
+    if h is not None:
+        x, y = X(h), Y(series[0]["values"][h])
+        text = _fmt(series[0]["values"][h], d["decimals"], d["locale"]) + suffix
+        w = 40 + 17 * len(text)
+        by = y - 78 if y - 78 > -20 else y + 26
+        svg.append(f'<g class="callout"><line class="guide" x1="{x:.1f}" x2="{x:.1f}" y1="{y + 12:.1f}" y2="{base:.1f}"/>'
+                   f'<rect x="{x - w / 2:.1f}" y="{by:.1f}" width="{w:.0f}" height="50" rx="14"/>'
+                   f'<text x="{x:.1f}" y="{by + 34:.1f}" text-anchor="middle">{_e(text)}</text></g>')
+    legend = ""
+    if len(series) > 1:
+        items = "".join(f'<span><i class="sw c{k}"></i>{_e(sr["name"])}</span>' for k, sr in enumerate(series))
+        legend = f'<div class="legend r" style="--i:2">{items}</div>'
+    return (f'<div class="frame">{_header(d)}{legend}<div class="viz" style="height:{H}px">'
+            f'<svg class="viz-svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">{"".join(svg)}</svg></div></div>')
+
+
+def _pct(p: float, locale: str) -> str:
+    return f"{p:.0f} %" if locale == "de" else f"{p:.0f}%"
+
+
+def _donut(d):
+    segs = d["segments"]
+    total = sum(sg["value"] for sg in segs)
+    size, r = 540, 200
+    c = size / 2
+    unit = d.get("unit")
+    suffix = f" {unit}" if unit else ""
+    hl = d.get("highlight")
+    arcs, rows, cum = [], [], 0.0
+    for k, sg in enumerate(segs):
+        pct = 100.0 * sg["value"] / total
+        cls = " hl" if hl == k else ""
+        if pct > 0:
+            dash = max(pct - 0.8, 0.05) if pct < 100 else 100
+            arcs.append(f'<circle class="seg c{k}{cls}" cx="{c:.0f}" cy="{c:.0f}" r="{r}" pathLength="100" '
+                        f'stroke-dasharray="{dash:.3f} 100" stroke-dashoffset="{-cum:.3f}" style="--i:{2 + k}"/>')
+        cum += pct
+        rows.append(
+            f'<div class="lg-row r{cls}" style="--i:{2 + k}"><i class="sw c{k}"></i>'
+            f'<span class="lg-l">{_e(sg["label"])}</span>'
+            + ("" if unit == "%" else  # the value already is the share: one column, not two
+               f'<span class="lg-v">{_e(_fmt(sg["value"], d["decimals"], d["locale"]) + suffix)}</span>')
+            + f'<span class="lg-p">{_pct(pct, d["locale"])}</span></div>'
+        )
+    if d.get("center_value"):
+        cv, cl = d["center_value"], d.get("center_label")
+    elif hl is not None:
+        cv, cl = _pct(100.0 * segs[hl]["value"] / total, d["locale"]), d.get("center_label") or segs[hl]["label"]
+    else:
+        cv, cl = _fmt(total, d["decimals"], d["locale"]) + suffix, d.get("center_label")
+    center = f'<div class="dn-v">{_e(cv)}</div>' + (f'<div class="dn-l">{_e(cl)}</div>' if cl else "")
+    svg = (f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}">'
+           f'<circle class="track" cx="{c:.0f}" cy="{c:.0f}" r="{r}"/>'
+           f'<g transform="rotate(-90 {c:.0f} {c:.0f})">{"".join(arcs)}</g></svg>')
+    return (f'<div class="frame">{_header(d)}<div class="donut"><div class="dn-chart">{svg}'
+            f'<div class="dn-center r" style="--i:{2 + len(segs)}">{center}</div></div>'
+            f'<div class="dn-legend">{"".join(rows)}</div></div></div>')
+
+
+def _flow(d):
+    layer, groups = _flow_layout(d)
+    nodes = {nd["id"]: nd for nd in d["nodes"]}
+    W, H = _VIZ_W, 560
+    cols = len(groups)
+    gapx = 140 if cols > 1 else 0
+    w = min(300.0, (W - (cols - 1) * gapx) / cols)
+    h = 120 if any(nd.get("sub") for nd in d["nodes"]) else 88
+    x0 = (W - (cols * w + (cols - 1) * gapx)) / 2
+    pos = {}
+    for k, g in enumerate(groups):
+        for j, nid in enumerate(g):
+            pos[nid] = (x0 + k * (w + gapx), H * (j + 0.5) / len(g))
+    svg, pulses, labels, cards = [], [], [], []
+    for m, e in enumerate(d["edges"]):
+        (ax, ay), (bx, by) = pos[e["from"]], pos[e["to"]]
+        x1, y1, x2, y2 = ax + w + 8, ay, bx - 16, by
+        dx = (x2 - x1) * 0.5
+        path = f"M{x1:.1f} {y1:.1f} C{x1 + dx:.1f} {y1:.1f} {x2 - dx:.1f} {y2:.1f} {x2:.1f} {y2:.1f}"
+        i = 2 + layer[e["from"]]
+        svg.append(f'<path class="edge" pathLength="1" style="--i:{i}" d="{path}"/>')
+        svg.append(f'<path class="head" style="--i:{i}" d="M{x2 + 13:.1f} {y2:.1f} L{x2 - 1:.1f} {y2 - 9:.1f} '
+                   f'L{x2 - 1:.1f} {y2 + 9:.1f} Z"/>')
+        pulses.append(f'<i class="amb pulse" style="offset-path:path(\'{path}\');--ph:{(m * 0.55) % 2:.2f}s"></i>')
+        if e.get("label"):
+            labels.append(f'<div class="elabel r" style="--i:{i + 1};left:{(x1 + x2) / 2 - 100:.1f}px;'
+                          f'top:{(y1 + y2) / 2 - 22:.1f}px"><span>{_e(e["label"])}</span></div>')
+    for nid, (x, cy) in pos.items():
+        nd = nodes[nid]
+        cls = " hl" if d.get("highlight") == nid else ""
+        sub = f'<div class="s">{_e(nd["sub"])}</div>' if nd.get("sub") else ""
+        cards.append(f'<div class="gnode r{cls}" style="--i:{2 + layer[nid]};left:{x:.1f}px;top:{cy - h / 2:.1f}px;'
+                     f'width:{w:.1f}px;height:{h}px"><div class="l">{_e(nd["label"])}</div>{sub}</div>')
+    return (f'<div class="frame">{_header(d)}<div class="viz" style="height:{H}px">'
+            f'<svg class="viz-svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">{"".join(svg)}</svg>'
+            f'{"".join(pulses)}{"".join(labels)}{"".join(cards)}</div></div>')
+
+
+def _timeline(d):
+    ev = d["events"]
+    n = len(ev)
+    W, H, ay, pad = _VIZ_W, 430, 150, 140
+    xs = [pad + i * (W - 2 * pad) / (n - 1) for i in range(n)]
+    cur = d.get("current")
+    reach = cur if cur is not None else n - 1
+    cw = min(330.0, (W - 2 * pad) / (n - 1) - 30) if n > 1 else 330.0
+    svg = [f'<line class="tl-base" x1="30" x2="{W - 30}" y1="{ay}" y2="{ay}"/>',
+           f'<line class="tl-prog" pathLength="1" x1="30" x2="{xs[reach]:.1f}" y1="{ay}" y2="{ay}" '
+           f'style="--n:{reach + 1}"/>']
+    html_parts = []
+    for k, (x, e) in enumerate(zip(xs, ev)):
+        state = "cur" if k == cur else ("done" if k < reach or cur is None else "next")
+        svg.append(f'<circle class="tl-dot {state}" cx="{x:.1f}" cy="{ay}" r="{17 if state == "cur" else 12}" '
+                   f'style="--i:{2 + k}"/>')
+        if state == "cur":
+            svg.append(f'<circle class="amb ring-pulse c0" cx="{x:.1f}" cy="{ay}" r="17"/>')
+        left = x - cw / 2
+        html_parts.append(f'<div class="tl-when r {state}" style="--i:{2 + k};left:{left:.1f}px;top:{ay - 92}px;'
+                          f'width:{cw:.1f}px">{_e(e["when"])}</div>')
+        sub = f'<div class="s">{_e(e["sub"])}</div>' if e.get("sub") else ""
+        html_parts.append(f'<div class="tl-label r {state}" style="--i:{2 + k};left:{left:.1f}px;top:{ay + 44}px;'
+                          f'width:{cw:.1f}px"><div class="l">{_e(e["label"])}</div>{sub}</div>')
+    return (f'<div class="frame">{_header(d)}<div class="viz" style="height:{H}px">'
+            f'<svg class="viz-svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">{"".join(svg)}</svg>'
+            f'{"".join(html_parts)}</div></div>')
+
+
+def _cycle(d):
+    steps = d["steps"]
+    n = len(steps)
+    VW, VH, cx, cy, R = 960, 780, 480, 390, 215
+    angles = [-math.pi / 2 + 2 * math.pi * k / n for k in range(n)]
+    gap = 0.2
+    svg = [f'<circle class="cy-track" cx="{cx}" cy="{cy}" r="{R}"/>']
+    for k in range(n):
+        a1 = angles[k] + gap
+        a2 = angles[(k + 1) % n] - gap + (2 * math.pi if k == n - 1 else 0)
+        (x1, y1), (x2, y2) = polar(cx, cy, R, a1), polar(cx, cy, R, a2)
+        svg.append(f'<path class="cy-arc" pathLength="1" style="--i:{2 + k}" '
+                   f'd="M{x1:.1f} {y1:.1f} A{R} {R} 0 0 1 {x2:.1f} {y2:.1f}"/>')
+        tx, ty, nx, ny = -math.sin(a2), math.cos(a2), math.cos(a2), math.sin(a2)
+        svg.append(f'<path class="cy-head" style="--i:{2 + k}" d="M{x2 + tx * 15:.1f} {y2 + ty * 15:.1f} '
+                   f'L{x2 - nx * 9:.1f} {y2 - ny * 9:.1f} L{x2 + nx * 9:.1f} {y2 + ny * 9:.1f} Z"/>')
+    html_parts = []
+    for k, (a, st) in enumerate(zip(angles, steps)):
+        x, y = polar(cx, cy, R, a)
+        cls = " hl" if d.get("highlight") == k else ""
+        svg.append(f'<g class="cy-node{cls}" style="--i:{2 + k}"><circle cx="{x:.1f}" cy="{y:.1f}" r="31"/>'
+                   f'<text x="{x:.1f}" y="{y + 8:.1f}" text-anchor="middle">{k + 1:02d}</text></g>')
+        lx, ly = polar(cx, cy, R + 58, a)
+        c, s_ = math.cos(a), math.sin(a)
+        lw = 250
+        if c > 0.3:
+            left, top, align = lx, ly - 34, "left"
+        elif c < -0.3:
+            left, top, align = lx - lw, ly - 34, "right"
+        else:
+            left, top, align = lx - lw / 2, (ly - 84 if s_ < 0 else ly - 6), "center"
+        sub = f'<div class="s">{_e(st["sub"])}</div>' if st.get("sub") else ""
+        html_parts.append(f'<div class="cy-label r{cls}" style="--i:{2 + k};left:{left:.1f}px;top:{top:.1f}px;'
+                          f'width:{lw}px;text-align:{align}"><div class="l">{_e(st["label"])}</div>{sub}</div>')
+    orbit = (f"M{cx} {cy - R} A{R} {R} 0 1 1 {cx} {cy + R} A{R} {R} 0 1 1 {cx} {cy - R}")
+    center = (f'<div class="cy-center r" style="--i:{2 + n};left:{cx - 160}px;top:{cy - 40}px">{_e(d["center"])}</div>'
+              if d.get("center") else "")
+    text = []
+    if d.get("eyebrow"):
+        text.append(f'<div class="eyebrow r" style="--i:0">{_e(d["eyebrow"])}</div>')
+    if d.get("title"):
+        text.append(f'<h2 class="title r" style="--i:1">{_e(d["title"])}</h2>')
+    if d.get("caption"):
+        text.append(f'<p class="caption r" style="--i:2">{_e(d["caption"])}</p>')
+    return (f'<div class="frame split"><div class="split-text">{"".join(text)}</div>'
+            f'<div class="viz" style="width:{VW}px;height:{VH}px">'
+            f'<svg class="viz-svg" width="{VW}" height="{VH}" viewBox="0 0 {VW} {VH}">{"".join(svg)}</svg>'
+            f'<i class="amb orbit" style="offset-path:path(\'{orbit}\')"></i>{center}{"".join(html_parts)}</div></div>')
+
+
+def _layers(d):
+    ly = d["layers"]
+    n = len(ly)
+    rows = []
+    for k, item in enumerate(ly):
+        cls = " hl" if d.get("highlight") == k else ""
+        sub = f'<span class="sl-s">{_e(item["sub"])}</span>' if item.get("sub") else ""
+        tag = f'<span class="sl-t">{_e(item["tag"])}</span>' if item.get("tag") else ""
+        shine = '<i class="amb shine"></i>' if cls else ""
+        rows.append(f'<div class="slab r{cls}" style="--i:{2 + (n - 1 - k)}"><span class="sl-l">{_e(item["label"])}</span>'
+                    f'{sub}{tag}{shine}</div>')
+    return f'<div class="frame">{_header(d)}<div class="stack">{"".join(rows)}</div></div>'
+
+
 _BUILDERS = {"hero": _hero, "content": _content, "stat": _stat, "diagram": _diagram,
-             "chart": _chart, "compare": _compare, "quote": _quote, "code": _code}
+             "chart": _chart, "compare": _compare, "quote": _quote, "code": _code,
+             "line": _line, "donut": _donut, "flow": _flow, "timeline": _timeline, "cycle": _cycle,
+             "layers": _layers}
 
 
 def _stars(seed: int) -> str:
     """Constellation dots and a few short lines, kept out of the content area."""
     rng = random.Random(seed)
 
+    # Graphics span the full 1580 px content width (170..1750) and the wordmark
+    # sits at the bottom left: keep decoration in the outer margin only.
     def outside(x: float, y: float) -> bool:
-        return not (230 < x < 1690 and 110 < y < 990)
+        return not (140 < x < 1780 and 80 < y < 1040)
 
     pts: List[Tuple[float, float, float, float]] = []
     while len(pts) < 18:
@@ -482,7 +894,8 @@ def _stars(seed: int) -> str:
             if len(lines) >= 4:
                 break
             mx, my = (ax + bx) / 2, (ay + by) / 2
-            if math.hypot(ax - bx, ay - by) < 320 and outside(mx, my):
+            if math.hypot(ax - bx, ay - by) < 320 and all(
+                    outside(ax + (bx - ax) * f, ay + (by - ay) * f) for f in (0.25, 0.5, 0.75)):
                 lines.append(f'<line x1="{ax:.0f}" y1="{ay:.0f}" x2="{bx:.0f}" y2="{by:.0f}"/>')
     return f'<svg class="stars" width="1920" height="1080">{"".join(lines)}{dots}</svg>'
 
@@ -513,7 +926,8 @@ def build_document(
                  f"--font-body:'{typo['body_family']}',sans-serif;"
                  f"--font-mono:'{typo['mono_family']}',monospace;"
                  f"--rise:{anim['rise_ms']}ms;--ease:{anim['easing']};"
-                 f"--t0:{t0:.3f}s;--stagger:{stagger:.3f}s;")
+                 f"--t0:{t0:.3f}s;--stagger:{stagger:.3f}s;"
+                 f"--tend:{ambient_start(t0, stagger, reveal_steps(template, d), anim['rise_ms']):.3f}s;")
 
     chrome = '<div class="wordmark"><b>&gt;_</b>CorvinOS</div>'
     if scene_index and total_scenes:
