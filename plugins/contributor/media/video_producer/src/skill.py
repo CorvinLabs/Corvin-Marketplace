@@ -23,13 +23,13 @@ import requests
 try:
     from .models import VideoJob, Storyboard, Scene, VideoOutput
     from .storage import get_storage, TERMINAL_STATUSES
-    from .narration_validator import validate_storyboard_dict, validate_storyboard
+    from .narration_validator import validate_storyboard_dict, validate_storyboard, CHAR_BUDGETS
     from .screenshot_capturer import capture_screenshot, ScreenshotCaptureError
     from .screenshot_annotator import annotate_screenshot
 except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
-    from narration_validator import validate_storyboard_dict, validate_storyboard
+    from narration_validator import validate_storyboard_dict, validate_storyboard, CHAR_BUDGETS
     from screenshot_capturer import capture_screenshot, ScreenshotCaptureError
     from screenshot_annotator import annotate_screenshot
 
@@ -161,7 +161,6 @@ async def generate_storyboard_with_llm(
     max_scenes = min(100, 6)
 
     strategy = didactic_strategy or detect_didactic_strategy(task)
-    from narration_validator import CHAR_BUDGETS  # re-import ok: already a sys.modules hit
     budget = CHAR_BUDGETS.get(strategy, CHAR_BUDGETS["rich_visual"])
 
     prompt = f"""
