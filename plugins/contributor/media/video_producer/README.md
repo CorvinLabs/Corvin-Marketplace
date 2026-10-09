@@ -47,14 +47,16 @@ curl -O http://localhost:8765/v1/console/video/videos/video_abc123/download
 **Optional:**
 - `ANTHROPIC_API_KEY` — for Anthropic storyboard generation (if absent, falls back to local Ollama)
 
-### Per-Job Settings (in Console panel or API request)
+### Settings
+
+**In the CorvinOS console** only the narration engine is user-selectable (Settings panel); the panel also reports whether OpenAI and Chromium are available on the host. The other options below are plugin API keys for a host that calls the plugin directly — the console passes none of them, so console jobs always use web slides with the default theme.
 
 | Setting | Default | Options | Purpose |
 |---------|---------|---------|---------|
-| `tts_engine` | `openai` | `openai` \| `auto` \| `gtts` | Which narrator to use (see [ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md)) |
-| `web_slides` | `true` | boolean | Use animated web slides (Chromium) vs. classic Pillow slides |
-| `web_theme` | `dark` | `dark` \| `light` | Color scheme for web slides |
-| `web_fps` | `30` | `24` \| `30` \| `60` | Render frame rate (higher = longer render time, smoother motion) |
+| `tts_engine` | `openai` | `openai` \| `auto` \| `gtts` | Which narrator to use (console + API; see [ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md)) |
+| `web_slides` | `true` | boolean | API only: animated web slides (Chromium) vs. classic Pillow slides |
+| `web_theme` | `dark` | `dark` \| `light` | API only: colour scheme of the web slides |
+| `web_fps` | `30` | integer 12–60 | API only: render frame rate (higher = longer render time) |
 
 ### Web Slide Templates
 
@@ -64,19 +66,15 @@ The plugin ships with **14 built-in templates** (hero, content, line chart, donu
 
 **Live-path tests** (run these to verify the plugin works):
 ```bash
-cd /home/shumway/projects/Corvin-Marketplace/plugins/contributor/media/video_producer
-python3 -m venv .venv-test && source .venv-test/bin/activate
-pip install -e .[dev]
-pytest tests/test_skill.py tests/test_models.py tests/test_storage.py \
-        tests/test_web_charts.py tests/test_web_slides_e2e.py -v
+cd plugins/contributor/media/video_producer
+# needs pytest, pytest-asyncio, playwright (+ `playwright install chromium`) and ffmpeg
+python -m pytest tests/test_skill.py tests/test_models.py tests/test_storage.py \
+        tests/test_web_charts.py tests/test_web_slides_e2e.py -q
 ```
 
-**E2E test** (full pipeline):
-```bash
-pytest tests/test_api_routes.py::test_video_job_end_to_end -v
-```
+Last run (2026-10-09, dev host): 91 passed in 160 s. `tests/test_web_slides_e2e.py` drives the real pipeline (fake `claude` binary, real Chromium, real ffmpeg) and is the end-to-end proof; there is no separate "job end to end" test.
 
-(Some tests in `tests/test_api_routes.py` are red; these are pre-existing and unrelated to the live path.)
+Known red tests, pre-existing and unrelated to the live path: four status-code tests in `tests/test_api_routes.py` and `test_icon_renderer_is_called_from_render_slide_image`.
 
 ## Documentation
 

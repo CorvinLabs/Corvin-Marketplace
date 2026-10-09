@@ -49,17 +49,12 @@ In the **Task** text area, describe the video you want to create.
 **Best practices:**
 - Be specific: "Educational video about..." vs. "Make a cool video"
 - Mention the target audience: "Explain to college students"
-- Say how long: "2-minute video" (1–3 minutes is optimal)
+- Say how long: "2-minute video" (videos of one to three minutes work best)
 - Give structure hints: "Start with..., then explain..., end with..."
 
-### Step 3: Choose Settings (Optional)
+### Step 3: Choose the Narration Engine (Optional)
 
-| Setting | Default | What It Does |
-|---------|---------|---|
-| **TTS Engine** | OpenAI | How the video is narrated. Leave as "OpenAI" for best quality. Choose "Fallback" if you're offline. |
-| **Web Slides** | On | Use animated diagrams (Chromium rendering). Turn off to use simpler static slides (faster). |
-| **Theme** | Dark | Dark or light slide background. |
-| **FPS** | 30 | Frames per second. Higher = smoother but slower to render. Keep at 30. |
+In **Settings** you choose how the video is narrated: **OpenAI** (default, best quality, needs an OpenAI key on the host), **Auto** (tries OpenAI, then free engines, if the key is missing or the API fails) or the legacy **gTTS** engine. The Settings panel also tells you whether OpenAI and the slide renderer (Chromium) are available on this host. Theme, frame rate and slide type are not user-selectable in the console.
 
 ### Step 4: Click "Create Video"
 
@@ -79,7 +74,7 @@ When the status shows ✅ **Complete**, click **Download** to get the MP4.
 
 **Fix:**
 1. Contact your CorvinOS operator to add `OPENAI_API_KEY` to the environment
-2. OR, temporarily switch **TTS Engine** to "Fallback" (uses a free synthesizer, slightly lower quality)
+2. OR, temporarily switch the narration engine to **Auto** in Settings (free engines take over; quality is lower)
 
 ### ❌ "Rendering failed, using fallback slide"
 
@@ -101,9 +96,9 @@ When the status shows ✅ **Complete**, click **Download** to get the MP4.
 **Cause:** FPS set too high, or your description had too many complex visuals.
 
 **Fix:**
-- Keep **FPS** at 30 (don't increase)
+- Split a very long description into two shorter videos
 - Simplify your description: fewer scenes, fewer transitions
-- Use the default **Web Slides** setting
+- Keep to one idea per scene
 
 ---
 
@@ -131,7 +126,7 @@ Create a 1-minute video showing how to use the CorvinOS console.
 Keep it fast-paced and upbeat.
 ```
 
-**Result:** 4 scenes, screenshots + screen recording, ~60 seconds
+**Result:** about 4 animated slides, ~60 seconds. (The console does not capture live screenshots or screen recordings; the video is made of generated slides.)
 
 ### Example 3: Data Story
 ```
@@ -172,9 +167,9 @@ When your video is ready, you get:
 
 ## Limits & Constraints
 
-- **Maximum video length:** 3 minutes (6 scenes × ~30 seconds each)
-- **Maximum task description:** 500 characters (be concise)
-- **Rendering time:** ~2–3 minutes for a 2-minute video (happens in the background, you can work on other things)
+- **Scenes:** at most 8 per video (6 when the storyboard is written by the local model); narration per scene is capped at 500 characters
+- **Task description:** up to 4000 characters
+- **Rendering time:** measured on the development host, roughly 1.5 times the video length plus narration time; it runs in the background
 - **Template options:** 14 pre-built slide templates (you can't customize them, but AI picks the best one per scene)
 
 ---
@@ -191,7 +186,7 @@ When your video is ready, you get:
 
 ## Questions?
 
-- **How long does rendering take?** ~2–3 minutes for a 2-minute video
+- **How long does rendering take?** Roughly 1.5 times the video length on the development host; slower on weaker machines
 - **Can I edit the video after?** Yes, download the MP4 and edit in any video editor (Final Cut Pro, DaVinci Resolve, etc.)
 - **Can I add music?** Yes, after downloading: use ffmpeg or any video editor to add an audio track
 - **Why no subtitles?** Subtitles change the visual design; the plugin is optimized for narration-only videos
