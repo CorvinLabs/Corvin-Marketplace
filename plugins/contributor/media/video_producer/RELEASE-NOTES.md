@@ -1,5 +1,21 @@
 # Video Producer Plugin — Release Notes
 
+## Version 1.2.0 (2026-10-09)
+
+### What's new
+- **One look across every slide.** The footer carries the real CorvinOS mark (chevron, underscore bar, gold dot). A slide the model describes badly is now rebuilt as a web quote slide from its own narration — the plain "EXAMPLE" placeholder slide no longer appears in LLM-written videos.
+- **Overlap detection.** Every web slide is measured in the browser once its animation has settled (`src/web_layout.py`): text over text, text across a box edge, boxes overlapping, clipped text and text off the stage are reported. A colliding slide is swapped for a clean quote slide and listed in the job metadata (`layout_collisions`). Templates were fixed where the check found real defects (chart labels wrap, dense diagrams use compact cards, long words break instead of leaving their card).
+- **Grounded explainers (ADR-2240, host-gated).** For Corvin topics the console can hand the storyboard a fact pack from the knowledge base and the code (`src/grounding.py`, `src/grounded_storyboard.py`); claims in the storyboard are checked against it. New `console_still` template (bundled console screenshots with hotspots) and a "you are here" layer strip. This only runs where the host builds a pack; elsewhere the plugin behaves as before.
+- **Softer background glow** on every slide.
+
+### Known limits
+- A diagram with six or more nodes shrinks its labels to fit; they stay readable but small.
+- If every field of a slide is at its maximum length the slide can still collide; it is then replaced by a quote slide (see above).
+- The storyboard model's duration guesses and the real narration length can differ by more than 10 %; the video follows the narration.
+
+### Verified by
+`tests/test_layout_check.py` (collision kinds with positive controls, all templates, a pipeline E2E with a real collision), the plugin suite, and the console's fresh-install lifecycle spec: install from this repository on GitHub, panel in the sidebar, a video produced through the panel and checked (h264 1920x1080, audio, no subtitles, every scene a web slide, the gold dot of the mark present, motion over time), uninstall.
+
 ## Version 1.1.0 — Production Ready (2026-10-09)
 
 **This is the first production-ready release.** The plugin has been stabilized, documented, and tested end-to-end.
