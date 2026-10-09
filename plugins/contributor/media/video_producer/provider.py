@@ -18,7 +18,7 @@ from corvin_plugins.protocol import HealthStatus, PluginContext
 class VideoProducerPlugin:
     plugin_id = "video_producer"
     plugin_type = "web_surface"
-    version = "1.0.0"
+    version = "1.2.0"
     display_name = "Video Producer"
 
     def __init__(self) -> None:
