@@ -225,3 +225,12 @@ def test_validate_pack_and_with_sections(world):
     assert _ids(g.with_sections(pack, [first])) == [first]
     assert g.with_sections(pack, []) is None
     assert len(g.pack_digest(pack)) == 64
+
+
+def test_percent_figures_are_number_facts():
+    # `%` followed by a space or full stop has no word boundary after it; `\b` never matched a percentage
+    body = ("Intro line without figures here at all. On the seven tasks the share fell from 57 % to 19 %. "
+            "Coverage reached 80% on the suite overall. A plain sentence that names 5 sentences only.")
+    got = g._number_sentences(body, limit=5)
+    assert got == ["On the seven tasks the share fell from 57 % to 19 %.",
+                   "Coverage reached 80% on the suite overall."]

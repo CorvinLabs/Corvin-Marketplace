@@ -493,7 +493,7 @@ def _number_sentences(body: str, limit: int = 3) -> List[str]:
     out: List[str] = []
     flat = " ".join(body.split())
     for sent in re.split(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ])", flat):
-        if re.search(r"\b\d+(?:[.,]\d+)?\s?(?:ms|s|%|MB|kB|GB|x|records?|events?|files?|tests?|hex)\b", sent) \
+        if re.search(r"\b\d+(?:[.,]\d+)?\s?(?:ms|s|%|MB|kB|GB|x|records?|events?|files?|tests?|hex)(?!\w)", sent) \
                 and 30 <= len(sent) <= 260 and "|" not in sent:
             out.append(sent)
         if len(out) >= limit:
