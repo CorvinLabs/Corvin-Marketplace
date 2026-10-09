@@ -93,7 +93,7 @@ When the status shows ✅ **Complete**, click **Download** to get the MP4.
 
 ### ❌ Video is jerky or low quality
 
-**Cause:** FPS set too high, or your description had too many complex visuals.
+**Cause:** the description asked for too many complex visuals in one video.
 
 **Fix:**
 - Split a very long description into two shorter videos

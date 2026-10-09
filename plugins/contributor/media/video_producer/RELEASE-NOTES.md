@@ -16,10 +16,10 @@
 #### OpenAI TTS Default (ADR-2211)
 - **Natural narration:** OpenAI TTS (`tts-1-hd`, voice `onyx`) is now the default
 - **Fallback chain:** If OpenAI key is absent or API fails, automatically falls back to edge-tts → Piper → silent mock
-- **Repair pass:** Invalid LLM storyboard specs are sent back to the model once for correction
 - **Quality metadata:** Every job records which TTS engine actually ran (`tts_provider_used`)
 
 #### Claude Storyboard (new default)
+- **Repair pass:** invalid web-slide specs go back to the model once with the exact errors
 - **Faster & better:** Claude Sonnet generates storyboards in ~14s with 8/8 valid templates (vs. qwen3's ~65s with some failures)
 - **Gated by L35/L34:** Only runs if egress policy allows `api.anthropic.com` and data classification permits `claude_code` engine
 - **Fallback to Ollama:** If API is forbidden, storyboards run locally
@@ -59,18 +59,7 @@ None. Version 1.1.0 is fully backward-compatible with 1.0.0.
 
 ### 🧪 Testing
 
-**Live-path tests:**
-```bash
-pytest tests/test_skill.py tests/test_models.py tests/test_storage.py \
-        tests/test_web_charts.py tests/test_web_slides_e2e.py
-```
-Result: ✅ All green
-
-**E2E test:**
-```bash
-pytest tests/test_api_routes.py::test_video_job_end_to_end
-```
-Result: ✅ Full pipeline works
+91 tests passed on the development host (2026-10-09): `tests/test_skill.py`, `test_models.py`, `test_storage.py`, `test_web_charts.py`, `test_web_slides_e2e.py` (see README, Testing). Pre-existing red tests: four in `test_api_routes.py` and one icon call-site test.
 
 ### 📝 Migration from 1.0.0
 
@@ -80,10 +69,6 @@ No action needed. The plugin is 100% backward-compatible. Existing job configs s
 
 - **[ADR-2238](../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md)** — Web-slide renderer design
 - **[ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md)** — OpenAI TTS + quality improvements
-
-### 🙏 Credits
-
-Developed by the CorvinOS Contributors, with feedback from alpha testers and the Marketplace community.
 
 ---
 
@@ -96,19 +81,6 @@ Developed by the CorvinOS Contributors, with feedback from alpha testers and the
 
 ---
 
-## Roadmap (Future)
-
-### 1.2.0 (Next)
-- [ ] Figma token sync verification + live Variables API
-- [ ] SVG frame exports (for custom editing)
-- [ ] Subtitle generation (optional, post-production)
-
-### 1.3.0
-- [ ] Background music + sound effects library
-- [ ] Custom watermark placement
-- [ ] Batch video generation (multiple tasks at once)
-
----
 
 **Questions?** See [USER-GUIDE.md](USER-GUIDE.md) or contact the plugin maintainers.
 
