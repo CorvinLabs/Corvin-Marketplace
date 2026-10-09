@@ -1,5 +1,23 @@
 # Video Producer Plugin — Release Notes
 
+## Version 1.3.1 (2026-10-10)
+
+### What's new
+- **The CorvinOS mark opens every video.** The first slide of every video now carries the mark large
+  (150 px on the title slide, above the badge; 120 px as a corner mark when the first slide is not a hero
+  slide), fading in at the start. The small mark in the footer stays on every slide. The storyboard prompt now
+  requires scene 1 to be the `hero` scene, so the large mark normally sits on the title slide.
+- No setting is needed: it is part of the renderer (`INTRO_MARK_PX`, `INTRO_MARK_CORNER_PX` in
+  `src/web_templates.py`), so every video produced by this version has it.
+
+### Known limits
+- Only the web renderer draws it; the Pillow fallback (used when a slide cannot be rendered as a web slide)
+  has no large mark.
+
+### Verified by
+`tests/test_web_templates.py` (large mark on the first scene only, on every template; none on later scenes),
+`tests/test_layout_check.py` (the longest title slide and four other first slides stay free of overlaps).
+
 ## Version 1.3.0 (2026-10-09)
 
 ### What's new

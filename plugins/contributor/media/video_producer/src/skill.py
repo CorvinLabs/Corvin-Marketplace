@@ -261,7 +261,7 @@ CHOOSING A VISUAL — pick the template that SHOWS the idea instead of listing i
 - feedback loop / iteration -> "cycle"; layered architecture / tiers -> "layers"; history / roadmap -> "timeline"
 - a trend over time -> "line"; parts of a whole -> "donut"; quantities side by side -> "chart"; one key number -> "stat"
 - before/after or option A vs. B -> "compare"; a command or config -> "code"; one memorable sentence -> "quote"
-- "content" (bullets) only when nothing above fits — at most once per video; "hero" for the title scene.
+- "content" (bullets) only when nothing above fits — at most once per video; "hero" for the title scene. Scene 1 MUST be the "hero" scene: the CorvinOS mark is shown large on it at the start of every video.
 - Never invent numbers: "line", "donut", "chart" and "stat" only with figures stated in the task.
 - Write template text in the same language as the narration ("locale": "de" for German numbers).
 """

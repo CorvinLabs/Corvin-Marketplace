@@ -103,3 +103,15 @@ async def test_a_colliding_scene_is_replaced_by_a_clean_slide_and_reported(store
     assert md["layout_collisions"][0]["action"] == "replaced_with_quote"
     assert md["layout_collisions"][0]["issues"], "the report names what collided"
     assert Path(result["video_path"]).stat().st_size > 50_000
+
+
+async def test_first_scene_with_the_large_mark_has_no_collisions_even_with_the_longest_hero():
+    hero = {"badge": "CorvinOS · Neu im Projekt", "title": "Loss-Driven Development bei Architekturentscheidungen",
+            "accent": "Wirkung messen statt behaupten",
+            "subtitle": "Wie ein Team beweist, dass eine Entscheidung richtig war und nicht nur gut klang."}
+    async with WebSlideRenderer(fps=12) as r:
+        for name, data in (("hero", hero), ("content", SAMPLES["content"]), ("diagram", SAMPLES["diagram"]),
+                           ("compare", SAMPLES["compare"]), ("chart", SAMPLES["chart"])):
+            with tempfile.TemporaryDirectory() as d:
+                frames = await r.render(name, data, 6, Path(d), scene_index=1, total_scenes=8)
+                assert not frames.layout_issues, f"{name}: {format_issues(frames.layout_issues)}"

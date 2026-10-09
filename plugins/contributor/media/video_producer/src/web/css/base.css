@@ -59,6 +59,11 @@ html, body {
 .wordmark .corvinOS-symbol { width: 48px; height: 48px; flex-shrink: 0; }
 .wordmark b { font-family: var(--font-mono); font-weight: 500; color: var(--accent); font-size: 24px; }
 
+.intro-mark { margin-bottom: 36px; opacity: 0; animation: intro-mark 1000ms var(--ease, ease-out) 100ms both; }
+.intro-mark.corner { position: absolute; top: 64px; right: 120px; margin: 0; }
+.intro-mark .corvinOS-symbol { display: block; }
+@keyframes intro-mark { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+
 .eyebrow {
   font-family: var(--font-mono); font-size: 22px; font-weight: 500;
   letter-spacing: .2em; text-transform: uppercase; color: var(--accent);

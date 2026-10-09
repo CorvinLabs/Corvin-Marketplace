@@ -213,3 +213,28 @@ def test_token_file_must_be_a_small_regular_file(tmp_path):
     with pytest.raises(WebSceneError) as e:
         load_tokens(tmp_path / "missing.json")
     assert "No such file" not in str(e.value)
+
+
+# --- the CorvinOS mark opens every video (first scene only) -------------------------------------
+
+def _intro_marks(html):
+    return re.findall(r'<div class="intro-mark( corner)?"><svg width="(\d+)"', html)
+
+
+def test_first_scene_carries_the_large_mark_on_every_template():
+    for name, data in SAMPLES.items():
+        marks = _intro_marks(build_document(name, data, duration_s=6, scene_index=1, total_scenes=8))
+        want = [("", str(wt.INTRO_MARK_PX))] if name == "hero" else [(" corner", str(wt.INTRO_MARK_CORNER_PX))]
+        assert marks == want, name
+
+
+def test_later_scenes_and_scene_free_renders_have_no_large_mark():
+    for idx in (2, 8, None):
+        assert not _intro_marks(build_document("hero", SAMPLES["hero"], duration_s=6, scene_index=idx, total_scenes=8))
+    # the footer mark stays on every slide, the intro mark is larger than it
+    assert wt.INTRO_MARK_PX > 48 and wt.INTRO_MARK_CORNER_PX > 48
+
+
+def test_storyboard_prompt_requires_the_hero_first():
+    from src import skill
+    assert 'Scene 1 MUST be the "hero" scene' in open(skill.__file__, encoding="utf-8").read()

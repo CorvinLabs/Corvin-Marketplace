@@ -1125,6 +1125,8 @@ def build_document(
     seed = zlib.crc32(f"{template}|{d.get('title') or d.get('quote') or d.get('label') or ''}".encode("utf-8"))
 
     body = _BUILDERS[template](d)
+    if scene_index == 1:
+        body = _with_intro_mark(template, body)
     if chip_list:
         row = "".join(f'<span class="chip r" style="--i:{CHIP_STEP0 + c}">{_e(_clean_chip(t))}</span>'
                       for c, (_, t) in enumerate(chip_list))
@@ -1156,6 +1158,20 @@ def build_document(
         f"{_stars(seed)}{body}{_map_strip(map_focus) if map_focus else ''}"
         f"<div class=\"chrome\">{chrome}</div></div></body></html>"
     )
+
+
+INTRO_MARK_PX = 150
+INTRO_MARK_CORNER_PX = 120
+
+
+def _with_intro_mark(template: str, body: str) -> str:
+    """The CorvinOS mark, large, at the start of EVERY video: in flow above the title on the
+    hero slide, a corner mark on the first slide when it is not a hero. Not an ``.r`` element,
+    so it takes no reveal step and no focus."""
+    if template == "hero":
+        mark = f'<div class="intro-mark">{_corvinOS_symbol_svg(INTRO_MARK_PX)}</div>'
+        return body.replace('<div class="frame center">', '<div class="frame center">' + mark, 1)
+    return body + f'<div class="intro-mark corner">{_corvinOS_symbol_svg(INTRO_MARK_CORNER_PX)}</div>'
 
 
 CHIP_STEP0 = 40
