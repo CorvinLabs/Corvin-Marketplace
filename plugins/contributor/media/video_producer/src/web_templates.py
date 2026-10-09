@@ -27,8 +27,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from .web_geometry import layer_dag, monotone_path, nice_ticks, order_layers, polar
+    from .web_timeline import SPARSE_TEMPLATES, Timeline
 except ImportError:  # standalone script use (no package context)
     from web_geometry import layer_dag, monotone_path, nice_ticks, order_layers, polar
+    from web_timeline import SPARSE_TEMPLATES, Timeline
 
 WEB_DIR = Path(__file__).parent / "web"
 DEFAULT_TOKENS_PATH = WEB_DIR / "design_tokens.json"
@@ -527,6 +529,48 @@ def reveal_steps(template: str, data: Dict[str, Any]) -> int:
     }[template]
 
 
+def scene_items(template: str, data: Dict[str, Any]) -> List[Tuple[str, int]]:
+    """(label, reveal step) per data item, in data order (ADR-2245): what the
+    narration can name, and which elements reveal and focus together."""
+    d = data
+    if template == "content":
+        return [(b, 2 + k) for k, b in enumerate(d["bullets"])]
+    if template == "diagram":
+        return [(nd["label"], 2 + k) for k, nd in enumerate(d["nodes"])]
+    if template == "chart":
+        return [(b["label"], 2 + k) for k, b in enumerate(d["bars"])]
+    if template == "compare":
+        return [(d["left"]["title"], 2), (d["right"]["title"], 3)]
+    if template == "code":
+        return [(ln.strip(), 2 + k) for k, ln in enumerate(d["lines"])]
+    if template == "donut":
+        return [(sg["label"], 2 + k) for k, sg in enumerate(d["segments"])]
+    if template == "flow":
+        layer, _ = _flow_layout(d)
+        return [(nd["label"], 2 + layer[nd["id"]]) for nd in d["nodes"]]
+    if template == "timeline":
+        return [(e["label"], 2 + k) for k, e in enumerate(d["events"])]
+    if template == "cycle":
+        return [(st["label"], 2 + k) for k, st in enumerate(d["steps"])]
+    if template == "layers":
+        n = len(d["layers"])
+        return [(it["label"], 2 + (n - 1 - k)) for k, it in enumerate(d["layers"])]
+    if template == "console_still":
+        return [(c["label"], 3 + k) for k, c in enumerate(d.get("callouts") or [])]
+    return []  # hero, quote, stat, line: one statement, no items to walk through
+
+
+def scene_item_subs(template: str, data: Dict[str, Any]) -> List[str]:
+    """Each item's secondary text (sub-line, bullet points, timestamp), aligned with scene_items."""
+    d = data
+    key = {"diagram": "nodes", "flow": "nodes", "cycle": "steps", "layers": "layers", "timeline": "events"}.get(template)
+    if key:
+        return [" ".join(x for x in (it.get("sub"), it.get("tag"), it.get("when")) if x) for it in d[key]]
+    if template == "compare":
+        return [" ".join(d["left"]["points"]), " ".join(d["right"]["points"])]
+    return [""] * len(scene_items(template, d))
+
+
 # Ambient motion (pulses, orbits, ring pulses) loops with this period once the
 # entrance has settled; every ambient animation's duration must divide it so
 # the renderer can sample exactly one seamless period (web_renderer).
@@ -603,7 +647,7 @@ def _stat(d):
     for ch in text:
         if ch.isdigit():
             strip = "".join(f"<span>{n % 10}</span>" for n in range(20))
-            chars.append(f'<span class="odo"><span class="strip d{ch}" style="--i:{k}">{strip}</span></span>')
+            chars.append(f'<span class="odo"><span class="strip d{ch}" style="--d:{k}">{strip}</span></span>')
             k += 1
         else:
             chars.append(f'<span class="ch">{_e(ch)}</span>')
@@ -639,9 +683,9 @@ def _diagram(d):
         )
         if k < n - 1:
             ax, bx, y = x + w + 10, x + w + gap - 14, 150
-            edges.append(f'<path class="edge" pathLength="1" style="--i:{2 + k}" d="M{ax:.1f} {y} L{bx:.1f} {y}"/>')
-            edges.append(f'<path class="head" style="--i:{2 + k}" d="M{bx + 12:.1f} {y} L{bx - 2:.1f} {y - 9} L{bx - 2:.1f} {y + 9} Z"/>')
-            pulses.append(f'<i class="amb pulse" style="offset-path:path(\'M{ax:.1f} {y} L{bx:.1f} {y}\');--ph:{k * 0.5:.2f}s"></i>')
+            edges.append(f'<path class="edge" pathLength="1" style="--i:{3 + k}" d="M{ax:.1f} {y} L{bx:.1f} {y}"/>')
+            edges.append(f'<path class="head" style="--i:{3 + k}" d="M{bx + 12:.1f} {y} L{bx - 2:.1f} {y - 9} L{bx - 2:.1f} {y + 9} Z"/>')
+            pulses.append(f'<i class="amb pulse" style="--amb:{3 + k};offset-path:path(\'M{ax:.1f} {y} L{bx:.1f} {y}\');--ph:{k * 0.5:.2f}s"></i>')
     svg = f'<svg width="{width}" height="300" viewBox="0 0 {width} 300">{"".join(edges)}</svg>'
     return f'<div class="frame">{_header(d)}<div class="flow{" dense" if n >= 5 else ""}">{svg}{"".join(pulses)}{"".join(cards)}</div></div>'
 
@@ -843,13 +887,14 @@ def _flow(d):
         x1, y1, x2, y2 = ax + w + 8, ay, bx - 16, by
         dx = (x2 - x1) * 0.5
         path = f"M{x1:.1f} {y1:.1f} C{x1 + dx:.1f} {y1:.1f} {x2 - dx:.1f} {y2:.1f} {x2:.1f} {y2:.1f}"
-        i = 2 + layer[e["from"]]
+        i = 2 + layer[e["to"]]
         svg.append(f'<path class="edge" pathLength="1" style="--i:{i}" d="{path}"/>')
         svg.append(f'<path class="head" style="--i:{i}" d="M{x2 + 13:.1f} {y2:.1f} L{x2 - 1:.1f} {y2 - 9:.1f} '
                    f'L{x2 - 1:.1f} {y2 + 9:.1f} Z"/>')
-        pulses.append(f'<i class="amb pulse" style="offset-path:path(\'{path}\');--ph:{(m * 0.55) % 2:.2f}s"></i>')
+        pulses.append(f'<i class="amb pulse" style="--amb:{i};offset-path:path(\'{path}\');--ph:{(m * 0.55) % 2:.2f}s"></i>')
         if e.get("label"):
-            labels.append(f'<div class="elabel r" style="--i:{i + 1};left:{(x1 + x2) / 2 - 100:.1f}px;'
+            # a dimmed label pill turns translucent and the edge strikes through it: never focus-dimmed
+            labels.append(f'<div class="elabel r" style="--i:{i};--nofocus:1;left:{(x1 + x2) / 2 - 100:.1f}px;'
                           f'top:{(y1 + y2) / 2 - 22:.1f}px"><span>{_e(e["label"])}</span></div>')
     for nid, (x, cy) in pos.items():
         nd = nodes[nid]
@@ -872,14 +917,14 @@ def _timeline(d):
     cw = min(330.0, (W - 2 * pad) / (n - 1) - 30) if n > 1 else 330.0
     svg = [f'<line class="tl-base" x1="30" x2="{W - 30}" y1="{ay}" y2="{ay}"/>',
            f'<line class="tl-prog" pathLength="1" x1="30" x2="{xs[reach]:.1f}" y1="{ay}" y2="{ay}" '
-           f'style="--n:{reach + 1}"/>']
+           f'style="--n:{reach + 1};--tl-at:var(--tl-at0);--tl-span:var(--tl-span0)"/>']
     html_parts = []
     for k, (x, e) in enumerate(zip(xs, ev)):
         state = "cur" if k == cur else ("done" if k < reach or cur is None else "next")
         svg.append(f'<circle class="tl-dot {state}" cx="{x:.1f}" cy="{ay}" r="{17 if state == "cur" else 12}" '
                    f'style="--i:{2 + k}"/>')
         if state == "cur":
-            svg.append(f'<circle class="amb ring-pulse c0" cx="{x:.1f}" cy="{ay}" r="17"/>')
+            svg.append(f'<circle class="amb ring-pulse c0" style="--amb:{2 + k}" cx="{x:.1f}" cy="{ay}" r="17"/>')
         left = x - cw / 2
         html_parts.append(f'<div class="tl-when r {state}" style="--i:{2 + k};left:{left:.1f}px;top:{ay - 92}px;'
                           f'width:{cw:.1f}px">{_e(e["when"])}</div>')
@@ -902,10 +947,11 @@ def _cycle(d):
         a1 = angles[k] + gap
         a2 = angles[(k + 1) % n] - gap + (2 * math.pi if k == n - 1 else 0)
         (x1, y1), (x2, y2) = polar(cx, cy, R, a1), polar(cx, cy, R, a2)
-        svg.append(f'<path class="cy-arc" pathLength="1" style="--i:{2 + k}" '
+        arc_i = 3 + k if k < n - 1 else 2 + n
+        svg.append(f'<path class="cy-arc" pathLength="1" style="--i:{arc_i}" '
                    f'd="M{x1:.1f} {y1:.1f} A{R} {R} 0 0 1 {x2:.1f} {y2:.1f}"/>')
         tx, ty, nx, ny = -math.sin(a2), math.cos(a2), math.cos(a2), math.sin(a2)
-        svg.append(f'<path class="cy-head" style="--i:{2 + k}" d="M{x2 + tx * 15:.1f} {y2 + ty * 15:.1f} '
+        svg.append(f'<path class="cy-head" style="--i:{arc_i}" d="M{x2 + tx * 15:.1f} {y2 + ty * 15:.1f} '
                    f'L{x2 - nx * 9:.1f} {y2 - ny * 9:.1f} L{x2 + nx * 9:.1f} {y2 + ny * 9:.1f} Z"/>')
     html_parts = []
     for k, (a, st) in enumerate(zip(angles, steps)):
@@ -938,7 +984,7 @@ def _cycle(d):
     return (f'<div class="frame split"><div class="split-text">{"".join(text)}</div>'
             f'<div class="viz" style="width:{VW}px;height:{VH}px">'
             f'<svg class="viz-svg" width="{VW}" height="{VH}" viewBox="0 0 {VW} {VH}">{"".join(svg)}</svg>'
-            f'<i class="amb orbit" style="offset-path:path(\'{orbit}\')"></i>{center}{"".join(html_parts)}</div></div>')
+            f'<i class="amb orbit" style="--amb:{2 + n};offset-path:path(\'{orbit}\')"></i>{center}{"".join(html_parts)}</div></div>')
 
 
 def _layers(d):
@@ -949,7 +995,7 @@ def _layers(d):
         cls = " hl" if d.get("highlight") == k else ""
         sub = f'<span class="sl-s">{_e(item["sub"])}</span>' if item.get("sub") else ""
         tag = f'<span class="sl-t">{_e(item["tag"])}</span>' if item.get("tag") else ""
-        shine = '<i class="amb shine"></i>' if cls else ""
+        shine = f'<i class="amb shine" style="--amb:{2 + (n - 1 - k)}"></i>' if cls else ""
         rows.append(f'<div class="slab r{cls}" style="--i:{2 + (n - 1 - k)}"><span class="sl-l">{_e(item["label"])}</span>'
                     f'{sub}{tag}{shine}</div>')
     return f'<div class="frame">{_header(d)}<div class="stack">{"".join(rows)}</div></div>'
@@ -1030,8 +1076,15 @@ def build_document(
     total_scenes: Optional[int] = None,
     lang: str = "en",
     map_focus: Optional[str] = None,
+    timeline: Optional["Timeline"] = None,
+    compact: bool = False,
+    chips: bool = True,
 ) -> str:
-    """Validate and render one slide to a self-contained HTML string."""
+    """Validate and render one slide to a self-contained HTML string.
+
+    With a ``timeline`` (ADR-2245) every element is revealed at its cue and a
+    focus clock leads the eye; without one the reveal is spread evenly over the
+    first 55 % of the narration, as before."""
     d = validate_scene_data(template, data)
     if theme not in THEMES:
         raise WebSceneError(f"unknown theme {theme!r} (allowed: {', '.join(THEMES)})")
@@ -1039,15 +1092,28 @@ def build_document(
         lang = "en"
     tokens = validate_tokens(tokens) if tokens is not None else load_tokens()
     palette, typo, anim = tokens[theme], tokens["typography"], tokens["animation"]
-    t0, stagger = timing(duration_s, reveal_steps(template, d))
+    if timeline is None:
+        t0, stagger = timing(duration_s, reveal_steps(template, d))
+        tend = ambient_start(t0, stagger, reveal_steps(template, d), anim["rise_ms"])
+        time_of = (lambda s: t0 + s * stagger)
+        chip_list: List[Tuple[float, str]] = []
+    else:
+        t0, stagger = max(timeline.first_content - 0.2, 0.35), 0.45
+        tend = timeline.last_reveal + anim["rise_ms"] / 1000.0
+        time_of = timeline.time_of
+        chip_list = timeline.chips if chips and template in SPARSE_TEMPLATES else []
 
     css_vars = "".join(f"--{k.replace('_', '-')}:{palette[k]};" for k in THEME_KEYS)
     css_vars += (f"--font-heading:'{typo['heading_family']}',serif;"
                  f"--font-body:'{typo['body_family']}',sans-serif;"
                  f"--font-mono:'{typo['mono_family']}',monospace;"
                  f"--rise:{anim['rise_ms']}ms;--ease:{anim['easing']};"
-                 f"--t0:{t0:.3f}s;--stagger:{stagger:.3f}s;"
-                 f"--tend:{ambient_start(t0, stagger, reveal_steps(template, d), anim['rise_ms']):.3f}s;")
+                 f"--t0:{t0:.3f}s;--stagger:{stagger:.3f}s;--tend:{tend:.3f}s;")
+    if timeline is not None and template == "timeline":
+        cur = d.get("current")
+        reach = cur if cur is not None else len(d["events"]) - 1
+        css_vars += (f"--tl-at0:{max(time_of(2) - 0.2, 0):.3f}s;"
+                     f"--tl-span0:{max(time_of(2 + reach) - time_of(2) + 0.4, 0.4):.3f}s;")
 
     if map_focus is not None and map_focus not in MAP_LAYERS:
         raise WebSceneError(f"unknown map focus {map_focus!r} (allowed: {', '.join(MAP_LAYERS)})")
@@ -1058,10 +1124,72 @@ def build_document(
         chrome += f"<div>{int(scene_index):02d} / {int(total_scenes):02d}</div>"
     seed = zlib.crc32(f"{template}|{d.get('title') or d.get('quote') or d.get('label') or ''}".encode("utf-8"))
 
+    body = _BUILDERS[template](d)
+    if chip_list:
+        row = "".join(f'<span class="chip r" style="--i:{CHIP_STEP0 + c}">{_e(_clean_chip(t))}</span>'
+                      for c, (_, t) in enumerate(chip_list))
+        body = body[: body.rfind("</div>")] + f'<div class="chips">{row}</div></div>'
+    focus_css, stage_style = "", ""
+    if timeline is not None and timeline.focus:
+        focus_css, stage_style = _focus_clock(timeline)
+    focus_steps = set(timeline.item_steps) if timeline is not None and timeline.focus else set()
+
+    def cue(m: "re.Match") -> str:
+        step = int(m.group(1))
+        at = chip_list[step - CHIP_STEP0][0] if step >= CHIP_STEP0 else time_of(step)
+        out = f'style="--i:{step};--at:{at:.3f}s'
+        if m.group(2):
+            return out
+        if step in focus_steps:
+            # a tight glow: a wide soft one bands into dark contour rings once encoded to 8-bit H.264
+            out += (f";filter:opacity(var(--f{step})) drop-shadow(0 0 calc(var(--g{step}) * 10px) "
+                    f"rgb(from var(--accent) r g b / calc(var(--g{step}) * .55)))")
+        return out
+
+    body = re.sub(r'style="--i:(\d+)(;--nofocus:1)?', cue, body)
+    body = re.sub(r"--amb:(\d+)", lambda m: f"--amb-at:{time_of(int(m.group(1))) + anim['rise_ms'] / 1000.0:.3f}s", body)
+    classes = f"theme-{theme}" + (" compact" if compact else "")
     return (
         f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8">'
-        f"<style>{_font_faces()}:root{{{css_vars}}}{_base_css()}</style></head>"
-        f'<body class="theme-{theme}"><div class="stage"><div class="glow"></div><div class="ring"></div>'
-        f"{_stars(seed)}{_BUILDERS[template](d)}{_map_strip(map_focus) if map_focus else ''}"
+        f"<style>{_font_faces()}:root{{{css_vars}}}{_base_css()}{focus_css}</style></head>"
+        f'<body class="{classes}"><div class="stage"{stage_style}><div class="glow"></div><div class="ring"></div>'
+        f"{_stars(seed)}{body}{_map_strip(map_focus) if map_focus else ''}"
         f"<div class=\"chrome\">{chrome}</div></div></body></html>"
     )
+
+
+CHIP_STEP0 = 40
+FOCUS_DIM = 0.38
+FOCUS_FADE_S = 0.35
+
+
+def _clean_chip(text: str) -> str:
+    return " ".join(_CTRL.sub("", text).split())[:28]
+
+
+def _focus_clock(tl: "Timeline") -> Tuple[str, str]:
+    """One animation on the stage drives registered per-step numbers: --fN (opacity
+    factor) and --gN (glow). Elements read them in their filter, so focus never
+    competes with an element's own entrance animation (ADR-2245 §3)."""
+    steps = tl.item_steps
+    D = max(tl.duration, 0.1)
+
+    def state(target: Optional[int]) -> str:
+        return "".join(
+            f"--f{s}:{1 if target is None or target == s else FOCUS_DIM};--g{s}:{1 if target == s else 0};"
+            for s in steps)
+
+    frames: List[Tuple[float, str]] = [(0.0, state(None))]
+    current: Optional[int] = None
+    for t, target in tl.focus:
+        a, b = min(t, D), min(t + FOCUS_FADE_S, D)
+        frames.append((a, state(current)))
+        frames.append((b, state(target)))
+        current = target
+    frames.append((D, state(current)))
+    kf = "".join(f"{100.0 * t / D:.4f}%{{{body}}}" for t, body in frames)
+    props = "".join(
+        f"@property --f{s}{{syntax:'<number>';inherits:true;initial-value:1}}"
+        f"@property --g{s}{{syntax:'<number>';inherits:true;initial-value:0}}" for s in steps)
+    return props + f"@keyframes fclock{{{kf}}}", f' style="animation:fclock {D:.3f}s linear 0s both"'
+

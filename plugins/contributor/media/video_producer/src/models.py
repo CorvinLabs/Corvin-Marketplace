@@ -151,6 +151,10 @@ class Scene:
     theme: Optional[str] = None
     # "You are here" overlay (PLAN-0942 D11): {"focus": <layer key>}; validated with the template.
     map: Optional[Dict[str, Any]] = None
+    # Narration beats (ADR-2245): one entry per narration sentence — the index of the
+    # data item that sentence is about, a 1-3 word keyword chip, or null. Validated
+    # against the final narration when the scene is rendered; invalid = deterministic fallback.
+    beats: Optional[List[Any]] = None
 
     def to_dict(self):
         return asdict(self)

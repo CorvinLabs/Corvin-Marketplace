@@ -280,6 +280,9 @@ def repair_grounded_scenes(
         for key in ("narration_text", "visual_description", "template", "data", "map"):
             if key in fix:
                 trial[key] = fix[key]
+        # beats point at the old narration's sentences and the old template's items
+        # (ADR-2245 §6): the renderer derives fresh ones from the repaired scene
+        trial.pop("beats", None)
         if not fix.get("template"):
             trial.pop("template", None)
             trial.pop("data", None)

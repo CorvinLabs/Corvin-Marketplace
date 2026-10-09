@@ -99,7 +99,7 @@ html, body {
 .stat-value { font-family: var(--font-heading); font-size: 260px; line-height: 1; letter-spacing: -.04em; color: var(--accent); display: flex; align-items: flex-end; justify-content: center; }
 .stat-value .ch { display: inline-block; }
 .odo { display: inline-block; height: 1em; overflow: hidden; line-height: 1; }
-.odo .strip { display: flex; flex-direction: column; animation-fill-mode: both; animation-delay: calc(var(--t0) + var(--i) * 90ms); animation-duration: 1500ms; animation-timing-function: cubic-bezier(.15,.8,.2,1); }
+.odo .strip { display: flex; flex-direction: column; animation-fill-mode: both; animation-delay: calc(var(--t0) + var(--d) * 90ms); animation-duration: 1500ms; animation-timing-function: cubic-bezier(.15,.8,.2,1); }
 .odo .d0 { animation-name: roll0; }
 .odo .d1 { animation-name: roll1; }
 .odo .d2 { animation-name: roll2; }
@@ -128,13 +128,13 @@ html, body {
 .flow.dense .node { padding: 22px 14px; }
 .flow.dense .node .s { font-size: 17px; margin-top: 8px; }
 .flow svg { position: absolute; left: 0; top: 0; overflow: visible; }
-.flow path.edge { fill: none; stroke: var(--accent); stroke-width: 3; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 700ms ease-in-out both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger) + 250ms); }
-.flow path.head { fill: var(--accent); opacity: 0; animation: fade 200ms ease-out both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger) + 850ms); }
+.flow path.edge { fill: none; stroke: var(--accent); stroke-width: 3; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 700ms ease-in-out both; animation-delay: calc(var(--at) - 250ms); }
+.flow path.head { fill: var(--accent); opacity: 0; animation: fade 200ms ease-out both; animation-delay: calc(var(--at) + 350ms); }
 
 /* chart */
 .chart { position: relative; margin-top: 50px; height: 500px; display: flex; align-items: flex-end; gap: 48px; border-bottom: 2px solid var(--border); padding: 0 20px; }
 .bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative; }
-.bar .col { width: 100%; max-width: 170px; border-radius: 10px 10px 0 0; background: linear-gradient(180deg, var(--accent-hi), var(--accent)); opacity: .55; transform-origin: bottom; animation: grow-y 1100ms var(--ease) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+.bar .col { width: 100%; max-width: 170px; border-radius: 10px 10px 0 0; background: linear-gradient(180deg, var(--accent-hi), var(--accent)); opacity: .55; transform-origin: bottom; animation: grow-y 1100ms var(--ease) both; animation-delay: var(--at); }
 .bar.hl .col { opacity: 1; box-shadow: 0 0 70px var(--glow); }
 .bar .v { font-family: var(--font-mono); font-size: 30px; color: var(--text); margin-bottom: 16px; }
 .bar .lb { position: absolute; top: calc(100% + 16px); left: -8px; right: -8px; text-align: center; font-size: 26px; line-height: 1.2; color: var(--text-muted); overflow-wrap: anywhere; }
@@ -162,12 +162,12 @@ html, body {
 .term .bar-top i { width: 14px; height: 14px; border-radius: 50%; background: var(--border); display: inline-block; }
 .term .bar-top span { margin-left: 18px; font-family: var(--font-mono); font-size: 20px; color: var(--text-muted); }
 .term pre { padding: 34px 40px; font-family: var(--font-mono); font-size: 30px; line-height: 1.6; color: var(--text); white-space: pre; }
-.term .ln { display: block; clip-path: inset(0 100% 0 0); animation: type 700ms steps(28, end) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+.term .ln { display: block; clip-path: inset(0 100% 0 0); animation: type 700ms steps(28, end) both; animation-delay: var(--at); }
 .term .ln.c { color: var(--text-muted); }
 .term .ln .p { color: var(--accent); }
 
 /* entrance motion: every revealed element carries .r and an index --i */
-.r { opacity: 0; animation: rise var(--rise) var(--ease) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+.r { opacity: 0; animation: rise var(--rise) var(--ease) both; animation-delay: var(--at); }
 .r.grow { animation-name: grow-x; opacity: 1; }
 
 @keyframes rise { from { opacity: 0; transform: translateY(34px); } to { opacity: 1; transform: none; } }
@@ -231,7 +231,7 @@ html, body {
 .dn-chart svg { overflow: visible; }
 .track { fill: none; stroke: var(--border); stroke-width: 62; opacity: .6; }
 .seg { fill: none; stroke: var(--c); stroke-width: 62; animation: sweep 1000ms cubic-bezier(.45,.05,.25,1) both;
-       animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+       animation-delay: var(--at); }
 .seg.hl { stroke-width: 80; filter: drop-shadow(0 0 22px var(--glow)); }
 @keyframes sweep { from { stroke-dasharray: 0 100; } }
 .dn-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
@@ -252,14 +252,15 @@ html, body {
 .gnode .l { font-family: var(--font-heading); font-size: 36px; line-height: 1.1; color: var(--text); }
 .gnode .s { font-size: 21px; line-height: 1.3; color: var(--text-muted); margin-top: 8px; }
 .viz path.edge { fill: none; stroke: var(--accent); stroke-width: 3; opacity: .85; stroke-dasharray: 1; stroke-dashoffset: 1;
-                 animation: draw 800ms ease-in-out both; animation-delay: calc(var(--t0) + (var(--i) + .6) * var(--stagger)); }
-.viz path.head { fill: var(--accent); opacity: 0; animation: fade 200ms ease-out both; animation-delay: calc(var(--t0) + (var(--i) + .6) * var(--stagger) + 750ms); }
+                 animation: draw 800ms ease-in-out both; animation-delay: calc(var(--at) - 300ms); }
+.viz path.head { fill: var(--accent); opacity: 0; animation: fade 200ms ease-out both; animation-delay: calc(var(--at) + 450ms); }
 .elabel { position: absolute; width: 200px; text-align: center; }
 .elabel span { display: inline-block; padding: 6px 16px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border);
                font-family: var(--font-mono); font-size: 19px; color: var(--text-muted); }
 
-/* ambient motion — loops once the entrance has settled (period divides 4s) */
-.amb { animation-iteration-count: infinite; animation-fill-mode: backwards; animation-delay: calc(var(--tend) + var(--ph, 0s)); }
+/* ambient motion — each element's loop starts once that element has settled (--amb-at,
+   ADR-2245); period divides 4s */
+.amb { animation-iteration-count: infinite; animation-fill-mode: backwards; animation-delay: calc(var(--amb-at, var(--tend)) + var(--ph, 0s)); }
 .pulse { position: absolute; left: 0; top: 0; width: 14px; height: 14px; border-radius: 50%; background: var(--accent-hi);
          box-shadow: 0 0 18px 6px var(--glow), 0 0 6px 2px var(--accent); offset-rotate: 0deg; offset-anchor: center;
          animation-name: travel; animation-duration: 2s; animation-timing-function: cubic-bezier(.45,.05,.55,.95); }
@@ -280,9 +281,9 @@ html, body {
 /* timeline */
 .tl-base { stroke: var(--border); stroke-width: 3; stroke-dasharray: 2 10; stroke-linecap: round; opacity: 0; animation: fade 800ms ease-out both; animation-delay: var(--t0); }
 .tl-prog { stroke: var(--accent); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; filter: drop-shadow(0 0 10px var(--glow));
-           animation: draw calc(var(--stagger) * var(--n)) linear both; animation-delay: calc(var(--t0) + var(--stagger) * 1.6); }
+           animation: draw var(--tl-span, calc(var(--stagger) * var(--n))) linear both; animation-delay: var(--tl-at, calc(var(--t0) + var(--stagger) * 1.6)); }
 .tl-dot { fill: var(--bg); stroke: var(--text-faint); stroke-width: 4; transform-box: fill-box; transform-origin: center;
-          animation: pop 420ms cubic-bezier(.3,1.6,.5,1) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+          animation: pop 420ms cubic-bezier(.3,1.6,.5,1) both; animation-delay: var(--at); }
 .tl-dot.done { stroke: var(--accent); fill: var(--accent); }
 .tl-dot.cur { stroke: var(--accent); fill: var(--accent-hi); filter: drop-shadow(0 0 16px var(--accent)); }
 .tl-when, .tl-label { position: absolute; text-align: center; }
@@ -299,9 +300,9 @@ html, body {
 .caption { font-size: 28px; line-height: 1.5; color: var(--text-muted); margin-top: 30px; }
 .cy-track { fill: none; stroke: var(--border); stroke-width: 2; stroke-dasharray: 3 9; opacity: 0; animation: fade 900ms ease-out both; animation-delay: var(--t0); }
 .cy-arc { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1;
-          animation: draw 700ms ease-in-out both; animation-delay: calc(var(--t0) + (var(--i) + .5) * var(--stagger)); }
-.cy-head { fill: var(--accent); opacity: 0; animation: fade 200ms ease-out both; animation-delay: calc(var(--t0) + (var(--i) + .5) * var(--stagger) + 650ms); }
-.cy-node { transform-box: fill-box; transform-origin: center; animation: pop 460ms cubic-bezier(.3,1.6,.5,1) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+          animation: draw 700ms ease-in-out both; animation-delay: calc(var(--at) - 300ms); }
+.cy-head { fill: var(--accent); opacity: 0; animation: fade 200ms ease-out both; animation-delay: calc(var(--at) + 350ms); }
+.cy-node { transform-box: fill-box; transform-origin: center; animation: pop 460ms cubic-bezier(.3,1.6,.5,1) both; animation-delay: var(--at); }
 .cy-node circle { fill: var(--bg-card); stroke: var(--accent); stroke-width: 3; }
 .cy-node text { fill: var(--accent); font-size: 22px; font-weight: 600; }
 .cy-node.hl circle { fill: var(--accent); filter: drop-shadow(0 0 18px var(--accent)); }
@@ -332,10 +333,10 @@ html, body {
 .still-zoom { position: absolute; inset: 0; animation: push var(--tend) linear both; animation-delay: var(--t0); }
 .still-zoom img { display: block; width: 100%; height: 100%; }
 .callout { position: absolute; width: 0; height: 0; opacity: 0;
-           animation: fade 260ms ease-out both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+           animation: fade 260ms ease-out both; animation-delay: var(--at); }
 .callout i { position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; border-radius: 50%;
              border: 4px solid var(--accent); box-shadow: 0 0 0 6px rgba(0, 0, 0, .35), 0 0 40px var(--glow);
-             animation: pop 420ms var(--ease) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+             animation: pop 420ms var(--ease) both; animation-delay: var(--at); }
 .callout span { position: absolute; left: 40px; top: -22px; white-space: nowrap;
                 font-family: var(--font-mono); font-size: 22px; letter-spacing: .04em; color: var(--bg);
                 background: var(--accent); border-radius: 10px; padding: 8px 16px; }
@@ -352,3 +353,15 @@ html, body {
 
 /* long words break instead of running out of their box (layout check, web_layout.py) */
 .node .l, .node .s, .gnode, .gnode *, .cy-label .l, .cy-label .s, .slab .sl-l, .card li, .bullets li span { overflow-wrap: anywhere; hyphens: auto; }
+
+/* ADR-2245 — keyword chips on sparse slides (hero, quote, stat), revealed as the narration says them */
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; margin-top: 46px; max-width: 1500px; }
+.frame.center .chips { margin-left: auto; margin-right: auto; }
+.chip { font-family: var(--font-mono); font-size: 26px; letter-spacing: .04em; color: var(--accent);
+        padding: 10px 24px; border: 1px solid var(--accent); border-radius: 999px; background: var(--bg-card); }
+
+/* ADR-2245 — compact variant, tried before a colliding diagram is replaced */
+.compact .node .l, .compact .gnode .l, .compact .cy-label .l, .compact .tl-label .l { font-size: 26px !important; hyphens: manual; }
+.compact .gnode, .compact .node { padding: 0 14px; }
+.compact .node .s, .compact .gnode .s, .compact .cy-label .s, .compact .tl-label .s { display: none; }
+.compact .bullets li { font-size: 32px; }

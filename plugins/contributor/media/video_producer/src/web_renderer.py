@@ -3,8 +3,12 @@
 One headless Chromium per job renders each slide document and samples it at
 fixed times by pausing every Web Animation and setting ``currentTime`` —
 time is an input, never a wall clock, so two renders of the same scene are
-bit-identical. Frames are written only until the last entrance animation has
-finished; the assembler holds the final frame for the rest of the narration.
+bit-identical. Without a timeline, frames are written only until the last
+entrance animation has finished and the assembler holds the final frame (or
+loops the ambient period) for the rest of the narration. With a timeline
+(ADR-2245) the whole narration is sampled: reveals and focus moves happen at
+their cues until the very end, and frames in which nothing animates are not
+captured again but scheduled as repeats of the previous one.
 
 The browser context runs with JavaScript disabled and every network request
 aborted: the document is self-contained (web_templates.build_document) and a
@@ -21,10 +25,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 try:
-    from .web_templates import WebSceneError, build_document
+    from .web_templates import FOCUS_FADE_S, WebSceneError, build_document
     from .web_layout import LAYOUT_JS, TOLERANCE_PX
 except ImportError:  # standalone script use (no package context)
-    from web_templates import WebSceneError, build_document
+    from web_templates import FOCUS_FADE_S, WebSceneError, build_document
     from web_layout import LAYOUT_JS, TOLERANCE_PX
 
 FPS_DEFAULT = 30
@@ -55,6 +59,19 @@ _LOAD_FONTS_JS = """() => Promise.allSettled([
 ].map(f => document.fonts.load(f))).then(rs => document.fonts.ready.then(() =>
   ['Newsreader', 'Instrument Sans', 'JetBrains Mono'].filter(f => !document.fonts.check(`16px '${f}'`))))"""
 _SEEK_JS = "t => { for (const a of document.getAnimations()) { a.pause(); a.currentTime = t; } }"
+# Active windows [start, end] (ms) of every finite animation except the focus clock
+# (its windows come from the timeline), and the earliest start of an infinite one.
+_ACTIVE_JS = """() => {
+  const spans = []; let inf = Infinity;
+  for (const a of document.getAnimations()) {
+    if (a.animationName === 'fclock' || !a.effect || !a.effect.getComputedTiming) continue;
+    const t = a.effect.getComputedTiming();
+    const d = Number(t.delay) || 0;
+    if (t.iterations === Infinity) { inf = Math.min(inf, d); continue; }
+    if (Number.isFinite(t.endTime)) spans.push([d, t.endTime]);
+  }
+  return [spans, Number.isFinite(inf) ? inf : -1];
+}"""
 
 
 # Transform/opacity animations otherwise run on the compositor thread, which can
@@ -80,6 +97,9 @@ class FrameSequence(list):
 
     loop_start: Optional[int] = None
     layout_issues: List[Dict[str, Any]] = []  # collisions measured at the settled end state (web_layout)
+    # Timeline renders: output frame -> index into this list. Repeats are frames in
+    # which nothing animates; the assembler links them into a contiguous sequence.
+    schedule: Optional[List[int]] = None
 
 
 class WebSlideRenderer:
@@ -138,6 +158,9 @@ class WebSlideRenderer:
         total_scenes: Optional[int] = None,
         lang: str = "en",
         map_focus: Optional[str] = None,
+        timeline: Any = None,
+        compact: bool = False,
+        chips: bool = True,
     ) -> FrameSequence:
         """Render one scene to ``out_dir/00000.png ...``; returns the frame paths.
 
@@ -152,21 +175,24 @@ class WebSlideRenderer:
         document = build_document(
             template, data, duration_s=float(duration_s), theme=theme, tokens=self.tokens,
             scene_index=scene_index, total_scenes=total_scenes, lang=lang, map_focus=map_focus,
+            timeline=timeline, compact=compact, chips=chips,
         )
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         if any(out_dir.glob("*.png")):
             raise WebRenderError(f"frame directory {out_dir} is not empty")
+        # a timeline render samples the whole narration: its budget grows with it
+        budget = SCENE_TIMEOUT_S if timeline is None else max(SCENE_TIMEOUT_S, 30.0 + 3.0 * float(duration_s))
         try:
-            return await asyncio.wait_for(self._capture(document, float(duration_s), out_dir), SCENE_TIMEOUT_S)
+            return await asyncio.wait_for(self._capture(document, float(duration_s), out_dir, timeline), budget)
         except asyncio.TimeoutError:
-            raise WebRenderError(f"scene render exceeded {SCENE_TIMEOUT_S:g}s") from None
+            raise WebRenderError(f"scene render exceeded {budget:g}s") from None
         except WebRenderError:
             raise
         except Exception as e:  # noqa: BLE001
             raise WebRenderError(f"scene render failed: {type(e).__name__}: {e}") from None
 
-    async def _capture(self, document: str, duration_s: float, out_dir: Path) -> FrameSequence:
+    async def _capture(self, document: str, duration_s: float, out_dir: Path, timeline: Any = None) -> FrameSequence:
         context = await self._browser.new_context(
             viewport=VIEWPORT, device_scale_factor=1, java_script_enabled=False,
             reduced_motion="no-preference", service_workers="block",
@@ -185,6 +211,8 @@ class WebSlideRenderer:
             # shorter: a frame cut mid-reveal can show a half-rolled number. The assembler
             # pads the audio instead (see skill._assemble_frames_clip).
             anim_end_ms, loop_start_ms, period_ms = (float(x) for x in await page.evaluate(_ANIM_TIMING_JS))
+            if timeline is not None:
+                return await self._capture_timeline(page, cdp, out_dir, duration_s, anim_end_ms, timeline)
             n_frames = max(1, math.ceil(anim_end_ms / 1000.0 * self.fps) + 1)
             frames = FrameSequence()
             await page.evaluate(_SEEK_JS, anim_end_ms)
@@ -201,15 +229,54 @@ class WebSlideRenderer:
             n_frames = min(MAX_FRAMES_PER_SCENE, n_frames)
             for i in range(n_frames):
                 await page.evaluate(_SEEK_JS, i * 1000.0 / self.fps)
-                path = out_dir / f"{i:05d}.png"
-                tmp = path.with_suffix(".png.tmp")
-                shot = await cdp.send("Page.captureScreenshot", {"format": "png", "optimizeForSpeed": True})
-                tmp.write_bytes(base64.b64decode(shot["data"]))
-                os.replace(tmp, path)
-                frames.append(path)
+                frames.append(await self._shot(cdp, out_dir, i))
             return frames
         finally:
             await context.close()
+
+    async def _shot(self, cdp, out_dir: Path, index: int) -> Path:
+        path = out_dir / f"{index:05d}.png"
+        tmp = path.with_suffix(".png.tmp")
+        shot = await cdp.send("Page.captureScreenshot", {"format": "png", "optimizeForSpeed": True})
+        tmp.write_bytes(base64.b64decode(shot["data"]))
+        os.replace(tmp, path)
+        return path
+
+    async def _capture_timeline(self, page, cdp, out_dir: Path, duration_s: float, anim_end_ms: float,
+                                timeline: Any) -> FrameSequence:
+        """Sample [0, max(narration, last animation)] at fps. A frame is captured only
+        when something can have changed since the previous capture; every other
+        output frame repeats it (``schedule``). Nothing past the frame budget is
+        dropped silently: a cue the budget cannot reach is an error (ADR-2245 §5)."""
+        total_s = max(duration_s, anim_end_ms / 1000.0)
+        n_out = math.ceil(total_s * self.fps) + 1
+        cap = int(MAX_SCENE_SECONDS * self.fps) + 2 * self.fps
+        last_cue = max(timeline.event_times() or [0.0])
+        if n_out > cap or last_cue * self.fps >= n_out:
+            raise WebRenderError(f"timeline does not fit the frame budget ({n_out} frames, cue at {last_cue:.1f}s)")
+        spans, inf_start_ms = await page.evaluate(_ACTIVE_JS)
+        windows = [(a / 1000.0, b / 1000.0) for a, b in spans]
+        windows += [(t, t + FOCUS_FADE_S) for t, _ in timeline.focus]
+        inf_start = inf_start_ms / 1000.0 if inf_start_ms >= 0 else None
+        step = 1.0 / self.fps
+
+        def active(t: float) -> bool:
+            if inf_start is not None and t >= inf_start:
+                return True
+            # one extra frame on both sides: the frame that shows the settled state is captured
+            return any(a - step <= t <= b + step for a, b in windows)
+
+        await page.evaluate(_SEEK_JS, total_s * 1000.0)
+        frames = FrameSequence()
+        frames.layout_issues = await page.evaluate(LAYOUT_JS, TOLERANCE_PX)
+        frames.schedule = []
+        for i in range(n_out):
+            t = i * step
+            if not frames or active(t):
+                await page.evaluate(_SEEK_JS, t * 1000.0)
+                frames.append(await self._shot(cdp, out_dir, len(frames)))
+            frames.schedule.append(len(frames) - 1)
+        return frames
 
 
 async def render_web_scene(

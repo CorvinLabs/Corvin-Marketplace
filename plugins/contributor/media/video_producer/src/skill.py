@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 import uuid
 
@@ -32,7 +33,8 @@ try:
     from .web_templates import TEMPLATES, THEMES, WebSceneError, load_tokens, validate_scene_data
     from .web_renderer import FPS_DEFAULT, MAX_SCENE_SECONDS, WebRenderError, WebSlideRenderer
     from .web_layout import format_issues
-    from .web_templates import MAP_LAYERS, console_assets
+    from .web_templates import MAP_LAYERS, console_assets, scene_item_subs, scene_items
+    from .web_timeline import AudioPauses, build_timeline, detect_pauses, split_sentences
     from .grounding import render_pack, validate_pack
     from . import grounded_storyboard as gsb
 except ImportError:  # standalone script use (no package context)
@@ -44,7 +46,8 @@ except ImportError:  # standalone script use (no package context)
     from web_templates import TEMPLATES, THEMES, WebSceneError, load_tokens, validate_scene_data
     from web_renderer import FPS_DEFAULT, MAX_SCENE_SECONDS, WebRenderError, WebSlideRenderer
     from web_layout import format_issues
-    from web_templates import MAP_LAYERS, console_assets
+    from web_templates import MAP_LAYERS, console_assets, scene_item_subs, scene_items
+    from web_timeline import AudioPauses, build_timeline, detect_pauses, split_sentences
     from grounding import render_pack, validate_pack
     import grounded_storyboard as gsb
 
@@ -239,6 +242,19 @@ Templates and their data (plain text only, never HTML; keep texts short):
               "unit"?, "decimals"?, "highlight"?: index, "locale"?}  (shares of a whole; only real numbers)
 Limits: title 70-80 chars (cycle 60), bullet 110, node label 28 (flow 24), bar label 24, layer label 32.
 Optional per scene: "theme": "dark" (default) or "light".
+
+BEATS (recommended for every web scene): "beats" = one entry per sentence of narration_text,
+in order, telling the slide what to show while that sentence is spoken:
+- an integer k = this sentence is about item k of the data (bullet, node, bar, segment, step,
+  layer, event, flow node in "nodes" order; compare: 0 = left, 1 = right): it appears now
+  and the eye is led to it;
+- a string = for "hero", "quote", "stat" only: 1-3 words copied verbatim from that sentence,
+  shown as a keyword chip while it is said;
+- null = nothing new (e.g. an introduction or a summary sentence).
+Name the item in the sentence that introduces it; walk through the items in the order the
+narration explains them, so something new appears every few seconds.
+Example: narration "Alles beginnt mit einem Fehler. Daraus wird ein Loss-Signal. Das ADR-Gate prüft es." with
+nodes ["Fehler", "Loss-Signal", "ADR-Gate"] -> "beats": [0, 1, 2].
 
 CHOOSING A VISUAL — pick the template that SHOWS the idea instead of listing it:
 - branching process / architecture with several parts -> "flow"; a straight 2-6 step pipeline -> "diagram"
@@ -978,14 +994,22 @@ def _degrade_to_web_slides(scenes: List[Dict[str, Any]]) -> int:
         text = " ".join(str(scene.get("narration_text") or "").split())
         if not text:
             continue
-        first = re.split(r"(?<=[.!?])\s+", text, maxsplit=1)[0]
-        if len(first) > 200:
-            first = first[:197].rstrip() + "..."
-        trial = {"template": "quote", "data": {"quote": first, "locale": _detect_lang(text)}}
+        trial = _quote_trial(text)
         if not _apply_web_scene_contract([trial], strict=False):
             scene["template"], scene["data"] = trial["template"], trial["data"]
+            scene.pop("beats", None)
             n += 1
     return n
+
+
+def _first_sentence(text: str) -> str:
+    spans = split_sentences(text)
+    first = text[spans[0][0]:spans[0][1]].strip() if spans else text
+    return first if len(first) <= 200 else first[:197].rstrip() + "..."
+
+
+def _quote_trial(text: str) -> Dict[str, Any]:
+    return {"template": "quote", "data": {"quote": _first_sentence(text), "locale": _detect_lang(text)}}
 
 
 def _repair_web_scenes(scenes: List[Dict[str, Any]], report: Dict[str, Any], model: Optional[str]) -> List[str]:
@@ -1059,6 +1083,15 @@ def _apply_web_scene_contract(scenes: List[Dict[str, Any]], strict: bool) -> Lis
                 raise ValueError(f"scene {sid}: map must be {{'focus': one of {', '.join(MAP_LAYERS)}}}")
             warnings.append(f"scene {sid}: invalid map overlay (dropped)")
             scene.pop("map", None)
+        beats = scene.get("beats")
+        if beats is not None and not (
+                isinstance(beats, list) and len(beats) <= 20
+                and all(b is None or (isinstance(b, int) and not isinstance(b, bool) and 0 <= b < 20)
+                        or (isinstance(b, str) and len(b) <= 40) for b in beats)):
+            if strict:
+                raise ValueError(f"scene {sid}: beats must be a list of item indices, short strings or null")
+            warnings.append(f"scene {sid}: invalid beats (dropped)")
+            scene.pop("beats", None)
         if template is not None and scene.get("kind") in ("screenshot", "screencast"):
             # a web template never triggers live capture (PLAN-0942 D10)
             scene["kind"] = "example"
@@ -1096,14 +1129,29 @@ def _link_or_copy(src: Path, dst: Path) -> None:
 
 
 def _assemble_frames_clip(frames_dir: Path, n_frames: int, audio_path: Path, audio_duration: float,
-                          out_path: Path, fps: int, loop_start: Optional[int] = None) -> float:
+                          out_path: Path, fps: int, loop_start: Optional[int] = None,
+                          schedule: Optional[List[int]] = None) -> float:
     """Animated frame sequence + narration -> scene clip; returns the clip length.
 
     The sequence ends with the slide's entrance animation. If the narration is
     longer, the last frame is held — or, when the slide has ambient motion
     (``loop_start``), frames[loop_start:] repeat seamlessly until the narration
     ends. If it is shorter, the audio is padded with silence so the reveal is
-    never cut off mid-animation."""
+    never cut off mid-animation.
+
+    A timeline render (ADR-2245) passes ``schedule`` (output frame -> captured
+    frame): the clip is always read from a contiguous hard-linked sequence built
+    from it, because the image demuxer stops at the first missing number."""
+    if schedule is not None:
+        total = max(audio_duration, len(schedule) / fps)
+        seq = frames_dir / "seq"
+        seq.mkdir(exist_ok=True)
+        needed = math.ceil(total * fps) + 1
+        for j in range(needed):
+            src = schedule[min(j, len(schedule) - 1)]
+            _link_or_copy(frames_dir / f"{src:05d}.png", seq / f"{j:05d}.png")
+        n_frames, loop_start = needed, None
+        frames_dir = seq
     total = max(audio_duration, n_frames / fps)
     pattern = frames_dir / "%05d.png"
     needed = math.ceil(total * fps) + 1
@@ -1209,6 +1257,49 @@ def _storyboard_from_operator(raw: Any, task: str, max_duration_minutes: int) ->
     )
 
 
+@dataclass
+class _SceneCues:
+    """What a scene's timeline is built from (ADR-2245): the final narration, the
+    pauses in its real audio, and the storyboard's beats for the original template."""
+    narration: str
+    pauses: AudioPauses
+    lang: str
+    chips_allowed: bool = True
+    beats: Any = None
+
+    def timeline(self, template: str, data: Dict[str, Any], use_beats: bool = True):
+        d = validate_scene_data(template, data)
+        return build_timeline(template, scene_items(template, d), self.narration, self.pauses,
+                              beats=self.beats if use_beats else None, lang=self.lang,
+                              chips_allowed=self.chips_allowed, subs=scene_item_subs(template, d))
+
+
+_COMPACTABLE = ("diagram", "flow", "cycle", "timeline", "content")
+
+
+def _content_trial(template: str, data: Dict[str, Any], title_fallback: str) -> Optional[Dict[str, Any]]:
+    """A colliding graphic as bullets that keep every item (≤ 5), each with its sub-line."""
+    try:
+        d = validate_scene_data(template, data)
+        items = scene_items(template, d)
+    except (WebSceneError, ValueError, TypeError):
+        return None
+    # numbers (chart, donut, line, stat) and side-by-side points (compare) do not survive as bullets
+    if not 2 <= len(items) <= 5 or template not in ("diagram", "flow", "cycle", "timeline", "layers"):
+        return None
+    subs = {"diagram": d.get("nodes"), "flow": d.get("nodes"), "cycle": d.get("steps"),
+            "timeline": d.get("events"), "layers": d.get("layers")}.get(template) or [{}] * len(items)
+    bullets = []
+    for (label, _), extra in zip(items, subs):
+        sub = extra.get("sub") if isinstance(extra, dict) else None
+        text = f"{label} — {sub}" if sub else label
+        bullets.append(text if len(text) <= 110 else text[:107].rstrip() + "...")
+    trial = {"template": "content", "data": {"title": d.get("title") or title_fallback[:80], "bullets": bullets}}
+    if d.get("eyebrow"):
+        trial["data"]["eyebrow"] = d["eyebrow"]
+    return trial
+
+
 class _WebRendererSession:
     """Opens the browser on the first web scene and keeps it for the job.
     A browser that cannot start disables web rendering for the rest of the job;
@@ -1222,7 +1313,8 @@ class _WebRendererSession:
         self._unavailable: Optional[str] = None
         self.layout_log: List[Dict[str, Any]] = []  # one entry per scene whose layout collided
 
-    async def render(self, scene: Scene, duration_s: float, out_dir: Path, **kw) -> tuple:
+    async def render(self, scene: Scene, duration_s: float, out_dir: Path,
+                     cues: Optional[_SceneCues] = None, **kw) -> tuple:
         """(frames, None) on success; (None, reason) on a fallback; (None, None) when
         web slides are switched off for the job (configuration, not a fallback)."""
         if not self.enabled:
@@ -1240,40 +1332,61 @@ class _WebRendererSession:
                 logger.warning("web slides disabled for this job: %s", e)
                 return None, self._unavailable
         try:
-            frames = await self._renderer.render(scene.template, scene.data or {}, duration_s, out_dir, **kw)
+            tl = cues.timeline(scene.template, scene.data or {}) if cues is not None else None
+            frames = await self._renderer.render(scene.template, scene.data or {}, duration_s, out_dir,
+                                                 timeline=tl, **kw)
+            frames.timeline, frames.template, frames.data = tl, scene.template, scene.data or {}
             if frames.layout_issues:
-                frames = await self._resolve_collision(scene, frames, duration_s, out_dir, kw)
+                frames = await self._resolve_collision(scene, frames, duration_s, out_dir, kw, cues)
             return frames, None
         except Exception as e:  # noqa: BLE001 — specs may come from an LLM: any failure = classic slide
             logger.warning("web slide render failed (%s), using classic slide", type(e).__name__)
             shutil.rmtree(out_dir, ignore_errors=True)
             return None, f"{type(e).__name__}: {e}"[:200]
 
-    async def _resolve_collision(self, scene: Scene, frames, duration_s: float, out_dir: Path, kw: dict):
-        """Text, shapes or boxes collide (web_layout). Swap in a quote slide built from the
-        scene's narration when that one is clean; otherwise keep the original and say so."""
-        entry = {"scene": scene.id, "template": scene.template, "issues": format_issues(frames.layout_issues)[:6],
+    async def _resolve_collision(self, scene: Scene, frames, duration_s: float, out_dir: Path, kw: dict,
+                                 cues: Optional[_SceneCues] = None):
+        """Text, shapes or boxes collide (web_layout). Try, in order, what keeps the most
+        content (ADR-2245 §7): the same slide without keyword chips, its compact variant,
+        the items as bullets, and only then a quote of the narration's first sentence.
+        Cues are rebuilt for every replacement. Nothing clean = keep the original, say so."""
+        template, data = scene.template, scene.data or {}
+        entry = {"scene": scene.id, "template": template, "issues": format_issues(frames.layout_issues)[:6],
                  "action": "kept"}
         text = " ".join((scene.narration_text or "").split())
-        if text and scene.template != "quote":
-            first = re.split(r"(?<=[.!?])\s+", text, maxsplit=1)[0]
-            first = first if len(first) <= 200 else first[:197].rstrip() + "..."
-            trial = {"template": "quote", "data": {"quote": first, "locale": _detect_lang(text)}}
-            if not _apply_web_scene_contract([trial], strict=False):
-                alt_dir = out_dir.parent / (out_dir.name + "_alt")
-                try:
-                    alt = await self._renderer.render("quote", trial["data"], duration_s, alt_dir, **kw)
-                except Exception:  # noqa: BLE001 — the original frames stay
-                    alt = None
-                if alt is not None and not alt.layout_issues:
-                    shutil.rmtree(out_dir, ignore_errors=True)
-                    alt_dir.rename(out_dir)
-                    moved = type(alt)(out_dir / f.name for f in alt)
-                    moved.loop_start = alt.loop_start
-                    entry["action"] = "replaced_with_quote"
-                    self.layout_log.append(entry)
-                    return moved
+        tl = getattr(frames, "timeline", None)
+        attempts = []
+        if tl is not None and tl.chips:
+            attempts.append(("dropped_chips", template, data, {"chips": False}, True))
+        if template in _COMPACTABLE:
+            attempts.append(("compact", template, data, {"compact": True}, True))
+        content = _content_trial(template, data, _first_sentence(text)) if text else None
+        if content and not _apply_web_scene_contract([content], strict=False):
+            attempts.append(("replaced_with_content", "content", content["data"], {}, False))
+        if text and template != "quote":
+            quote = _quote_trial(text)
+            if not _apply_web_scene_contract([quote], strict=False):
+                attempts.append(("replaced_with_quote", "quote", quote["data"], {}, False))
+        for action, tmpl, tdata, opts, use_beats in attempts:
+            alt_dir = out_dir.parent / (out_dir.name + "_alt")
+            shutil.rmtree(alt_dir, ignore_errors=True)
+            try:
+                alt_tl = cues.timeline(tmpl, tdata, use_beats=use_beats) if cues is not None else None
+                alt = await self._renderer.render(tmpl, tdata, duration_s, alt_dir, timeline=alt_tl, **opts, **kw)
+            except Exception:  # noqa: BLE001 — try the next option; the original frames stay
                 shutil.rmtree(alt_dir, ignore_errors=True)
+                continue
+            if alt.layout_issues:
+                shutil.rmtree(alt_dir, ignore_errors=True)
+                continue
+            shutil.rmtree(out_dir, ignore_errors=True)
+            alt_dir.rename(out_dir)
+            moved = type(alt)(out_dir / f.name for f in alt)
+            moved.loop_start, moved.schedule, moved.layout_issues = alt.loop_start, alt.schedule, []
+            moved.timeline, moved.template, moved.data = alt_tl, tmpl, tdata
+            entry["action"] = action
+            self.layout_log.append(entry)
+            return moved
         self.layout_log.append(entry)
         return frames
 
@@ -1407,6 +1520,9 @@ async def orchestrate_video(
         renderers_used: List[str] = []
         web_fallbacks: List[Dict[str, Any]] = []
         web = _WebRendererSession(enabled=web_slides, fps=web_fps, tokens=web_tokens)
+        cue_log: List[Dict[str, Any]] = []
+        # ADR-2245 §6: no keyword chips on a scene whose claims the grounding check could not verify
+        unverified_scenes = set(((storyboard.grounding or {}).get("unverified") or {}).get("scenes") or [])
 
         try:
             for i, scene in enumerate(storyboard.scenes, start=1):
@@ -1448,11 +1564,31 @@ async def orchestrate_video(
                     renderers_used.append("screenshot")
                 else:
                     if scene.template:
+                        cues = _SceneCues(
+                            narration=narration, pauses=detect_pauses(audio_path, audio_duration), lang=lang,
+                            chips_allowed=i not in unverified_scenes, beats=scene.beats,
+                        )
+                        t_render = datetime.now()
                         frames, reason = await web.render(
-                            scene, audio_duration, scenes_dir / f"scene_{i:03d}_frames",
+                            scene, audio_duration, scenes_dir / f"scene_{i:03d}_frames", cues=cues,
                             theme=scene.theme or web_theme, scene_index=i, total_scenes=total, lang=lang,
                             map_focus=(scene.map or {}).get("focus") if isinstance(scene.map, dict) else None,
                         )
+                        tl = getattr(frames, "timeline", None) if frames else None
+                        if tl is not None:
+                            final_t = getattr(frames, "template", scene.template)
+                            final_items = scene_items(final_t, validate_scene_data(final_t, frames.data))
+                            cue_log.append({
+                                "scene": i, "template": final_t,
+                                "beats_source": tl.source, "notes": tl.notes[:2],
+                                "reveals": len(tl.step_times), "focus_moves": len(tl.focus),
+                                "chips": len(tl.chips),
+                                # cue times (s): what the measurement script aligns with the spoken words
+                                "items": [{"label": lb[:40], "at": tl.step_times.get(st)} for lb, st in final_items],
+                                "focus_at": [t for t, _ in tl.focus], "chips_at": [t for t, _ in tl.chips],
+                                "captured_frames": len(frames),
+                                "render_s": round((datetime.now() - t_render).total_seconds(), 1),
+                            })
                         if frames is None and reason:
                             web_fallbacks.append({"scene": i, "reason": reason})
                             emit_feedback(job_id=job_id, event_type="web_render_fallback",
@@ -1481,7 +1617,8 @@ async def orchestrate_video(
                 if frames:
                     try:
                         _assemble_frames_clip(frames[0].parent, len(frames), audio_path, audio_duration,
-                                              clip_path, web_fps, loop_start=getattr(frames, "loop_start", None))
+                                              clip_path, web_fps, loop_start=getattr(frames, "loop_start", None),
+                                              schedule=getattr(frames, "schedule", None))
                     finally:
                         # ~0.5-1 MB per frame; the clip is the artifact, the frames are scratch
                         shutil.rmtree(frames[0].parent, ignore_errors=True)
@@ -1531,6 +1668,10 @@ async def orchestrate_video(
                 "tts_provider_used": provider_used,
                 "renderers": renderers_used,
                 "layout_collisions": web.layout_log,
+                # ADR-2245: how each web scene's cues were built
+                "cues": cue_log,
+                "beats_fallback_rate": (round(sum(c["beats_source"] == "fallback" for c in cue_log) / len(cue_log), 2)
+                                        if cue_log else None),
                 "web_scenes": renderers_used.count("web"),
                 "web_render_fallbacks": web_fallbacks,
                 "storyboard_llm": storyboard.llm_backend or "operator",

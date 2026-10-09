@@ -320,3 +320,33 @@ async def test_llm_values_that_used_to_crash_the_job_are_dropped(store, monkeypa
     monkeypatch.setattr(skill, "_call_storyboard_llm", lambda *a, **k: raw)
     result = await _run(store, "job_web_llm2")
     assert result["metadata"]["renderers"] == ["web", "web"], "values that crashed the job become quote slides built from the narration"
+
+
+BEATS_STORYBOARD = {"id": "sb_beats", "didactic_strategy": "rich_visual", "scenes": [
+    {"id": "s1", "kind": "solution", "duration_ms": 16000,
+     "narration_text": ("Alles beginnt mit einem Fehler im Betrieb. Daraus wird ein messbares Loss-Signal. "
+                        "Das ADR-Gate prüft, ob eine Entscheidung nötig ist. Am Ende beweist der E2E-Test die Wirkung."),
+     "template": "content", "beats": [0, 1, 2, 3],
+     "data": {"title": "Vom Fehler zur Entscheidung",
+              "bullets": ["Fehler im Betrieb", "Loss-Signal", "ADR-Gate", "E2E-Test"]}}]}
+
+
+async def test_beats_drive_the_reveal_until_the_narration_ends(store, tmp_path):
+    """ADR-2245 through the real entry point: the storyboard's beats survive
+    Scene.from_dict, drive the cues, and the last item appears late in the clip
+    instead of everything being on screen within the first half."""
+    result = await _run(store, "job_beats", storyboard=BEATS_STORYBOARD)
+    md = result["metadata"]
+    assert md["cues"] and md["cues"][0]["beats_source"] == "llm", md.get("cues")
+    assert md["cues"][0]["reveals"] == 4 and md["beats_fallback_rate"] == 0.0
+    job = get_storage(store).get_job("job_beats")
+    assert job.storyboard.scenes[0].beats == [0, 1, 2, 3], "beats must be persisted with the storyboard"
+
+    video = Path(result["video_path"])
+    duration = float(_ffprobe(video)["format"]["duration"])
+    assert duration > 10
+    # the fourth bullet is not there at 55 % of the narration (the old timing had everything by then)...
+    mid = _frame_at(video, duration * 0.55, tmp_path / "mid.png")
+    end = _frame_at(video, duration - 0.3, tmp_path / "end.png")
+    changed = ImageChops.difference(mid, end).convert("L").point(lambda x: 255 if x > 40 else 0).getbbox()
+    assert changed is not None and changed[3] > 700, f"nothing new appeared low on the slide in the second half ({changed})"
