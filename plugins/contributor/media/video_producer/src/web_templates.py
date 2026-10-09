@@ -643,7 +643,7 @@ def _diagram(d):
             edges.append(f'<path class="head" style="--i:{2 + k}" d="M{bx + 12:.1f} {y} L{bx - 2:.1f} {y - 9} L{bx - 2:.1f} {y + 9} Z"/>')
             pulses.append(f'<i class="amb pulse" style="offset-path:path(\'M{ax:.1f} {y} L{bx:.1f} {y}\');--ph:{k * 0.5:.2f}s"></i>')
     svg = f'<svg width="{width}" height="300" viewBox="0 0 {width} 300">{"".join(edges)}</svg>'
-    return f'<div class="frame">{_header(d)}<div class="flow">{svg}{"".join(pulses)}{"".join(cards)}</div></div>'
+    return f'<div class="frame">{_header(d)}<div class="flow{" dense" if n >= 5 else ""}">{svg}{"".join(pulses)}{"".join(cards)}</div></div>'
 
 
 def _chart(d):
@@ -659,7 +659,7 @@ def _chart(d):
             f'<div class="col" style="--i:{2 + k};height:{h}px"></div>'
             f'<div class="lb r" style="--i:{2 + k}">{_e(b["label"])}</div></div>'
         )
-    return f'<div class="frame">{_header(d)}<div class="chart">{"".join(cols)}</div></div>'
+    return f'<div class="frame">{_header(d)}<div class="chart{" dense" if len(d["bars"]) >= 6 else ""}">{"".join(cols)}</div></div>'
 
 
 def _compare(d):

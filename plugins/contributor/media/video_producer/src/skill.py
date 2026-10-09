@@ -31,6 +31,7 @@ try:
     from .screenshot_annotator import annotate_screenshot
     from .web_templates import TEMPLATES, THEMES, WebSceneError, load_tokens, validate_scene_data
     from .web_renderer import FPS_DEFAULT, MAX_SCENE_SECONDS, WebRenderError, WebSlideRenderer
+    from .web_layout import format_issues
     from .web_templates import MAP_LAYERS, console_assets
     from .grounding import render_pack, validate_pack
     from . import grounded_storyboard as gsb
@@ -42,6 +43,7 @@ except ImportError:  # standalone script use (no package context)
     from screenshot_annotator import annotate_screenshot
     from web_templates import TEMPLATES, THEMES, WebSceneError, load_tokens, validate_scene_data
     from web_renderer import FPS_DEFAULT, MAX_SCENE_SECONDS, WebRenderError, WebSlideRenderer
+    from web_layout import format_issues
     from web_templates import MAP_LAYERS, console_assets
     from grounding import render_pack, validate_pack
     import grounded_storyboard as gsb
@@ -1218,6 +1220,7 @@ class _WebRendererSession:
         self.tokens = tokens
         self._renderer: Optional[WebSlideRenderer] = None
         self._unavailable: Optional[str] = None
+        self.layout_log: List[Dict[str, Any]] = []  # one entry per scene whose layout collided
 
     async def render(self, scene: Scene, duration_s: float, out_dir: Path, **kw) -> tuple:
         """(frames, None) on success; (None, reason) on a fallback; (None, None) when
@@ -1238,11 +1241,41 @@ class _WebRendererSession:
                 return None, self._unavailable
         try:
             frames = await self._renderer.render(scene.template, scene.data or {}, duration_s, out_dir, **kw)
+            if frames.layout_issues:
+                frames = await self._resolve_collision(scene, frames, duration_s, out_dir, kw)
             return frames, None
         except Exception as e:  # noqa: BLE001 — specs may come from an LLM: any failure = classic slide
             logger.warning("web slide render failed (%s), using classic slide", type(e).__name__)
             shutil.rmtree(out_dir, ignore_errors=True)
             return None, f"{type(e).__name__}: {e}"[:200]
+
+    async def _resolve_collision(self, scene: Scene, frames, duration_s: float, out_dir: Path, kw: dict):
+        """Text, shapes or boxes collide (web_layout). Swap in a quote slide built from the
+        scene's narration when that one is clean; otherwise keep the original and say so."""
+        entry = {"scene": scene.id, "template": scene.template, "issues": format_issues(frames.layout_issues)[:6],
+                 "action": "kept"}
+        text = " ".join((scene.narration_text or "").split())
+        if text and scene.template != "quote":
+            first = re.split(r"(?<=[.!?])\s+", text, maxsplit=1)[0]
+            first = first if len(first) <= 200 else first[:197].rstrip() + "..."
+            trial = {"template": "quote", "data": {"quote": first, "locale": _detect_lang(text)}}
+            if not _apply_web_scene_contract([trial], strict=False):
+                alt_dir = out_dir.parent / (out_dir.name + "_alt")
+                try:
+                    alt = await self._renderer.render("quote", trial["data"], duration_s, alt_dir, **kw)
+                except Exception:  # noqa: BLE001 — the original frames stay
+                    alt = None
+                if alt is not None and not alt.layout_issues:
+                    shutil.rmtree(out_dir, ignore_errors=True)
+                    alt_dir.rename(out_dir)
+                    moved = type(alt)(out_dir / f.name for f in alt)
+                    moved.loop_start = alt.loop_start
+                    entry["action"] = "replaced_with_quote"
+                    self.layout_log.append(entry)
+                    return moved
+                shutil.rmtree(alt_dir, ignore_errors=True)
+        self.layout_log.append(entry)
+        return frames
 
     async def close(self) -> None:
         if self._renderer is not None:
@@ -1497,6 +1530,7 @@ async def orchestrate_video(
                 "tts_engine": tts_engine,
                 "tts_provider_used": provider_used,
                 "renderers": renderers_used,
+                "layout_collisions": web.layout_log,
                 "web_scenes": renderers_used.count("web"),
                 "web_render_fallbacks": web_fallbacks,
                 "storyboard_llm": storyboard.llm_backend or "operator",

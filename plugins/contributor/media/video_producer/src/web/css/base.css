@@ -125,6 +125,8 @@ html, body {
 .node .k { font-family: var(--font-mono); font-size: 20px; color: var(--accent); }
 .node .l { font-family: var(--font-heading); font-size: 40px; line-height: 1.1; margin-top: 14px; color: var(--text); }
 .node .s { font-size: 22px; line-height: 1.35; color: var(--text-muted); margin-top: 12px; }
+.flow.dense .node { padding: 22px 14px; }
+.flow.dense .node .s { font-size: 17px; margin-top: 8px; }
 .flow svg { position: absolute; left: 0; top: 0; overflow: visible; }
 .flow path.edge { fill: none; stroke: var(--accent); stroke-width: 3; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 700ms ease-in-out both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger) + 250ms); }
 .flow path.head { fill: var(--accent); opacity: 0; animation: fade 200ms ease-out both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger) + 850ms); }
@@ -135,7 +137,8 @@ html, body {
 .bar .col { width: 100%; max-width: 170px; border-radius: 10px 10px 0 0; background: linear-gradient(180deg, var(--accent-hi), var(--accent)); opacity: .55; transform-origin: bottom; animation: grow-y 1100ms var(--ease) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
 .bar.hl .col { opacity: 1; box-shadow: 0 0 70px var(--glow); }
 .bar .v { font-family: var(--font-mono); font-size: 30px; color: var(--text); margin-bottom: 16px; }
-.bar .lb { position: absolute; bottom: -62px; font-size: 26px; color: var(--text-muted); white-space: nowrap; }
+.bar .lb { position: absolute; top: calc(100% + 16px); left: -8px; right: -8px; text-align: center; font-size: 26px; line-height: 1.2; color: var(--text-muted); overflow-wrap: anywhere; }
+.chart.dense .bar .lb { font-size: 20px; }
 
 /* compare */
 .compare { display: flex; gap: 60px; margin-top: 64px; }
@@ -346,3 +349,6 @@ html, body {
 .map .mp { font-family: var(--font-mono); font-size: 14px; letter-spacing: .1em; text-transform: uppercase;
            color: var(--text-faint); border-left: 3px solid var(--border); padding: 6px 0 6px 12px; line-height: 1.25; }
 .map .mp.on { color: var(--accent); border-left-color: var(--accent); }
+
+/* long words break instead of running out of their box (layout check, web_layout.py) */
+.node .l, .node .s, .gnode, .gnode *, .cy-label .l, .cy-label .s, .slab .sl-l, .card li, .bullets li span { overflow-wrap: anywhere; hyphens: auto; }

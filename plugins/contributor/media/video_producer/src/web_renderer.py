@@ -22,8 +22,10 @@ from typing import Any, Dict, List, Optional
 
 try:
     from .web_templates import WebSceneError, build_document
+    from .web_layout import LAYOUT_JS, TOLERANCE_PX
 except ImportError:  # standalone script use (no package context)
     from web_templates import WebSceneError, build_document
+    from web_layout import LAYOUT_JS, TOLERANCE_PX
 
 FPS_DEFAULT = 30
 MAX_SCENE_SECONDS = 60.0
@@ -77,6 +79,7 @@ class FrameSequence(list):
     when the slide has no ambient motion and its last frame is held."""
 
     loop_start: Optional[int] = None
+    layout_issues: List[Dict[str, Any]] = []  # collisions measured at the settled end state (web_layout)
 
 
 class WebSlideRenderer:
@@ -184,6 +187,8 @@ class WebSlideRenderer:
             anim_end_ms, loop_start_ms, period_ms = (float(x) for x in await page.evaluate(_ANIM_TIMING_JS))
             n_frames = max(1, math.ceil(anim_end_ms / 1000.0 * self.fps) + 1)
             frames = FrameSequence()
+            await page.evaluate(_SEEK_JS, anim_end_ms)
+            frames.layout_issues = await page.evaluate(LAYOUT_JS, TOLERANCE_PX)
             # Ambient motion: sample exactly one period after everything has started.
             # Frame loop_start + period_frames equals frame loop_start only when the
             # period is a whole number of frames — otherwise the loop would jump.
