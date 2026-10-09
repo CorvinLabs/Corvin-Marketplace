@@ -59,6 +59,20 @@ Include:
 - Security/permissions required
 - Support link
 
+## Releasing an Update
+
+Users who installed your plugin get an "update available" badge (Marketplace → Installed) as
+soon as the marketplace source carries a **higher `version`** than the one they installed.
+
+1. Bump `version` (semver) in **both** `plugin.yaml` and `plugin.json`; the index
+   (`scripts/generate_index_v3.py`) is regenerated from them.
+2. Keep `settings_schema` keys stable. A key you remove is dropped from the user's settings
+   (they are told which); a new key gets its `default`.
+3. If the new version raises `pii_risk`, `network_egress`, adds `egress_hosts` or newly
+   requires consent, the user must explicitly approve the update. Say why in your changelog.
+4. A version that is not strictly newer is never offered, and a version that fails to load
+   is rolled back automatically.
+
 ## Review Process
 
 1. **Automated checks:** CI validates plugin.json and README
