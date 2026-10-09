@@ -82,7 +82,7 @@ def console_assets() -> Dict[str, str]:
 
 def _corvinOS_symbol_svg(size: int = 48) -> str:
     """The real mark from Corvin-Website/logo.svg: prompt chevron, underscore bar, gold dot."""
-    return (f'<svg width="{size}" height="{size}" viewBox="12 12 96 96" xmlns="http://www.w3.org/2000/svg" '
+    return (f'<svg width="{size}" height="{size}" viewBox="12 12 96 96" '
             f'class="corvinOS-symbol" style="color:var(--text)">'
             f'<path fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" '
             f'stroke-linejoin="round" d="M28 40 L56 60 L28 80"/>'
