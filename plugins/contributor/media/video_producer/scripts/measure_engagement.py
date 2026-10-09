@@ -2,9 +2,15 @@
 """Measure how much of a produced video stands still (ADR-2245 release gate).
 
 Per scene clip of a finished job:
-  frozen_s    screen time with no perceptible change — ffmpeg freezedetect
-              n=0.002 d=1.5, the same method as the 2026-10-09 baseline (77 %)
-  longest     the longest single frozen interval
+  still       stretches in which the slide's content does not change. A frame
+              state is the per-pixel median over ±1 s (this removes ambient dots,
+              orbits and ring pulses — motion without information); a state change
+              is > 0.15 % of pixels moving by more than 12 levels against the state
+              1 s earlier. Reported: dead_s (time in still stretches ≥ 5 s) and the
+              longest still stretch.
+  frozen_s    ffmpeg freezedetect n=0.002 d=1.5 — the method of the first
+              2026-10-09 baseline (77 %). Kept for comparison only: it compares
+              consecutive frames, so a 0.9 s fade-in reads as frozen.
   cue_gap     the longest stretch without a scheduled visual event (reveal, focus
               move, chip), from the job metadata's cue log — 0 s and the scene end count
   align       (with --whisper) |cue + lead - spoken time| for every item whose label
@@ -46,6 +52,41 @@ def frozen_intervals(clip: Path) -> List[tuple]:
     if len(starts) > len(ends):
         ends.append(_duration(clip))
     return list(zip(starts, ends))
+
+
+SAMPLE_FPS = 4
+STATE_WINDOW = 4       # ±1 s at SAMPLE_FPS
+CHANGE_LEVEL = 12
+CHANGE_SHARE = 0.0015
+DEAD_MIN_S = 5.0
+
+
+def still_stretches(clip: Path) -> List[tuple]:
+    """Intervals (s) in which the median-filtered content state does not change."""
+    import numpy as np
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(clip), "-vf", f"fps={SAMPLE_FPS},scale=480:270",
+                          "-f", "rawvideo", "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
+    frames = np.frombuffer(raw, dtype=np.uint8).reshape(-1, 270, 480)
+    n = len(frames)
+    if n < 2:
+        return []
+    w = STATE_WINDOW
+    state = np.stack([np.median(frames[max(0, i - w): i + w + 1], axis=0) for i in range(n)]).astype(np.int16)
+    lag = SAMPLE_FPS
+    changed = [False] * n
+    for i in range(lag, n):
+        share = (np.abs(state[i] - state[i - lag]) > CHANGE_LEVEL).mean()
+        if share > CHANGE_SHARE:
+            for k in range(i - lag, i + 1):
+                changed[k] = True
+    out, start = [], None
+    for i, c in enumerate(changed + [True]):
+        if not c and start is None:
+            start = i
+        elif c and start is not None:
+            out.append((start / SAMPLE_FPS, i / SAMPLE_FPS))
+            start = None
+    return out
 
 
 def _norm(s: str) -> str:
@@ -91,7 +132,10 @@ def measure_job(videos_dir: Path, job_id: str, api_key: Optional[str]) -> Dict[s
         n = int(clip.stem.split("_")[1])
         dur = _duration(clip)
         iv = frozen_intervals(clip)
+        still = still_stretches(clip)
         row: Dict[str, Any] = {"scene": n, "duration": round(dur, 2),
+                               "dead_s": round(sum(b - a for a, b in still if b - a >= DEAD_MIN_S), 2),
+                               "longest_still": round(max((b - a for a, b in still), default=0.0), 2),
                                "frozen_s": round(sum(b - a for a, b in iv), 2),
                                "longest_frozen": round(max((b - a for a, b in iv), default=0.0), 2)}
         c = cues.get(n)
@@ -111,9 +155,13 @@ def measure_job(videos_dir: Path, job_id: str, api_key: Optional[str]) -> Dict[s
         scenes.append(row)
     total = sum(s["duration"] for s in scenes) or 1.0
     frozen = sum(s["frozen_s"] for s in scenes)
+    dead = sum(s["dead_s"] for s in scenes)
     errs = sorted(e for s in scenes for e in s.get("align_errors", []))
     return {
         "job": job_id, "scenes": scenes, "duration": round(total, 1), "frozen_share": round(frozen / total, 3),
+        "dead_share": round(dead / total, 3),
+        "longest_still": max((s["longest_still"] for s in scenes), default=0.0),
+        "scenes_still_ge_5s": sum(s["longest_still"] >= DEAD_MIN_S for s in scenes),
         "max_cue_gap": max((s["cue_gap"] for s in scenes if "cue_gap" in s), default=None),
         "scenes_frozen_ge_5s": sum(s["longest_frozen"] >= 5 for s in scenes),
         "beats_fallback_rate": meta.get("beats_fallback_rate"),
@@ -137,9 +185,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     results = [measure_job(a.videos_dir, j, key) for j in a.jobs]
     total = sum(r["duration"] for r in results) or 1.0
     frozen = sum(r["frozen_share"] * r["duration"] for r in results)
+    dead = sum(r["dead_share"] * r["duration"] for r in results)
     errs = sorted(e for r in results for s in r["scenes"] for e in s.get("align_errors", []))
+    stills = sorted(s["longest_still"] for r in results for s in r["scenes"])
     summary = {
         "jobs": len(results), "scenes": sum(len(r["scenes"]) for r in results), "duration_s": round(total, 1),
+        "dead_share": round(dead / total, 3),
+        "longest_still_p50": stills[len(stills) // 2] if stills else None,
+        "longest_still_max": stills[-1] if stills else None,
+        "scenes_still_ge_5s": sum(r["scenes_still_ge_5s"] for r in results),
         "frozen_share": round(frozen / total, 3),
         "scenes_frozen_ge_5s": sum(r["scenes_frozen_ge_5s"] for r in results),
         "max_cue_gap": max((r["max_cue_gap"] or 0 for r in results), default=None),
@@ -148,7 +202,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "align_n": len(errs),
     }
     for r in results:
-        print(f"{r['job']}: {r['duration']:.0f}s frozen {r['frozen_share'] * 100:.0f}% "
+        print(f"{r['job']}: {r['duration']:.0f}s dead {r['dead_share'] * 100:.0f}% longest_still {r['longest_still']} "
+              f"frozen {r['frozen_share'] * 100:.0f}% "
               f"max_cue_gap {r['max_cue_gap']} fallback {r['beats_fallback_rate']} align_p90 {r['align_p90']}")
     print("SUMMARY", json.dumps(summary))
     if a.json:

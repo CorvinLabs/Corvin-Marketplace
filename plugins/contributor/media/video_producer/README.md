@@ -10,7 +10,7 @@
 
 1. **Storyboard** → LLM writes scenes + narration text (Anthropic API by default; falls back to local Ollama if API forbidden by L35/L34 gates)
 2. **Narration** → OpenAI TTS synthesizes audio for each scene (`tts-1-hd`, voice `onyx`) — clear error message if key missing; fallback chain via `tts_engine: "auto"`
-3. **Slides** → Animated web slides in **corvin-labs.com design** with 14 built-in templates (deterministic Chromium rendering, ambient loops, monotone curves, DAG graphs); fallback to Pillow if Chromium unavailable
+3. **Slides** → Animated web slides in **corvin-labs.com design** with 15 built-in templates whose reveals and focus follow the narration sentence by sentence (deterministic Chromium rendering, ambient loops, monotone curves, DAG graphs); fallback to Pillow if Chromium unavailable
 4. **Assembly** → FFmpeg encodes MP4 at 1920×1080 / 30fps with audio synced to narration
 
 **Result:** a professional 1–3 minute MP4 video ready to share. **No subtitles** (ADR-2211 design decision).
@@ -62,7 +62,7 @@ curl -O http://localhost:8765/v1/console/video/videos/video_abc123/download
 
 ### Web Slide Templates
 
-The plugin ships with **14 built-in templates** (hero, content, line chart, donut, flow graph, timeline, cycle, layers, stat, diagram, compare, quote, code) — see [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md) for details. The storyboard LLM automatically picks templates based on the scene content; you don't need to specify them.
+The plugin ships with **15 built-in templates** (hero, content, line chart, donut, flow graph, timeline, cycle, layers, stat, diagram, compare, quote, code, chart, console still). Each item of a slide appears when the narration names it and is highlighted while it is explained — see [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md) for details. The storyboard LLM automatically picks templates based on the scene content; you don't need to specify them.
 
 ## Testing
 
@@ -81,7 +81,7 @@ Known red tests, pre-existing and unrelated to the live path: four status-code t
 ## Documentation
 
 ### For Using This Plugin
-- **[docs/WEB-SLIDES.md](docs/WEB-SLIDES.md)** — All 14 slide templates, data contracts, animation details
+- **[docs/WEB-SLIDES.md](docs/WEB-SLIDES.md)** — All 15 slide templates, data contracts, narration-synced timing
 - **[ADR-2238](../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md)** — Web-slide renderer design (Chromium, deterministic frames, ambient loops)
 - **[ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md)** — Narration quality (OpenAI TTS, fallback chain)
 

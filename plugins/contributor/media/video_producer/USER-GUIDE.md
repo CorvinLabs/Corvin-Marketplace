@@ -170,7 +170,7 @@ When your video is ready, you get:
 - **Scenes:** at most 8 per video (6 when the storyboard is written by the local model); narration per scene is capped at 500 characters
 - **Task description:** up to 4000 characters
 - **Rendering time:** measured on the development host, roughly 1.5 times the video length plus narration time; it runs in the background
-- **Template options:** 14 pre-built slide templates (you can't customize them, but AI picks the best one per scene)
+- **Template options:** 15 pre-built slide templates (you can't customize them, but AI picks the best one per scene). What the narration names appears at that moment and is highlighted while it is explained.
 
 ---
 

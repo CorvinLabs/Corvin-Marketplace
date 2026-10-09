@@ -1,8 +1,9 @@
 # Web slides
 
 Scenes can be rendered as animated HTML slides in the visual language of
-corvin-labs.com instead of the classic Pillow slide. Decision record: ADR-2238
-(Corvin-Knowledge); implementation plan: PLAN-0940.
+corvin-labs.com instead of the classic Pillow slide. Decision records: ADR-2238
+(renderer) and ADR-2245 (narration-synced cues), both in Corvin-Knowledge;
+implementation plans: PLAN-0940, PLAN-0944.
 
 ## How a scene becomes a web slide
 
@@ -32,7 +33,45 @@ Pipeline per web scene (`skill.orchestrate_video`):
    paused time (measured: up to 54 of 149 frames differing between two
    browser instances). With them, renders in separate browser instances were
    bit-identical in every run (tested per frame with SHA-256).
-3. Frames always cover the complete entrance animation. If the narration is
+3. **Cues follow the narration (ADR-2245).** Before the slide is rendered the
+   scene's narration has been synthesised, so its real audio exists. The
+   narration is split into sentences (abbreviation-aware: `z. B.`, `ca. 30`,
+   `3.5` do not end one), each sentence start is estimated by character share
+   and snapped to the nearest pause `ffmpeg silencedetect` finds within ±1.2 s
+   (each pause used once, order kept; a mostly silent clip — the offline mock
+   voice — is not snapped). `web_timeline.build_timeline` then places the
+   slide's items (bullets, nodes, bars, segments, steps, layers, events, flow
+   columns, callouts — `web_templates.scene_items`):
+   - with storyboard **beats** (one entry per sentence: the item index the
+     sentence is about, a 1-3 word chip copied from it for `hero`/`quote`/`stat`,
+     or `null`), an item appears 0.25 s before its sentence starts and the eye is
+     led to it;
+   - without beats (or when they do not fit the final narration), an item
+     appears where the narration names it — its label, a compound part of it
+     (`EventEmitter` matches "Emitter") or its sub-line; items nobody names are
+     placed between their named neighbours;
+   - an item named in the last words still gets 2.5 s on screen; focus moves at
+     most every 2.5 s and only once two items are visible.
+   **Focus:** one animation on the stage (`@keyframes fclock`) drives registered
+   numbers `--fN`/`--gN` per item step; an item reads them in its `filter`
+   (`opacity()` + a tight accent `drop-shadow`), so the focus never fights the
+   item's own entrance animation. The named item glows, the others dim to 38 %;
+   edge labels are never dimmed (a translucent pill would let the edge strike
+   through it). **Chips** (sparse slides only) are revealed under the main text
+   as their words are spoken. Every element's delay is its cue time (`--at`),
+   set when the document is built; ambient motion starts per element, once that
+   element has settled (`--amb-at`).
+   Without a timeline (a direct `render()` call, older tests) the reveal is
+   spread evenly over the first 55 % of the narration as before.
+4. A timeline render samples the **whole narration**: `[0, max(audio, last
+   animation)]` at the job's fps, within a budget of `MAX_SCENE_SECONDS · fps`
+   (a cue past it is an error, never a silent hold) and a timeout of
+   `30 s + 3 × duration`. A frame is captured only when some finite animation,
+   a focus fade or ambient motion is active; every other output frame repeats
+   the last capture (`FrameSequence.schedule`), and the assembler always reads
+   the clip from a contiguous hard-linked `seq/%05d.png` built from the schedule
+   (the image demuxer stops at the first missing number).
+5. Without a timeline, frames cover the complete entrance animation. If the narration is
    shorter, the audio is padded with silence, so a reveal (e.g. the rolling
    digits of `stat`) is never cut off mid-way (`_assemble_frames_clip`). If it
    is longer, the slide keeps moving when it has **ambient motion** (data
@@ -95,8 +134,8 @@ control, and both would need script execution (and Recharts a React build).
 Categorical colours (`c0`..`c5`: amber, slate, green, cream, light amber,
 faint) are identities, not a value ramp.
 
-Reveal timing follows the narration: entrance steps are spread so that
-everything is on screen by about 55% of the scene's audio.
+Reveal timing follows the narration: each item appears and is focused when
+the narration names it (ADR-2245, see "How a scene becomes a web slide").
 
 ## Configuration (job config)
 
@@ -160,7 +199,8 @@ script.
 
 If Playwright/Chromium is missing or cannot start, every web scene of the job
 renders on the Pillow path. If a single render fails or times out (120 s),
-that scene falls back. Each fallback is listed in the output metadata
+that scene falls back (a timeline render's timeout grows with the narration).
+Each fallback is listed in the output metadata
 (`web_render_fallbacks: [{scene, reason}]`), emitted as a `web_render_fallback`
 feedback event and shown in the job's progress message. `renderers` lists the
 renderer that produced each scene.
@@ -206,10 +246,32 @@ holds none), so the sync has only run against a local server that answers
 like the Variables API. A live run needs a token with `file_variables:read`
 on a plan that exposes the Variables REST API.
 
+## Overlaps
+
+The settled slide is measured in the browser (`web_layout.py`). A colliding
+slide is retried, in this order, with what keeps the most content: without its
+keyword chips, as the compact variant of the same template (`flow`, `diagram`,
+`cycle`, `timeline`, `content`: smaller labels, no sub-lines), as bullets that
+keep every item (graphs with at most 5 items), and only then as a quote of the
+narration's first sentence. Cues are rebuilt for every replacement; the job
+metadata says which one was used (`layout_collisions[].action`).
+
+## Measuring how much a video stands still
+
+`scripts/measure_engagement.py <tenant>/video_producer/videos <job>...` reports
+per scene the **still stretches** — the per-pixel median over ±1 s (removes
+ambient dots, orbits, pulse rings: motion without information) compared with
+the state 1 s earlier — as `dead_share` (time in stretches of 5 s or more) and
+the longest one, plus the longest gap between scheduled cues from the job
+metadata (`cues`). `--whisper` adds cue alignment against OpenAI whisper-1
+word times (an independent clock). ffmpeg `freezedetect` is reported for
+comparison only: it compares consecutive frames, so a 0.9 s fade-in counts as
+frozen.
+
 ## Tests
 
 ```bash
-pytest tests/test_web_templates.py tests/test_web_charts.py tests/test_web_renderer.py tests/test_figma_sync.py tests/test_web_slides_e2e.py
+pytest tests/test_web_templates.py tests/test_web_charts.py tests/test_web_renderer.py tests/test_figma_sync.py tests/test_web_slides_e2e.py tests/test_web_timeline.py
 ```
 
 `test_web_slides_e2e.py` drives `start_video_production` (the function the
@@ -220,3 +282,7 @@ at the real process boundary (argv, stdin, cwd recorded). `test_web_charts.py`
 checks the geometry, every refusal path, and — in real Chromium — that the
 ambient period is pixel-seamless and actually moves. `test_figma_sync.py` runs the CLI as a subprocess against a local
 server that answers like the Figma API; a live call needs a real token.
+`test_web_timeline.py` covers the sentence splitter, pause snapping on real
+generated audio, beats validation, the fallback mapping, a 45 s scene whose
+last cue (38 s, past the old 900-frame cap, after a skipped quiet stretch)
+must appear in the encoded clip, and the focus dimming in real Chromium.

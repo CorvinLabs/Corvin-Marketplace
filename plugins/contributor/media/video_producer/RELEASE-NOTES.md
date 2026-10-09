@@ -1,5 +1,53 @@
 # Video Producer Plugin — Release Notes
 
+## Version 1.3.0 (2026-10-09)
+
+### What's new
+- **The slide follows the voice (ADR-2245).** Before, every slide revealed all of its content within the
+  first half of its narration and then stood still while the voice kept explaining. Now each item — a bullet,
+  a node, a bar, a step, a layer — appears when the narration names it, and the eye is led to it: the named
+  item glows in the accent colour, the others step back. Sentence starts are located in the real narration
+  audio (pauses found with ffmpeg, no extra TTS call), so the timing follows what is actually spoken.
+- **Beats in the storyboard.** The storyboard model may add `beats` per scene — one entry per sentence: the
+  item the sentence is about, a 1-3 word keyword chip (title, quote and number slides), or nothing. Beats are
+  checked against the final narration when the slide is rendered; where they do not fit, the plugin finds the
+  items in the narration itself (labels, compound parts, sub-lines). The job metadata says which way each
+  scene went (`cues[].beats_source`, `beats_fallback_rate`).
+- **Collisions keep the content.** A slide whose text collides is retried without chips, then as a compact
+  variant, then as bullets that keep every item — before it falls back to a one-line quote.
+- **Measured.** `scripts/measure_engagement.py` reports how long a video stands still (still stretches of
+  the content, with ambient dots filtered out), the gaps between cues and, with `--whisper`, how close each
+  cue is to the spoken word.
+
+### Results
+The seven tasks of the 1.2.0 baseline, produced again through the live console (`measure_engagement.py`):
+
+| | 1.2.0 | 1.3.0 |
+|---|---|---|
+| Dead share (time in still stretches of 5 s or more) | 57 % | 19 % |
+| Longest still stretch per scene, median | 8.5 s | 4.0 s |
+| Longest still stretch, maximum | 23 s | 18.75 s |
+| Scenes with a still stretch of 5 s or more | 52 of 61 | 21 of 59 |
+
+Not yet reached: cue-to-word alignment, measured with `--whisper` on two of the seven jobs (36 items), is
+0.87 s at the median but 4.5 s at p90 (goal: 1.5 s). Part of it is the fallback placing an item the
+narration names late, part is the measurement matching the first mention of a word part. The remaining
+still stretches sit inside long sentences (one cue per sentence) and on screenshot slides without items.
+
+### Known limits
+- Slides with ambient motion (flow, diagram, cycle, timeline, layers, line) are captured frame by frame for
+  the whole narration; rendering takes longer than before on those.
+- When the narration never names a slide's items, the fallback can only place them between the ones it
+  finds; the storyboard model's beats are what makes such scenes precise.
+- The focus glow is kept tight on purpose: a wide soft glow bands into dark contour rings once encoded as
+  8-bit H.264.
+
+### Verified by
+`tests/test_web_timeline.py` (sentence splitting, pause snapping on generated audio, beats validation, a 45 s
+scene whose last cue must reach the encoded clip, focus dimming in Chromium), an E2E through
+`start_video_production` with beats, the plugin suite, a re-run of the seven baseline tasks through the live
+console, and the console's fresh-install lifecycle spec against this repository on GitHub.
+
 ## Version 1.2.0 (2026-10-09)
 
 ### What's new
