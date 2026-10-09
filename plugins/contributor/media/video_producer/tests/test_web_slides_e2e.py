@@ -220,7 +220,7 @@ async def test_a_repair_that_is_still_invalid_keeps_the_classic_slide_and_says_w
     _fake_claude(tmp_path, monkeypatch, BROKEN_DONUT, repair=still_bad)
     result = await _run(store, "job_repair_bad", storyboard_backend="claude_cli", storyboard_model="claude-sonnet-5-5")
     md = result["metadata"]
-    assert md["renderers"] == ["web", "pillow"], "the repair may only touch the scene that failed"
+    assert md["renderers"] == ["web", "web"], "an unrepairable scene is degraded to a web quote slide, never the placeholder"
     assert md["storyboard_template_repairs"] == 0
     assert len(md["storyboard_template_warnings"]) == 1 and "center_value" in md["storyboard_template_warnings"][0]
 
@@ -285,9 +285,11 @@ async def test_llm_storyboard_invalid_web_spec_is_dropped_not_passed_through(sto
 
     result = await _run(store, "job_web_llm")
 
-    assert result["metadata"]["renderers"] == ["web", "pillow"]
+    assert result["metadata"]["renderers"] == ["web", "web"]
     job = get_storage(store).get_job("job_web_llm")
-    assert job.storyboard.scenes[1].template is None and job.storyboard.scenes[1].data is None
+    # the invented template never survives; the scene is rebuilt as a quote slide from its narration
+    assert job.storyboard.scenes[1].template == "quote"
+    assert "slideshow" not in str(job.storyboard.scenes[1].data) and "onerror" not in str(job.storyboard.scenes[1].data)
     # The script tag reached the slide as escaped text, not markup (asserted on the document).
     from src.web_templates import build_document
     doc = build_document("hero", job.storyboard.scenes[0].data, duration_s=4)
@@ -317,4 +319,4 @@ async def test_llm_values_that_used_to_crash_the_job_are_dropped(store, monkeypa
     )
     monkeypatch.setattr(skill, "_call_storyboard_llm", lambda *a, **k: raw)
     result = await _run(store, "job_web_llm2")
-    assert result["metadata"]["renderers"] == ["pillow", "pillow"]
+    assert result["metadata"]["renderers"] == ["web", "web"], "values that crashed the job become quote slides built from the narration"

@@ -73,6 +73,12 @@ Every template accepts `eyebrow?` (40), a small mono label above the title.
 | `timeline` | `title` (80), `events` 2-6 of `{when (16), label (28), sub? (60)}`, `current?` index | progress line draws up to `current`, milestones pop; ambient pulse ring on `current` |
 | `cycle` | `title` (60), `caption?` (180), `center?` (24), `steps` 3-6 of `{label (22), sub? (40)}`, `highlight?` | text left, loop right: numbered nodes pop, arcs with arrowheads draw; ambient orbit around the loop |
 | `layers` | `title` (80), `layers` 2-6 of `{label (32), sub? (64), tag? (12)}` (first = top), `highlight?` | a slightly tilted stack builds from the bottom up; ambient shine sweeps the highlighted slab |
+| `console_still` | `title` (80), `asset` (a key of `src/web/assets/console/catalog.json`), `caption?` (120), `callouts?` 0-3 of `{spot, label (32)}`, `zoom?` `{spot, scale 1-1.6}` | a real console screenshot rises, slowly pushes in toward the zoom spot, callout rings pop with labels. `spot` must be a hotspot the catalogue measured for that asset (the storyboard model never sees the image); assets without spots take no callouts or zoom |
+
+Every web template also accepts a scene-level `map: {"focus": channels|agents|engines|compute|data|audit}`:
+a small "you are here" strip at the right edge listing Corvin's layers as the website's
+architecture diagram draws them, the focus layer lit amber. A storyboard whose scenes all
+share one focus loses the strip (it only teaches when the focus moves).
 
 Unknown templates, unknown fields, wrong types and over-long text are
 rejected. `stat`, `chart`, `line` and `donut` show numbers: the storyboard
@@ -132,6 +138,23 @@ plain classic slide, which is what the repair pass exists to prevent.
 Bidi overrides, zero-width characters and lone surrogates are stripped or
 rejected, and any unexpected error in a web scene falls back to the classic
 slide instead of failing the job.
+
+## Grounded storyboards (ADR-2240)
+
+When the host passes `grounding_pack` (built by `src/grounding.py`, gated and audited by
+the host — the console does this only for the knowledge base's own tenant), the storyboard
+prompt carries the pack as fenced quoted data and allows up to 10 scenes plus
+`console_still` and `map`. After generation `src/grounded_storyboard.py` checks every
+number (> 10, decimal or with a unit), code identifier, decision id and file path in the
+narration and slide text against the pack; failing scenes go back once to the same remote
+model with the pack and are kept only if they validate and have fewer unsupported details.
+Job metadata `grounding` records `status` (`grounded`, `grounded_with_unverified`,
+`refused`, `unavailable`, `not_applicable`), the decisions used with their truth labels,
+and counts — never pack or claim text. A local backend never receives a pack.
+
+Rebuild the screenshot catalogue from a Corvin-Website checkout with
+`python scripts/build_console_assets.py <website>`; hotspots are measured by hand in that
+script.
 
 ## Fallback
 

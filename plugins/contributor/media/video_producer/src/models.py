@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
-from typing import Any, Optional, List
+from typing import Any, Dict, Optional, List
 import json
 
 
@@ -149,6 +149,8 @@ class Scene:
     template: Optional[str] = None
     data: Optional[dict] = None
     theme: Optional[str] = None
+    # "You are here" overlay (PLAN-0942 D11): {"focus": <layer key>}; validated with the template.
+    map: Optional[Dict[str, Any]] = None
 
     def to_dict(self):
         return asdict(self)
@@ -178,6 +180,8 @@ class Storyboard:
     # what still renders on the classic slide (and why). Job metadata only.
     template_repairs: int = 0
     template_warnings: List[str] = field(default_factory=list)
+    # PLAN-0942: grounding record (status, entities, counts) — job metadata, never pack text.
+    grounding: Optional[Dict[str, Any]] = None
 
     def to_json(self) -> str:
         return json.dumps({

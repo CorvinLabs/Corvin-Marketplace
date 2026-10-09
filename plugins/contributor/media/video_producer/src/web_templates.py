@@ -35,8 +35,62 @@ DEFAULT_TOKENS_PATH = WEB_DIR / "design_tokens.json"
 BASE_CSS_PATH = WEB_DIR / "css" / "base.css"
 
 TEMPLATES = ("hero", "content", "stat", "diagram", "chart", "compare", "quote", "code",
-             "line", "donut", "flow", "timeline", "cycle", "layers")
+             "line", "donut", "flow", "timeline", "cycle", "layers", "console_still")
 THEMES = ("dark", "light")
+
+# The "you are here" strip (PLAN-0942 D11): Corvin's layers as the website's
+# platform-arch diagram draws them, top to bottom.
+MAP_LAYERS: Dict[str, str] = {
+    "channels": "Channels", "agents": "Agents", "engines": "Engines",
+    "compute": "Pipelines · Compute", "data": "Data", "audit": "Audit",
+}
+CONSOLE_ASSET_DIR = Path(__file__).resolve().parent / "web" / "assets" / "console"
+MAX_ASSET_BYTES = 256 * 1024
+
+
+@lru_cache(maxsize=1)
+def _console_catalog() -> Dict[str, Dict[str, Any]]:
+    """Bundled console screenshots (scripts/build_console_assets.py). Missing = none."""
+    try:
+        raw = json.loads((CONSOLE_ASSET_DIR / "catalog.json").read_text())
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for key, entry in raw.items():
+        f = CONSOLE_ASSET_DIR / str(entry.get("file", ""))
+        if re.fullmatch(r"[a-z0-9_]{2,32}", key) and f.is_file() and f.parent == CONSOLE_ASSET_DIR \
+                and f.stat().st_size <= MAX_ASSET_BYTES:
+            spots = {}
+            for name, spot in (entry.get("spots") or {}).items():
+                if re.fullmatch(r"[a-z0-9_]{2,32}", name) and isinstance(spot, dict) \
+                        and all(isinstance(spot.get(k), (int, float)) and 0 <= spot[k] <= 1 for k in ("x", "y")):
+                    spots[name] = {"x": float(spot["x"]), "y": float(spot["y"]),
+                                   "description": str(spot.get("description", ""))[:120]}
+            out[key] = {"file": f, "caption": str(entry.get("caption", ""))[:160], "spots": spots,
+                        "w": int(entry.get("width", 1600)), "h": int(entry.get("height", 1000))}
+    return out
+
+
+def console_assets() -> Dict[str, str]:
+    """asset key -> caption (+ its named hotspots), for the storyboard prompt."""
+    out = {}
+    for k, v in _console_catalog().items():
+        spots = "; ".join(f"{n} = {s['description']}" for n, s in v["spots"].items())
+        out[k] = v["caption"] + (f" — spots: {spots}" if spots else " — no spots (no callouts or zoom)")
+    return out
+
+
+def _corvinOS_symbol_svg(size: int = 48) -> str:
+    """The real mark from Corvin-Website/logo.svg: prompt chevron, underscore bar, gold dot."""
+    return (f'<svg width="{size}" height="{size}" viewBox="12 12 96 96" xmlns="http://www.w3.org/2000/svg" '
+            f'class="corvinOS-symbol" style="color:var(--text)">'
+            f'<path fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" '
+            f'stroke-linejoin="round" d="M28 40 L56 60 L28 80"/>'
+            f'<rect fill="currentColor" x="66" y="72" width="30" height="9" rx="2"/>'
+            f'<circle cx="80" cy="50" r="10" fill="#C9A227"/>'
+            f'<circle cx="80" cy="50" r="10" fill="none" stroke="currentColor" stroke-width="2"/></svg>')
+
+
 LANGS = ("de", "en")
 
 # family name -> (file, style) ; only bundled families may appear in tokens
@@ -396,6 +450,37 @@ def validate_scene_data(template: Any, data: Any) -> Dict[str, Any]:
                            "tag": _text(ly, "tag", 12, False)})
         out.update(title=_text(data, "title", 80), layers=layers,
                    highlight=_int(data, "highlight", 0, len(layers) - 1, None))
+    elif template == "console_still":
+        _unknown(data, ("eyebrow", "title", "asset", "caption", "callouts", "zoom"))
+        asset = data.get("asset")
+        if asset not in _console_catalog():
+            raise WebSceneError(f"unknown console asset {asset!r} (allowed: {', '.join(_console_catalog())})")
+        spots = _console_catalog()[asset]["spots"]
+
+        def spot(obj: dict) -> Dict[str, str]:
+            name = obj.get("spot")
+            if name not in spots:
+                raise WebSceneError(f"unknown spot {name!r} for asset {asset!r} (allowed: {', '.join(spots) or 'none'})")
+            return {"spot": name}  # coordinates are resolved at build time: validation stays idempotent
+
+        callouts = []
+        for c in (_list(data, "callouts", 0, 3) if "callouts" in data else []):
+            if not isinstance(c, dict):
+                raise WebSceneError("callouts entries must be objects")
+            _unknown(c, ("spot", "label"))
+            callouts.append({**spot(c), "label": _text(c, "label", 32)})
+        zoom = None
+        if data.get("zoom") is not None:
+            z = data["zoom"]
+            if not isinstance(z, dict):
+                raise WebSceneError("zoom must be an object")
+            _unknown(z, ("spot", "scale"))
+            scale = _number(z, "scale")
+            if not 1.0 <= scale <= 1.6:
+                raise WebSceneError("zoom.scale must be between 1 and 1.6")
+            zoom = {**spot(z), "scale": scale}
+        out.update(title=_text(data, "title", 80), asset=asset, caption=_text(data, "caption", 120, False),
+                   callouts=callouts, zoom=zoom)
     return out
 
 
@@ -438,6 +523,7 @@ def reveal_steps(template: str, data: Dict[str, Any]) -> int:
         "timeline": len(data.get("events") or []),
         "cycle": len(data.get("steps") or []),
         "layers": len(data.get("layers") or []),
+        "console_still": 1 + len(data.get("callouts") or []),
     }[template]
 
 
@@ -541,13 +627,15 @@ def _diagram(d):
     w = min(340, (width - (n - 1) * gap) / n)
     x0 = (width - (n * w + (n - 1) * gap)) / 2
     cards, edges, pulses = [], [], []
+    longest = max((len(word) for nd in nodes for word in nd["label"].split()), default=1)
+    fs = max(22, min(40, int((w - 56) / (longest * 0.52))))
     for k, node in enumerate(nodes):
         x = x0 + k * (w + gap)
         hl = " hl" if d.get("highlight") == k else ""
         sub = f'<div class="s">{_e(node["sub"])}</div>' if node.get("sub") else ""
         cards.append(
             f'<div class="node r{hl}" style="--i:{2 + k};left:{x:.1f}px;width:{w:.1f}px">'
-            f'<div class="k">{k + 1:02d}</div><div class="l">{_e(node["label"])}</div>{sub}</div>'
+            f'<div class="k">{k + 1:02d}</div><div class="l" style="font-size:{fs}px">{_e(node["label"])}</div>{sub}</div>'
         )
         if k < n - 1:
             ax, bx, y = x + w + 10, x + w + gap - 14, 150
@@ -867,9 +955,40 @@ def _layers(d):
     return f'<div class="frame">{_header(d)}<div class="stack">{"".join(rows)}</div></div>'
 
 
+def _console_still(d):
+    entry = _console_catalog()[d["asset"]]
+    data = base64.b64encode(entry["file"].read_bytes()).decode("ascii")
+    # fit the image into the content box keeping its aspect ratio; callouts sit in
+    # that box in percent, so they stay on target while it zooms
+    w, h = entry["w"], entry["h"]
+    scale = min(1480 / w, 640 / h)
+    bw, bh = round(w * scale), round(h * scale)
+    spots = entry["spots"]
+    z = dict(d.get("zoom") or {"scale": 1.0})
+    z.update(spots.get(z.get("spot"), {"x": 0.5, "y": 0.5}))
+    marks = []
+    for k, c in enumerate(d.get("callouts") or []):
+        c = {**c, **spots[c["spot"]]}
+        side = " left" if c["x"] > 0.62 else ""
+        marks.append(f'<div class="callout{side}" style="--i:{3 + k};left:{c["x"] * 100:.2f}%;top:{c["y"] * 100:.2f}%">'
+                     f'<i></i><span>{_e(c["label"])}</span></div>')
+    cap = f'<div class="still-cap r" style="--i:{3 + len(marks)}">{_e(d["caption"])}</div>' if d.get("caption") else ""
+    return (f'<div class="frame still">{_header(d)}'
+            f'<div class="still-box r" style="--i:2;width:{bw}px;height:{bh}px">'
+            f'<div class="still-zoom" style="transform-origin:{z["x"] * 100:.2f}% {z["y"] * 100:.2f}%;--zs:{z["scale"]:.3f}">'
+            f'<img alt="" src="data:image/jpeg;base64,{data}">{"".join(marks)}</div></div>{cap}</div>')
+
+
+def _map_strip(focus: str) -> str:
+    rows = "".join(f'<div class="mp{" on" if key == focus else ""}">{_e(label)}</div>'
+                   for key, label in MAP_LAYERS.items())
+    return f'<div class="map">{rows}</div>'
+
+
 _BUILDERS = {"hero": _hero, "content": _content, "stat": _stat, "diagram": _diagram,
              "chart": _chart, "compare": _compare, "quote": _quote, "code": _code,
              "line": _line, "donut": _donut, "flow": _flow, "timeline": _timeline, "cycle": _cycle,
+             "console_still": _console_still,
              "layers": _layers}
 
 
@@ -910,6 +1029,7 @@ def build_document(
     scene_index: Optional[int] = None,
     total_scenes: Optional[int] = None,
     lang: str = "en",
+    map_focus: Optional[str] = None,
 ) -> str:
     """Validate and render one slide to a self-contained HTML string."""
     d = validate_scene_data(template, data)
@@ -929,7 +1049,11 @@ def build_document(
                  f"--t0:{t0:.3f}s;--stagger:{stagger:.3f}s;"
                  f"--tend:{ambient_start(t0, stagger, reveal_steps(template, d), anim['rise_ms']):.3f}s;")
 
-    chrome = '<div class="wordmark"><b>&gt;_</b>CorvinOS</div>'
+    if map_focus is not None and map_focus not in MAP_LAYERS:
+        raise WebSceneError(f"unknown map focus {map_focus!r} (allowed: {', '.join(MAP_LAYERS)})")
+    # CorvinOS symbol: hexagon + rings + yellow accent dot (ADR-2238 Amendment)
+    symbol = _corvinOS_symbol_svg(48)
+    chrome = f'<div class="wordmark">{symbol}CorvinOS</div>'
     if scene_index and total_scenes:
         chrome += f"<div>{int(scene_index):02d} / {int(total_scenes):02d}</div>"
     seed = zlib.crc32(f"{template}|{d.get('title') or d.get('quote') or d.get('label') or ''}".encode("utf-8"))
@@ -938,5 +1062,6 @@ def build_document(
         f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8">'
         f"<style>{_font_faces()}:root{{{css_vars}}}{_base_css()}</style></head>"
         f'<body class="theme-{theme}"><div class="stage"><div class="glow"></div><div class="ring"></div>'
-        f"{_stars(seed)}{_BUILDERS[template](d)}<div class=\"chrome\">{chrome}</div></div></body></html>"
+        f"{_stars(seed)}{_BUILDERS[template](d)}{_map_strip(map_focus) if map_focus else ''}"
+        f"<div class=\"chrome\">{chrome}</div></div></body></html>"
     )

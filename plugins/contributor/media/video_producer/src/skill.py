@@ -1,6 +1,7 @@
 """TaskOrchestrator Skill — LLM Storyboarding + real audio/video assembly."""
 
 import asyncio
+import copy
 import json
 import logging
 import math
@@ -30,6 +31,9 @@ try:
     from .screenshot_annotator import annotate_screenshot
     from .web_templates import TEMPLATES, THEMES, WebSceneError, load_tokens, validate_scene_data
     from .web_renderer import FPS_DEFAULT, MAX_SCENE_SECONDS, WebRenderError, WebSlideRenderer
+    from .web_templates import MAP_LAYERS, console_assets
+    from .grounding import render_pack, validate_pack
+    from . import grounded_storyboard as gsb
 except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
@@ -38,6 +42,9 @@ except ImportError:  # standalone script use (no package context)
     from screenshot_annotator import annotate_screenshot
     from web_templates import TEMPLATES, THEMES, WebSceneError, load_tokens, validate_scene_data
     from web_renderer import FPS_DEFAULT, MAX_SCENE_SECONDS, WebRenderError, WebSlideRenderer
+    from web_templates import MAP_LAYERS, console_assets
+    from grounding import render_pack, validate_pack
+    import grounded_storyboard as gsb
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +127,7 @@ def _call_claude_cli(prompt: str, model: str) -> str:
 
 
 def _call_storyboard_llm(prompt: str, backend: str = "ollama", model: Optional[str] = None,
-                         report: Optional[Dict[str, Any]] = None) -> str:
+                         report: Optional[Dict[str, Any]] = None, local_fallback: bool = True) -> str:
     """
     Call an LLM to turn the prompt into a storyboard JSON string.
 
@@ -158,6 +165,10 @@ def _call_storyboard_llm(prompt: str, backend: str = "ollama", model: Optional[s
             return message.content[0].text
         except Exception as e:  # noqa: BLE001
             logger.warning("Anthropic storyboard call failed (%s), falling back to local Ollama", type(e).__name__)
+    if backend != "ollama" and not local_fallback:
+        # A grounded prompt must not land on the small local model: its context window
+        # truncates the SOURCES silently (PLAN-0942 D2).
+        raise RuntimeError(f"remote storyboard backend {backend!r} unavailable")
 
     response = requests.post(
         _OLLAMA_URL,
@@ -244,6 +255,7 @@ async def generate_storyboard_with_llm(
     backend: str = "ollama",
     model: Optional[str] = None,
     didactic_strategy: Optional[str] = None,
+    grounding: Optional[Dict[str, Any]] = None,
 ) -> Storyboard:
     """
     LLM: Task → Storyboard (JSON)
@@ -261,6 +273,10 @@ async def generate_storyboard_with_llm(
     # A remote model writes a longer storyboard in seconds; the CPU-only local
     # fallback needs the small count.
     max_scenes = 6 if backend == "ollama" else 8
+    # PLAN-0942: a host-gated grounding pack is used with a remote model only.
+    grounded = grounding is not None and backend != "ollama"
+    if grounded:
+        max_scenes = gsb.GROUNDED_MAX_SCENES
 
     strategy = didactic_strategy or detect_didactic_strategy(task)
     budget = CHAR_BUDGETS.get(strategy, CHAR_BUDGETS["rich_visual"])
@@ -320,7 +336,24 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
 """
 
     report: Dict[str, Any] = {}
-    raw = _call_storyboard_llm(prompt, backend=backend, model=model, report=report)
+    pack_text = ""
+    if grounded:
+        pack_text = render_pack(grounding)
+        grounded_prompt = prompt.replace(
+            "\nCONSTRAINTS (MUST ENFORCE):",
+            gsb.build_sources_block(pack_text, console_assets(), task) + "\nCONSTRAINTS (MUST ENFORCE):", 1,
+        )
+        try:
+            raw = _call_storyboard_llm(grounded_prompt, backend=backend, model=model, report=report,
+                                       local_fallback=False)
+        except Exception as e:  # noqa: BLE001 — remote down: the ordinary path, recorded as unavailable
+            logger.warning("grounded storyboard unavailable (%s); writing an ungrounded one", type(e).__name__)
+            sb = await generate_storyboard_with_llm(task, max_duration_minutes, backend=backend, model=model,
+                                                    didactic_strategy=didactic_strategy)
+            sb.grounding = {"status": "unavailable", "reason": "remote_storyboard_failed"}
+            return sb
+    else:
+        raw = _call_storyboard_llm(prompt, backend=backend, model=model, report=report)
 
     try:
         raw = raw.strip()
@@ -349,6 +382,12 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
         template_warnings = _repair_web_scenes(storyboard_json["scenes"], report, model)
         for warning in template_warnings:
             logger.warning("storyboard web-slide warning: %s", warning)
+        if template_warnings:
+            report["degraded_to_quote"] = _degrade_to_web_slides(storyboard_json["scenes"])
+        grounding_info = (
+            _ground_storyboard(storyboard_json, grounding, pack_text, report, model, max_duration_minutes)
+            if grounded else None
+        )
 
         scenes = [Scene.from_dict(s) for s in storyboard_json["scenes"]]
         return Storyboard(
@@ -360,6 +399,7 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
             llm_backend=report.get("backend", backend),
             template_warnings=template_warnings,
             template_repairs=report.get("repaired", 0),
+            grounding=grounding_info,
         )
 
     except json.JSONDecodeError as e:
@@ -879,6 +919,73 @@ async def _render_screenshot_scene(scene: Scene, image_path: Path) -> None:
         os.replace(tmp_path, image_path)
 
 
+def _ground_storyboard(storyboard_json: Dict[str, Any], pack: Dict[str, Any], pack_text: str,
+                       report: Dict[str, Any], model: Optional[str], max_duration_minutes: int) -> Dict[str, Any]:
+    """Claims check + one repair round (PLAN-0942 D9). Returns the job-safe grounding
+    record: entity ids/titles/truth labels and counts — never pack or claim text."""
+    scenes = storyboard_json["scenes"]
+    failures = gsb.check_claims(scenes, pack_text)
+    repaired = 0
+    used = str(report.get("backend", ""))
+    if failures and used.startswith(("claude_cli:", "anthropic:")):
+        backend, _, used_model = used.partition(":")
+
+        def _scene_ok(scene: Dict[str, Any]) -> bool:
+            return not _apply_web_scene_contract([copy.deepcopy(scene)], strict=False)
+
+        repaired = gsb.repair_grounded_scenes(
+            storyboard_json, failures, pack_text, console_assets(),
+            call_llm=lambda p: _call_storyboard_llm(p, backend=backend, model=used_model or model,
+                                                    report={}, local_fallback=False),
+            validate_storyboard=lambda sb: validate_storyboard_dict(sb, max_duration_minutes).valid,
+            validate_scene=_scene_ok,
+        )
+        if repaired:
+            # the repaired scenes' web specs are normalised exactly like the first pass
+            _apply_web_scene_contract(storyboard_json["scenes"], strict=False)
+            failures = gsb.check_claims(storyboard_json["scenes"], pack_text)
+    unverified = gsb.summarise(failures, [str(s.get("id")) for s in storyboard_json["scenes"]])
+    _drop_constant_map(storyboard_json["scenes"])
+    return {
+        "status": "grounded" if not failures else "grounded_with_unverified",
+        "entities": [{"id": s["id"], "title": s["title"], "truth": s["truth"]} for s in pack["sections"]],
+        "claim_repairs": repaired,
+        "unverified": unverified,
+    }
+
+
+def _drop_constant_map(scenes: List[Dict[str, Any]]) -> None:
+    """The "you are here" strip only teaches when the focus moves (PLAN-0942 D11)."""
+    foci = {(s.get("map") or {}).get("focus") for s in scenes if isinstance(s, dict) and s.get("map")}
+    if len(foci) <= 1:
+        for s in scenes:
+            if isinstance(s, dict):
+                s.pop("map", None)
+
+
+def _degrade_to_web_slides(scenes: List[Dict[str, Any]]) -> int:
+    """LLM scenes that still have no valid web spec get a quote slide built from
+    their own narration, so no scene falls back to the plain placeholder slide
+    (which looks nothing like the rest of the video). Returns how many."""
+    n = 0
+    for scene in scenes:
+        if not isinstance(scene, dict) or scene.get("template") is not None:
+            continue
+        if scene.get("kind") in ("screenshot", "screencast"):
+            continue
+        text = " ".join(str(scene.get("narration_text") or "").split())
+        if not text:
+            continue
+        first = re.split(r"(?<=[.!?])\s+", text, maxsplit=1)[0]
+        if len(first) > 200:
+            first = first[:197].rstrip() + "..."
+        trial = {"template": "quote", "data": {"quote": first, "locale": _detect_lang(text)}}
+        if not _apply_web_scene_contract([trial], strict=False):
+            scene["template"], scene["data"] = trial["template"], trial["data"]
+            n += 1
+    return n
+
+
 def _repair_web_scenes(scenes: List[Dict[str, Any]], report: Dict[str, Any], model: Optional[str]) -> List[str]:
     """Validate LLM web-slide specs; when a remote model wrote them, send the
     scenes that failed back once with their exact validation errors and keep
@@ -944,6 +1051,15 @@ def _apply_web_scene_contract(scenes: List[Dict[str, Any]], strict: bool) -> Lis
             continue
         sid = scene.get("id", "?")
         template, data, theme = scene.get("template"), scene.get("data"), scene.get("theme")
+        mp = scene.get("map")
+        if mp is not None and not (isinstance(mp, dict) and set(mp) == {"focus"} and mp.get("focus") in MAP_LAYERS):
+            if strict:
+                raise ValueError(f"scene {sid}: map must be {{'focus': one of {', '.join(MAP_LAYERS)}}}")
+            warnings.append(f"scene {sid}: invalid map overlay (dropped)")
+            scene.pop("map", None)
+        if template is not None and scene.get("kind") in ("screenshot", "screencast"):
+            # a web template never triggers live capture (PLAN-0942 D10)
+            scene["kind"] = "example"
         try:
             if theme is not None and theme not in THEMES:
                 raise WebSceneError(f"unknown theme {theme!r}")
@@ -1147,6 +1263,8 @@ async def orchestrate_video(
     web_theme: str = "dark",
     web_fps: int = FPS_DEFAULT,
     web_tokens_path: Optional[str] = None,
+    grounding_pack: Optional[Dict[str, Any]] = None,
+    grounding_status: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Main orchestrator Skill:
@@ -1191,12 +1309,28 @@ async def orchestrate_video(
         # Step 1: Generate Storyboard via LLM
         _update_job_progress(storage, job, "storyboard_generating", 0, "Analyzing task...")
 
+        # PLAN-0942: the host built and gated the pack; anything malformed is ignored.
+        pack = validate_pack(grounding_pack) if grounding_pack is not None else None
         if storyboard is not None:
             storyboard = _storyboard_from_operator(storyboard, task, max_duration_minutes)
+            storyboard.grounding = {"status": "not_applicable", "reason": "operator_storyboard"} if pack else None
         else:
             storyboard = await generate_storyboard_with_llm(
                 task, max_duration_minutes, backend=storyboard_backend, model=storyboard_model,
+                grounding=pack,
             )
+            if storyboard.grounding is None:
+                if pack is not None:  # a pack, but the backend is local
+                    storyboard.grounding = {"status": "unavailable", "reason": "local_storyboard_model"}
+                elif isinstance(grounding_status, dict) and grounding_status.get("status") in ("refused", "unavailable"):
+                    storyboard.grounding = {"status": grounding_status["status"],
+                                            "reason": str(grounding_status.get("reason", ""))[:60]}
+        if storyboard.grounding and storyboard.grounding.get("status") in ("grounded", "grounded_with_unverified"):
+            g_info = storyboard.grounding
+            note = f"Grounded in {len(g_info['entities'])} knowledge-base decisions"
+            if g_info["status"] == "grounded_with_unverified":
+                note += f"; {g_info['unverified']['count']} detail(s) not found in the sources"
+            _update_job_progress(storage, job, "storyboard_generating", 100, note)
         job.storyboard = storyboard
         _update_job_progress(
             storage, job, "storyboard_generating", 100,
@@ -1284,6 +1418,7 @@ async def orchestrate_video(
                         frames, reason = await web.render(
                             scene, audio_duration, scenes_dir / f"scene_{i:03d}_frames",
                             theme=scene.theme or web_theme, scene_index=i, total_scenes=total, lang=lang,
+                            map_focus=(scene.map or {}).get("focus") if isinstance(scene.map, dict) else None,
                         )
                         if frames is None and reason:
                             web_fallbacks.append({"scene": i, "reason": reason})
@@ -1367,6 +1502,7 @@ async def orchestrate_video(
                 "storyboard_llm": storyboard.llm_backend or "operator",
                 "storyboard_template_repairs": storyboard.template_repairs,
                 "storyboard_template_warnings": storyboard.template_warnings,
+                "grounding": storyboard.grounding,
             },
         )
         storage.save_video_output(video_output)
@@ -1441,4 +1577,6 @@ async def start_video_production(
         web_theme=config.get("web_theme", "dark"),
         web_fps=config.get("web_fps", FPS_DEFAULT),
         web_tokens_path=config.get("web_tokens_path"),
+        grounding_pack=config.get("grounding_pack"),
+        grounding_status=config.get("grounding_status"),
     )

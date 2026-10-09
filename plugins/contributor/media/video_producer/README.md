@@ -15,6 +15,8 @@
 
 **Result:** a professional 1–3 minute MP4 video ready to share. **No subtitles** (ADR-2211 design decision).
 
+**Corvin explainers are grounded:** when the host passes a `grounding_pack` (the CorvinOS console builds one from Corvin-Knowledge decisions and the tracked code, for the knowledge base's own tenant, gated and audited), the storyboard may only state numbers, identifiers and paths from it, and can show real console screenshots (`console_still`) and a "you are here" layer strip (`map`). See [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md#grounded-storyboards-adr-2240).
+
 **Status per job:** stored in metadata (which TTS ran, which storyboard model, any rendering fallbacks, template repairs)
 
 ## How to use it

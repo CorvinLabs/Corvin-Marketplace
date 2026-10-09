@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "source": "Corvin-Website/styles.css + index.html (corvin-labs.com), 2026-10-08",
+  "version": "1.2.0-pass-b",
+  "source": "Corvin-Website/styles.css + index.html (corvin-labs.com), 2026-10-08; Pass B: Unified Design System",
   "dark": {
     "bg": "#0b0f1a",
     "bg_card": "#111827",
@@ -28,10 +28,45 @@
   "typography": {
     "heading_family": "Newsreader",
     "body_family": "Instrument Sans",
-    "mono_family": "JetBrains Mono"
+    "mono_family": "JetBrains Mono",
+    "scale": {
+      "display": 128,
+      "display_sm": 96,
+      "title": 72,
+      "subtitle": 48,
+      "body_lg": 32,
+      "body": 28,
+      "body_sm": 24,
+      "label": 20,
+      "caption": 18
+    }
+  },
+  "spacing": {
+    "xs": "12px",
+    "sm": "20px",
+    "md": "28px",
+    "lg": "40px",
+    "xl": "56px",
+    "xxl": "80px"
+  },
+  "layout": {
+    "width": 1920,
+    "height": 1080,
+    "margin_h": 170,
+    "margin_v": 80,
+    "usable_width": 1580,
+    "usable_height": 920
   },
   "animation": {
     "rise_ms": 900,
-    "easing": "cubic-bezier(0.2, 0.7, 0.2, 1)"
+    "easing": "cubic-bezier(0.2, 0.7, 0.2, 1)",
+    "fast_ms": 400,
+    "slow_ms": 1200,
+    "stagger_ms": 100
+  },
+  "rhythm": {
+    "base_line_height": 1.4,
+    "section_gap": 60,
+    "element_gap": 28
   }
 }

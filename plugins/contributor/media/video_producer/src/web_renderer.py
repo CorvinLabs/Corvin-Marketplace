@@ -134,6 +134,7 @@ class WebSlideRenderer:
         scene_index: Optional[int] = None,
         total_scenes: Optional[int] = None,
         lang: str = "en",
+        map_focus: Optional[str] = None,
     ) -> FrameSequence:
         """Render one scene to ``out_dir/00000.png ...``; returns the frame paths.
 
@@ -147,7 +148,7 @@ class WebSlideRenderer:
             raise WebSceneError(f"duration must be in (0, {MAX_SCENE_SECONDS:.0f}] seconds, got {duration_s!r}")
         document = build_document(
             template, data, duration_s=float(duration_s), theme=theme, tokens=self.tokens,
-            scene_index=scene_index, total_scenes=total_scenes, lang=lang,
+            scene_index=scene_index, total_scenes=total_scenes, lang=lang, map_focus=map_focus,
         )
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)

@@ -24,8 +24,9 @@ html, body {
     radial-gradient(1100px 700px at 50% 36%, var(--glow), transparent 68%),
     radial-gradient(700px 500px at 88% 96%, var(--glow), transparent 70%);
   opacity: 0;
-  animation: fade 1400ms ease-out both;
+  animation: glow-in 1400ms ease-out both;
 }
+@keyframes glow-in { from { opacity: 0; } to { opacity: .45; } }
 
 .ring {
   position: absolute; left: 50%; top: 40%;
@@ -54,8 +55,9 @@ html, body {
   color: var(--text-faint);
   opacity: 0; animation: fade 900ms ease-out 200ms both;
 }
-.wordmark { font-family: var(--font-heading); font-size: 30px; letter-spacing: 0; color: var(--text); }
-.wordmark b { font-family: var(--font-mono); font-weight: 500; color: var(--accent); margin-right: 12px; font-size: 24px; }
+.wordmark { font-family: var(--font-heading); font-size: 30px; letter-spacing: 0; color: var(--text); display: flex; align-items: center; gap: 12px; }
+.wordmark .corvinOS-symbol { width: 48px; height: 48px; flex-shrink: 0; }
+.wordmark b { font-family: var(--font-mono); font-weight: 500; color: var(--accent); font-size: 24px; }
 
 .eyebrow {
   font-family: var(--font-mono); font-size: 22px; font-weight: 500;
@@ -318,3 +320,29 @@ html, body {
 .slab.hl .sl-l { color: var(--accent); }
 
 @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* console_still (PLAN-0942 D10): a real console screenshot, slow push-in, callouts */
+.frame.still { align-items: center; }
+.frame.still .eyebrow, .frame.still .title { align-self: stretch; }
+.still-box { position: relative; margin-top: 28px; border-radius: 18px; overflow: hidden;
+             border: 1px solid var(--border); box-shadow: 0 40px 120px rgba(0, 0, 0, .45), 0 0 90px var(--glow); }
+.still-zoom { position: absolute; inset: 0; animation: push var(--tend) linear both; animation-delay: var(--t0); }
+.still-zoom img { display: block; width: 100%; height: 100%; }
+.callout { position: absolute; width: 0; height: 0; opacity: 0;
+           animation: fade 260ms ease-out both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+.callout i { position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; border-radius: 50%;
+             border: 4px solid var(--accent); box-shadow: 0 0 0 6px rgba(0, 0, 0, .35), 0 0 40px var(--glow);
+             animation: pop 420ms var(--ease) both; animation-delay: calc(var(--t0) + var(--i) * var(--stagger)); }
+.callout span { position: absolute; left: 40px; top: -22px; white-space: nowrap;
+                font-family: var(--font-mono); font-size: 22px; letter-spacing: .04em; color: var(--bg);
+                background: var(--accent); border-radius: 10px; padding: 8px 16px; }
+.callout.left span { left: auto; right: 40px; }
+.still-cap { margin-top: 26px; font-size: 26px; color: var(--text-muted); text-align: center; }
+@keyframes push { from { transform: scale(1); } to { transform: scale(var(--zs)); } }
+
+/* "you are here" strip (PLAN-0942 D11): Corvin's layers, the focus lit */
+.map { position: absolute; right: 34px; top: 50%; transform: translateY(-50%); width: 132px;
+       display: flex; flex-direction: column; gap: 8px; opacity: 0; animation: fade 900ms ease-out 300ms both; }
+.map .mp { font-family: var(--font-mono); font-size: 14px; letter-spacing: .1em; text-transform: uppercase;
+           color: var(--text-faint); border-left: 3px solid var(--border); padding: 6px 0 6px 12px; line-height: 1.25; }
+.map .mp.on { color: var(--accent); border-left-color: var(--accent); }

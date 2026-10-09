@@ -1,0 +1,142 @@
+{
+ "audit_compliance": {
+  "file": "audit_compliance.jpg",
+  "caption": "Audit & Compliance page: structural guarantees, the hash chain card (present, size, last event), the event list",
+  "source": "Corvin-Website/header/41-audit-compliance.png",
+  "date": "2026-07-08",
+  "width": 1600,
+  "height": 1100,
+  "spots": {
+   "guarantees": {
+    "x": 0.58,
+    "y": 0.23,
+    "description": "the structural guarantees card"
+   },
+   "hash_chain_card": {
+    "x": 0.4,
+    "y": 0.47,
+    "description": "the hash chain card: present, size, last event, last timestamp"
+   },
+   "event_list": {
+    "x": 0.31,
+    "y": 0.68,
+    "description": "the audit chain event list header with category filters"
+   }
+  }
+ },
+ "audit_events": {
+  "file": "audit_events.jpg",
+  "caption": "Audit chain event list: one row per record with type, short hash and time",
+  "source": "Corvin-Website/header/42-audit-events.png",
+  "date": "2026-07-08",
+  "width": 1600,
+  "height": 1100,
+  "spots": {
+   "event_type": {
+    "x": 0.35,
+    "y": 0.18,
+    "description": "an event type name in a row"
+   },
+   "category_badge": {
+    "x": 0.29,
+    "y": 0.18,
+    "description": "the category badge of a row (Other, Console, OS Turn)"
+   },
+   "short_hash": {
+    "x": 0.84,
+    "y": 0.18,
+    "description": "the short record hash at the right of a row"
+   }
+  }
+ },
+ "knowledge_hub": {
+  "file": "knowledge_hub.jpg",
+  "caption": "Knowledge hub page",
+  "source": "Corvin-Website/header/40-knowledge-hub.png",
+  "date": "2026-07-08",
+  "width": 1600,
+  "height": 1000,
+  "spots": {}
+ },
+ "knowledge_query": {
+  "file": "knowledge_query.jpg",
+  "caption": "Knowledge query page",
+  "source": "Corvin-Website/header/39-knowledge-query.png",
+  "date": "2026-07-08",
+  "width": 1600,
+  "height": 1000,
+  "spots": {}
+ },
+ "compute_overview": {
+  "file": "compute_overview.jpg",
+  "caption": "Agentic Compute overview",
+  "source": "Corvin-Website/header/50-agentic-compute-overview.png",
+  "date": "2026-07-09",
+  "width": 1600,
+  "height": 1000,
+  "spots": {}
+ },
+ "compute_run_graph": {
+  "file": "compute_run_graph.jpg",
+  "caption": "Agentic Compute run graph of one compute run",
+  "source": "Corvin-Website/header/46-agentic-compute-run-graph.png",
+  "date": "2026-07-09",
+  "width": 1600,
+  "height": 1100,
+  "spots": {}
+ },
+ "workflow_branching": {
+  "file": "workflow_branching.jpg",
+  "caption": "Workflow editor: a branching incident-response workflow",
+  "source": "Corvin-Website/header/51-workflow-incident-response-branching.png",
+  "date": "2026-07-10",
+  "width": 1600,
+  "height": 800,
+  "spots": {}
+ },
+ "chat": {
+  "file": "chat.jpg",
+  "caption": "Console chat",
+  "source": "Corvin-Website/handbook/screenshots/02-chat.png",
+  "date": "2026-06-14",
+  "width": 1440,
+  "height": 900,
+  "spots": {}
+ },
+ "engines": {
+  "file": "engines.jpg",
+  "caption": "AI engine settings",
+  "source": "Corvin-Website/handbook/screenshots/06-engines.png",
+  "date": "2026-06-14",
+  "width": 1440,
+  "height": 900,
+  "spots": {}
+ },
+ "personas": {
+  "file": "personas.jpg",
+  "caption": "Personas page",
+  "source": "Corvin-Website/handbook/screenshots/07-personas.png",
+  "date": "2026-06-14",
+  "width": 1440,
+  "height": 900,
+  "spots": {}
+ },
+ "skills": {
+  "file": "skills.jpg",
+  "caption": "Skills page",
+  "source": "Corvin-Website/handbook/screenshots/12-skills.png",
+  "date": "2026-06-14",
+  "width": 1440,
+  "height": 900,
+  "spots": {}
+ },
+ "auto_routing": {
+  "file": "auto_routing.jpg",
+  "caption": "Auto-routing settings",
+  "source": "Corvin-Website/handbook/screenshots/23-auto-routing.png",
+  "date": "2026-06-14",
+  "width": 1440,
+  "height": 900,
+  "spots": {}
+ }
+}
