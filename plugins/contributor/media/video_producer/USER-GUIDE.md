@@ -43,8 +43,9 @@ End with why it matters.
 ### Step 1: Open the Panel
 Navigate to **Media** → **Video Producer** (or go to `/video-producer`)
 
-### Step 2: Write Your Task Description
-In the **Task** text area, describe the video you want to create.
+### Step 2: Describe the Video in the Composer
+Under the video stage, write what you want in the text box (or hold **Space** and speak; release to stop).
+Use the paperclip to attach text, Markdown or PDF files as source material (up to 4 files, 2 MiB each).
 
 **Best practices:**
 - Be specific: "Educational video about..." vs. "Make a cool video"
@@ -56,9 +57,15 @@ In the **Task** text area, describe the video you want to create.
 
 In **Settings** you choose how the video is narrated: **OpenAI** (default, best quality, needs an OpenAI key on the host), **Auto** (tries OpenAI, then free engines, if the key is missing or the API fails) or the legacy **gTTS** engine. The Settings panel also tells you whether OpenAI and the slide renderer (Chromium) are available on this host. Theme, frame rate and slide type are not user-selectable in the console.
 
-### Step 4: Click "Create Video"
+### Step 4: Send
 
-You'll see a **job ID** and a progress bar. The video renders in the background.
+Press **Enter** (or the send button). The stage shows a progress bar while the video renders in the background,
+then plays it at full width. **F** (or the fullscreen button) goes fullscreen.
+
+### Step 5: Change a Finished Video
+
+Select a produced video, or press **Revise** on its card, describe the change ("make scene 2 shorter") and send.
+A new video is produced; the original stays and the new card carries a *revision* badge.
 
 ### Step 5: Download
 
