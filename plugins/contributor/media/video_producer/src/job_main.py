@@ -116,6 +116,8 @@ def main(argv: Optional[List[str]] = None, *, before_run: Optional[Callable[[Any
             config["web_style"] = style_store.load_snapshot(run_dir / payload["style_dir"])
         # everything needed is in memory: nothing sensitive stays on disk while the job runs
         shutil.rmtree(run_dir, ignore_errors=True)
+        deadline = importlib.import_module(f"{_PKG}.deadline")
+        deadline.mark_job_process()  # children of a call share this process's group: the host's kill reaches them
         if os.name == "posix":
             threading.Thread(target=_watch_parent, args=(ppid,), daemon=True, name="parent-watch").start()
         if before_run is not None:

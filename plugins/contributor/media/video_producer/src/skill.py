@@ -37,6 +37,7 @@ try:
     from .web_timeline import AudioPauses, build_timeline, detect_pauses, split_sentences
     from .grounding import render_pack, validate_pack
     from . import grounded_storyboard as gsb
+    from . import deadline as dl
 except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
@@ -50,6 +51,7 @@ except ImportError:  # standalone script use (no package context)
     from web_timeline import AudioPauses, build_timeline, detect_pauses, split_sentences
     from grounding import render_pack, validate_pack
     import grounded_storyboard as gsb
+    import deadline as dl
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +94,7 @@ _OLLAMA_MODEL = "qwen3:1.7b"
 
 
 _CLAUDE_CLI_TIMEOUT_S = 300
+_STORYBOARD_API_TIMEOUT_S = 240
 _CLAUDE_MODEL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._\-\[\]]{0,79}")
 _STORYBOARD_SYSTEM = ("You write didactic explainer-video storyboards. Follow the user's "
                       "format exactly and reply with one JSON object only.")
@@ -117,11 +120,11 @@ def _call_claude_cli(prompt: str, model: str) -> str:
     if not isinstance(model, str) or not _CLAUDE_MODEL_RE.fullmatch(model):
         raise ValueError("invalid model id for the claude CLI")
     with tempfile.TemporaryDirectory(prefix="vp-storyboard-") as cwd:
-        proc = subprocess.run(
+        proc = dl.run_process(
             [exe, "-p", "--model", model, "--output-format", "json", "--tools", "",
              "--setting-sources", "", "--strict-mcp-config", "--no-session-persistence",
              "--disable-slash-commands", "--system-prompt", _STORYBOARD_SYSTEM],
-            input=prompt, capture_output=True, text=True, timeout=_CLAUDE_CLI_TIMEOUT_S, cwd=cwd,
+            input=prompt, text=True, deadline_s=_CLAUDE_CLI_TIMEOUT_S, cwd=cwd, what="claude CLI storyboard call",
         )
     if proc.returncode != 0:
         raise RuntimeError(f"claude CLI exited {proc.returncode}")
@@ -160,12 +163,12 @@ def _call_storyboard_llm(prompt: str, backend: str = "ollama", model: Optional[s
             logger.warning("claude CLI storyboard call failed (%s), falling back to local Ollama", type(e).__name__)
     if backend == "anthropic":
         try:
-            client = anthropic.Anthropic()
-            message = client.messages.create(
-                model=model,
-                max_tokens=6000,
-                messages=[{"role": "user", "content": prompt}],
-            )
+            client = anthropic.Anthropic(timeout=_STORYBOARD_API_TIMEOUT_S, max_retries=1)
+            # the SDK's timeout is per attempt and per socket read: this bounds the whole call
+            message = dl.run_sync(
+                lambda: client.messages.create(model=model, max_tokens=6000,
+                                               messages=[{"role": "user", "content": prompt}]),
+                deadline_s=_STORYBOARD_API_TIMEOUT_S * 2 + 10, what="anthropic storyboard call")
             report["backend"] = f"anthropic:{model}"
             return message.content[0].text
         except Exception as e:  # noqa: BLE001
@@ -175,16 +178,10 @@ def _call_storyboard_llm(prompt: str, backend: str = "ollama", model: Optional[s
         # truncates the SOURCES silently (PLAN-0942 D2).
         raise RuntimeError(f"remote storyboard backend {backend!r} unavailable")
 
-    response = requests.post(
-        _OLLAMA_URL,
-        json={
-            "model": _OLLAMA_MODEL,
-            "prompt": prompt,
-            "stream": False,
-            "format": "json",
-        },
-        timeout=180,
-    )
+    response = dl.run_sync(
+        lambda: requests.post(_OLLAMA_URL, json={"model": _OLLAMA_MODEL, "prompt": prompt, "stream": False,
+                                                 "format": "json"}, timeout=180),
+        deadline_s=200, what="ollama storyboard call")
     response.raise_for_status()
     report["backend"] = f"ollama:{_OLLAMA_MODEL}"
     return response.json()["response"]
@@ -495,10 +492,14 @@ def _openai_speech(text: str, out_path: Path, api_key: str) -> None:
     """One OpenAI TTS call; raises on any failure (callers decide: decline or fail)."""
     from openai import OpenAI
 
-    response = OpenAI(api_key=api_key, timeout=_TTS_CALL_TIMEOUT_S, max_retries=2).audio.speech.create(
-        model=OPENAI_TTS_MODEL, voice=OPENAI_TTS_VOICE, input=(text or "").strip() or "...",
-    )
-    response.stream_to_file(str(out_path))
+    def _call():
+        response = OpenAI(api_key=api_key, timeout=_TTS_CALL_TIMEOUT_S, max_retries=2).audio.speech.create(
+            model=OPENAI_TTS_MODEL, voice=OPENAI_TTS_VOICE, input=(text or "").strip() or "...",
+        )
+        response.stream_to_file(str(out_path))
+
+    # the SDK's own timeout is per attempt (x3 with retries); this bounds the whole call
+    dl.run_sync(_call, deadline_s=_TTS_CALL_TIMEOUT_S * 3, what="openai tts")
     if not out_path.exists() or out_path.stat().st_size == 0:
         raise RuntimeError("OpenAI returned no audio")
 
@@ -529,7 +530,7 @@ def _synthesize_narration(text: str, out_path: Path, lang: str) -> None:
 
     text = (text or "").strip() or "..."
     tts = gTTS(text=text, lang=lang, timeout=_TTS_CALL_TIMEOUT_S)
-    tts.save(str(out_path))
+    dl.run_sync(lambda: tts.save(str(out_path)), deadline_s=_TTS_CALL_TIMEOUT_S * 2, what="gtts")
 
 
 # --------------------------------------------------------------------------
@@ -563,18 +564,11 @@ def _tts_tier_openai(text: str, out_path: Path, lang: str) -> bool:
 
 
 def _run_coroutine_blocking(make_coro, timeout: float = 180.0):
-    """Run a coroutine to completion from synchronous code, whether or not this
-    thread already runs an event loop. The TTS tiers are sync and are called from
-    orchestrate_video, which the job runner executes under asyncio.run in a worker
-    thread; a bare asyncio.run() there raises "cannot be called from a running
-    event loop" — which made the edge-tts tier decline on every production job."""
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(make_coro())
-    from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(lambda: asyncio.run(make_coro())).result(timeout=timeout)
+    """Run a coroutine to completion from synchronous code, whether or not this thread already
+    runs an event loop. The TTS tiers are sync and are called from orchestrate_video under
+    asyncio.run; a bare asyncio.run() there raises "cannot be called from a running event loop".
+    The deadline holds on both paths (``deadline.run_blocking``)."""
+    return dl.run_blocking(make_coro, deadline_s=timeout, what="tts coroutine")
 
 
 def _tts_tier_edge(text: str, out_path: Path, lang: str) -> bool:
@@ -669,16 +663,19 @@ def _synthesize_narration_chain(text: str, out_path: Path, lang: str) -> str:
     for provider_name, tier_fn in _TTS_CHAIN:
         if tier_fn(text, out_path, lang):
             return provider_name
+        b = dl.current_budget()
+        if b is not None:
+            b.check("narration")  # a declined tier on a cancelled/exhausted job must not fall to the next
     raise NoVoiceAvailable("No narration voice is available (OpenAI, edge-tts and Piper all declined).")
 
 
 def _ffprobe_duration(path: Path) -> float:
-    result = subprocess.run(
+    result = dl.run_process(
         [
             "ffprobe", "-v", "error", "-show_entries", "format=duration",
             "-of", "default=noprint_wrappers=1:nokey=1", str(path),
         ],
-        capture_output=True, text=True, check=True, timeout=_FFPROBE_TIMEOUT_S,
+        text=True, check=True, deadline_s=_FFPROBE_TIMEOUT_S, what="ffprobe",
     )
     return float(result.stdout.strip())
 
@@ -1206,7 +1203,7 @@ def _assemble_frames_clip(frames_dir: Path, n_frames: int, audio_path: Path, aud
         "-t", f"{total:.3f}",
         str(out_path),
     ]
-    subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=_FFMPEG_TIMEOUT_S)
+    dl.run_process(cmd, text=True, check=True, deadline_s=_FFMPEG_TIMEOUT_S, what="ffmpeg")
     return total
 
 
@@ -1228,7 +1225,7 @@ def _assemble_scene_clip(image_path: Path, audio_path: Path, out_path: Path) -> 
         "-shortest",
         str(out_path),
     ]
-    subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=_FFMPEG_TIMEOUT_S)
+    dl.run_process(cmd, text=True, check=True, deadline_s=_FFMPEG_TIMEOUT_S, what="ffmpeg")
 
 
 def _concat_clips(clip_paths: List[Path], out_path: Path, work_dir: Path) -> None:
@@ -1246,7 +1243,7 @@ def _concat_clips(clip_paths: List[Path], out_path: Path, work_dir: Path) -> Non
         "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(filelist),
         "-c", "copy", str(out_path),
     ]
-    subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=_FFMPEG_TIMEOUT_S)
+    dl.run_process(cmd, text=True, check=True, deadline_s=_FFMPEG_TIMEOUT_S, what="ffmpeg")
 
 
 def emit_feedback(job_id: str, event_type: str, metrics: Dict[str, Any]):
@@ -1365,9 +1362,17 @@ class _WebRendererSession:
             if frames.layout_issues:
                 frames = await self._resolve_collision(scene, frames, duration_s, out_dir, kw, cues)
             return frames, None
+        except dl.JobCancelled:
+            raise
         except Exception as e:  # noqa: BLE001 — specs may come from an LLM: any failure = classic slide
             logger.warning("web slide render failed (%s), using classic slide", type(e).__name__)
             shutil.rmtree(out_dir, ignore_errors=True)
+            b = dl.current_budget()
+            if b is not None:
+                b.check("web render")  # an exhausted budget ends the job, it is not a fallback
+            if self._renderer is not None and self._renderer.dead:
+                # the browser was killed: every later scene would wait for it again
+                self._unavailable = f"browser stopped: {self._renderer.dead}"
             return None, f"{type(e).__name__}: {e}"[:200]
 
     async def _resolve_collision(self, scene: Scene, frames, duration_s: float, out_dir: Path, kw: dict,
@@ -1456,6 +1461,12 @@ async def orchestrate_video(
         raise ValueError(f"Job {job_id} is already {job.status}")
 
     job.started_at = job.started_at or datetime.now()
+    # One wall-clock budget for the whole job (ADR-2247): every external call below is clamped to
+    # what is left of it, and the scene loop checks it. Expiry ends the job `error` with the cause.
+    budget_s = dl.job_budget_seconds(max_duration_minutes) if isinstance(max_duration_minutes, int) else dl.MAX_JOB_BUDGET_S
+    budget = dl.JobBudget(budget_s)
+    _budget_token = dl.set_current_budget(budget)
+    dl.register_job_budget(job_id, budget)
 
     # Everything that can fail — including setup — runs inside the try, so the
     # stored job (what the UI polls) always ends in "error" on failure instead
@@ -1511,6 +1522,7 @@ async def orchestrate_video(
                 note += f"; {g_info['unverified']['count']} detail(s) not found in the sources"
             _update_job_progress(storage, job, "storyboard_generating", 100, note)
         job.storyboard = storyboard
+        budget.check("storyboard")
         _update_job_progress(
             storage, job, "storyboard_generating", 100,
             f"Generated {len(storyboard.scenes)} scenes",
@@ -1560,6 +1572,7 @@ async def orchestrate_video(
         try:
             video_lang = _storyboard_lang([sc.narration_text or "" for sc in storyboard.scenes])
             for i, scene in enumerate(storyboard.scenes, start=1):
+                budget.check(f"scene {i}")
                 pct = int(((i - 1) / total) * 90)  # 0..90% spans scene production
                 _update_job_progress(
                     storage, job, "skills_running", pct,
@@ -1734,6 +1747,16 @@ async def orchestrate_video(
             "metadata": video_output.metadata,
         }
 
+    except dl.JobCancelled:
+        # thread-mode cancel (process mode is closed `cancelled` by the host's runner after the kill)
+        logger.info("[%s] cancelled", job_id)
+        job.status = "cancelled"
+        job.error_message = "Cancelled."
+        job.completed_at = datetime.now()
+        storage.save_job(job)
+        emit_job_progress(job_id, "cancelled", job.percent, error="cancelled")
+        return {"success": False, "job_id": job_id, "cancelled": True}
+
     except subprocess.CalledProcessError as e:
         error_msg = f"{e.cmd[0]} failed: {e.stderr.strip()[-500:] if e.stderr else e}"
         logger.error(f"[{job_id}] Orchestration failed: {error_msg}")
@@ -1758,6 +1781,10 @@ async def orchestrate_video(
         emit_feedback(job_id=job_id, event_type="orchestration_failed", metrics={"error": error_msg})
 
         raise
+
+    finally:
+        dl.unregister_job_budget(job_id)
+        dl.reset_current_budget(_budget_token)
 
 
 # Async orchestrator wrapper

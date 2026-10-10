@@ -177,11 +177,11 @@ class TestAsyncRunner:
         assert runner.is_job_running("nonexistent") is False
         assert runner.running_job_ids() == set()
 
-    def test_no_cancel_api_that_cancels_nothing(self):
-        """cancel_job used to flip an in-memory flag while the job kept running
-        (and was then overwritten with 'complete'); it had no caller and is gone."""
+    def test_cancel_job_refuses_a_job_this_runner_does_not_run(self):
+        """cancel_job flags the job's budget (deadline.cancel_job_budget); it must say False for a
+        job this runner does not execute instead of pretending to cancel it."""
         reset_runner()
-        assert not hasattr(get_runner(), "cancel_job")
+        assert get_runner().cancel_job("nonexistent") is False
 
 
 class TestProgressTracking:

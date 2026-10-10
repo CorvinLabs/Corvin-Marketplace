@@ -24,6 +24,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
+try:
+    from . import deadline as dl
+except ImportError:  # standalone script use (no package context)
+    import deadline as dl
+
 PACK_VERSION = 1
 MAX_FILE_BYTES = 256 * 1024          # decision markdown
 MAX_CODE_BYTES = 1024 * 1024         # one source file (security_events.py is ~370 kB)
@@ -181,9 +186,9 @@ class _Tracked:
 
     def __init__(self, root: CodeRoot, timeout: float = 10.0):
         self.root = root
-        out = subprocess.run(
+        out = dl.run_process(
             ["git", "-C", str(root.path), "ls-files", "-z"],
-            capture_output=True, timeout=timeout, check=False,
+            deadline_s=timeout, what="git ls-files",
         )
         if out.returncode != 0:
             raise GroundingError(f"not a git checkout: {root.path.name}")
@@ -381,9 +386,9 @@ def _module_doc(source: str) -> str:
 def _call_site(tracked: _Tracked, name: str, def_file: str, timeout: float) -> Optional[str]:
     """A tracked, non-test file other than the definition that names ``name``."""
     try:
-        out = subprocess.run(
+        out = dl.run_process(
             ["git", "-C", str(tracked.root.path), "grep", "-l", "-w", "-F", "--", name],
-            capture_output=True, timeout=timeout, check=False,
+            deadline_s=timeout, what="git grep",
         )
     except subprocess.TimeoutExpired:
         return None
@@ -401,10 +406,10 @@ def _code_citations(tracked: _Tracked, timeout: float) -> Dict[str, int]:
     load-bearing code with the decision it implements, so this measures how much code a
     decision actually governs (``git grep``, no file is opened here)."""
     try:
-        out = subprocess.run(
+        out = dl.run_process(
             ["git", "-C", str(tracked.root.path), "grep", "-o", "-I", "-E", r"ADR-[0-9]{4}",
              "--", ".", ":(exclude)*.md"],
-            capture_output=True, timeout=timeout, check=False,
+            deadline_s=timeout, what="git grep",
         )
     except subprocess.TimeoutExpired:
         return {}

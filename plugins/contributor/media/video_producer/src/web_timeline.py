@@ -18,6 +18,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+try:
+    from . import deadline as dl
+except ImportError:  # standalone script use (no package context)
+    import deadline as dl
+
 HEADER_TIMES = {0: 0.35, 1: 0.65}   # eyebrow, title
 FIRST_CONTENT_S = 1.0               # no item before the title has landed
 REVEAL_LEAD_S = 0.25                # an item starts rising just before its name is said
@@ -151,10 +156,10 @@ def detect_pauses(audio: Path, duration: float, noise_db: int = -35, min_pause: 
     """Pause ends from ``ffmpeg silencedetect``. Any failure = no pauses (estimate only)."""
     res = AudioPauses(duration=duration, speech_end=duration)
     try:
-        err = subprocess.run(
+        err = dl.run_process(
             ["ffmpeg", "-hide_banner", "-nostats", "-i", str(audio), "-af",
              f"silencedetect=n={noise_db}dB:d={min_pause}", "-f", "null", "-"],
-            capture_output=True, text=True, timeout=60,
+            text=True, deadline_s=60, what="ffmpeg silencedetect",
         ).stderr
     except (OSError, subprocess.SubprocessError):
         return res

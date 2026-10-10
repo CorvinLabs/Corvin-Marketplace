@@ -23,10 +23,12 @@ from pathlib import Path
 from typing import Any, Deque, Dict, List, Optional, Set, Tuple
 
 try:
+    from . import deadline as dl
     from .skill import start_video_production
     from .storage import TERMINAL_STATUSES, get_storage, hold_job_lock, job_lock_path, release_job_lock
     from .style_store import write_style_snapshot
 except ImportError:  # standalone script use (no package context)
+    import deadline as dl
     from skill import start_video_production
     from storage import TERMINAL_STATUSES, get_storage, hold_job_lock, job_lock_path, release_job_lock
     from style_store import write_style_snapshot
@@ -77,6 +79,16 @@ class VideoProductionRunner:
         with self.lock:
             return set(self._running)
 
+    def cancel_job(self, job_id: str) -> bool:
+        """Thread mode: flag the job's budget. Its in-flight external call stops its process
+        group and the job ends ``cancelled`` at the next call/scene boundary. A blocking call that
+        has no kill switch (an SDK request) is ABANDONED, not killed - a thread cannot be - and the
+        job ends when it returns or its deadline passes. False: this runner does not run it."""
+        with self.lock:
+            if job_id not in self._running:
+                return False
+        return dl.cancel_job_budget(job_id)
+
     def shutdown(self, wait: bool = True):
         logger.info("Shutting down VideoProductionRunner...")
         self.executor.shutdown(wait=wait)
@@ -111,6 +123,9 @@ def reset_runner():
 
 _JOB_MAIN = Path(__file__).resolve().with_name("job_main.py")
 CANCEL_GRACE_S = 5.0
+# The job enforces its own budget (deadline.JobBudget); the host kills the group this long after
+# it, for a job process that is wedged somewhere no deadline reaches.
+BUDGET_HOST_SLACK_S = 60.0
 _IS_POSIX = os.name == "posix"
 
 
@@ -125,17 +140,20 @@ def _kill_group(pid: int, sig: int) -> bool:
         except PermissionError:
             return False
     # Windows: the tree (taskkill /T) - UNTESTED in this spike, see the report.
-    r = subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
+    r = subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True, timeout=10)  # deadline-exempt: the kill itself
     return r.returncode == 0
 
 
 class _Child:
-    __slots__ = ("proc", "storage_base", "cancelled", "started", "lock", "kill_timer")
+    __slots__ = ("proc", "storage_base", "cancelled", "over_budget", "started", "lock", "kill_timer",
+                 "budget_timer")
 
     def __init__(self, proc, storage_base: str, lock=None):
         self.proc = proc
         self.storage_base = storage_base
         self.cancelled = False
+        self.over_budget = False
+        self.budget_timer: Optional[threading.Timer] = None
         self.started = time.monotonic()
         self.lock = lock
         self.kill_timer: Optional[threading.Timer] = None
@@ -164,6 +182,7 @@ class ProcessJobRunner:
         self.max_workers = max_workers
         self._entry = list(entry) if entry else [sys.executable, str(_JOB_MAIN)]
         self._grace_s = grace_s
+        self.budget_slack_s = BUDGET_HOST_SLACK_S
         self._env = env
         self.lock = threading.Lock()
         self._active: Dict[str, _Child] = {}
@@ -264,16 +283,33 @@ class ProcessJobRunner:
                 kw["start_new_session"] = True
             else:
                 kw["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+            # deadline-exempt: the host starts the job process itself; cancel, budget and reap kill its group
             proc = subprocess.Popen([*self._entry, job_id, str(cfg)], stdin=subprocess.DEVNULL, env=env,
                                     close_fds=True, **kw)
         except BaseException:
             shutil.rmtree(run_dir, ignore_errors=True)
             raise
         child = _Child(proc, storage_base, job_lock)
+        if _IS_POSIX:
+            try:
+                budget_s = dl.job_budget_seconds(int(config.get("max_duration_minutes", 60)))
+            except (TypeError, ValueError):
+                budget_s = dl.MAX_JOB_BUDGET_S
+            child.budget_timer = threading.Timer(budget_s + self.budget_slack_s, self._over_budget, args=(child,))
+            child.budget_timer.daemon = True
+            child.budget_timer.start()
         self._active[job_id] = child
         logger.info("[%s] job process %d started", job_id, proc.pid)  # never the task text
         threading.Thread(target=self._reap, args=(job_id, child, run_dir), daemon=True,
                          name=f"vp-reaper-{job_id}").start()
+
+    def _over_budget(self, child: _Child) -> None:
+        """The job process outlived budget + slack: kill its group (the reaper records ``budget``)."""
+        if child.proc.poll() is not None:
+            return
+        child.over_budget = True
+        logger.error("job process %d exceeded its budget; killing its group", child.proc.pid)
+        _kill_group(child.proc.pid, signal.SIGKILL)
 
     def _close_job(self, storage_base: Optional[str], job_id: str, status: str, message: str, reason: str) -> None:
         """Give a job that ended without a terminal status one, through the storage's single write
@@ -292,6 +328,8 @@ class ProcessJobRunner:
         rc = child.proc.wait()                       # reaps the leader: no zombie
         if child.kill_timer is not None:
             child.kill_timer.cancel()
+        if child.budget_timer is not None:
+            child.budget_timer.cancel()
         if _IS_POSIX:
             # stragglers (an ffmpeg that outlived the job), immediately: the group id stays ours
             # while any member lives, and the window after the last one is microseconds
@@ -299,6 +337,8 @@ class ProcessJobRunner:
         shutil.rmtree(run_dir, ignore_errors=True)   # child never started / died before deleting it
         if child.cancelled:
             self._close_job(child.storage_base, job_id, "cancelled", "Cancelled.", "cancelled")
+        elif child.over_budget:
+            self._close_job(child.storage_base, job_id, "error", "The job exceeded its time budget and was stopped.", "budget")
         elif rc != 0:
             how = f"signal {signal.Signals(-rc).name}" if rc < 0 else f"exit code {rc}"
             self._close_job(child.storage_base, job_id, "error", f"The job process ended unexpectedly ({how}).", "child_exit")

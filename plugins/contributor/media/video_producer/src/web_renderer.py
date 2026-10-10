@@ -21,13 +21,16 @@ import asyncio
 import base64
 import math
 import os
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 try:
+    from . import deadline as dl
     from .web_templates import FOCUS_FADE_S, WebSceneError, build_document
     from .web_layout import LAYOUT_JS, TOLERANCE_PX
 except ImportError:  # standalone script use (no package context)
+    import deadline as dl
     from web_templates import FOCUS_FADE_S, WebSceneError, build_document
     from web_layout import LAYOUT_JS, TOLERANCE_PX
 
@@ -35,6 +38,8 @@ FPS_DEFAULT = 30
 MAX_SCENE_SECONDS = 60.0
 MAX_FRAMES_PER_SCENE = 900
 SCENE_TIMEOUT_S = 120.0
+LAUNCH_TIMEOUT_S = 60.0
+CLOSE_TIMEOUT_S = 10.0
 VIEWPORT = {"width": 1920, "height": 1080}
 
 # [entrance end, ambient start, ambient period] in ms. Ambient = an animation with
@@ -116,15 +121,28 @@ class WebSlideRenderer:
         self.style = style
         self._pw = None
         self._browser = None
+        # Playwright starts its driver and Chromium in their own process groups, out of reach of
+        # any group kill of ours. Every launch carries a unique flag (Chromium ignores unknown
+        # ones), and a hung browser is found by it and ended with its driver (``_hard_kill``).
+        self._marker = f"--vp-browser={uuid.uuid4().hex}"
+        self.dead: Optional[str] = None  # set when the browser was killed: the renderer is unusable
+
+    def _hard_kill(self, why: str = "hung") -> None:
+        self.dead = self.dead or why
+        dl.kill_marked(self._marker)
 
     async def __aenter__(self) -> "WebSlideRenderer":
         try:
             from playwright.async_api import async_playwright
         except ImportError as e:
             raise WebRenderError("playwright is not installed (pip install playwright && playwright install chromium)") from e
-        try:
+
+        async def _launch() -> None:
             self._pw = await async_playwright().start()
-            self._browser = await self._pw.chromium.launch(headless=True, args=list(_CHROMIUM_ARGS))
+            self._browser = await self._pw.chromium.launch(headless=True, args=[*_CHROMIUM_ARGS, self._marker])
+
+        try:
+            await dl.await_with_deadline(_launch(), LAUNCH_TIMEOUT_S, what="chromium launch", on_expire=self._hard_kill)
         except Exception as e:  # noqa: BLE001 — any launch failure means "no web renderer"
             await self._close()
             raise WebRenderError(f"chromium could not be launched: {type(e).__name__}: {e}") from None
@@ -134,18 +152,21 @@ class WebSlideRenderer:
         await self._close()
 
     async def _close(self) -> None:
-        if self._browser is not None:
+        """Close politely, but never wait for a browser that does not answer: each step is
+        bounded, and whatever still carries our marker afterwards is killed."""
+        browser, pw = self._browser, self._pw
+        self._browser = self._pw = None
+        if self.dead:  # already killed: nothing left to ask politely
+            browser = pw = None
+        for step in ((browser.close() if browser is not None else None), (pw.stop() if pw is not None else None)):
+            if step is None:
+                continue
             try:
-                await self._browser.close()
+                await dl.await_with_deadline(step, CLOSE_TIMEOUT_S, what="browser close")
             except Exception:  # noqa: BLE001
                 pass
-            self._browser = None
-        if self._pw is not None:
-            try:
-                await self._pw.stop()
-            except Exception:  # noqa: BLE001
-                pass
-            self._pw = None
+        if dl.find_processes(self._marker):
+            self._hard_kill("left over after close")
 
     async def render(
         self,
@@ -168,6 +189,8 @@ class WebSlideRenderer:
         Raises WebSceneError for invalid data (before the browser is touched)
         and WebRenderError for render failures.
         """
+        if self.dead:
+            raise WebRenderError(f"browser was stopped ({self.dead})")
         if self._browser is None:
             raise WebRenderError("renderer is not open (use 'async with WebSlideRenderer()')")
         if isinstance(duration_s, bool) or not isinstance(duration_s, (int, float)) \
@@ -184,10 +207,14 @@ class WebSlideRenderer:
             raise WebRenderError(f"frame directory {out_dir} is not empty")
         # a timeline render samples the whole narration: its budget grows with it
         budget = SCENE_TIMEOUT_S if timeline is None else max(SCENE_TIMEOUT_S, 30.0 + 3.0 * float(duration_s))
+        b = dl.current_budget()
+        if b is not None:
+            budget = b.clamp(budget)
         try:
-            return await asyncio.wait_for(self._capture(document, float(duration_s), out_dir, timeline), budget)
-        except asyncio.TimeoutError:
-            raise WebRenderError(f"scene render exceeded {budget:g}s") from None
+            return await dl.await_with_deadline(self._capture(document, float(duration_s), out_dir, timeline), budget,
+                                                what="scene render", on_expire=self._hard_kill)
+        except dl.DeadlineExceeded:
+            raise WebRenderError(f"scene render exceeded {budget:g}s (browser stopped)") from None
         except WebRenderError:
             raise
         except Exception as e:  # noqa: BLE001
@@ -250,6 +277,8 @@ class WebSlideRenderer:
 
         Same hardening as the video path: JavaScript off, every request aborted, bundled fonts
         required. Raises WebSceneError for invalid data and WebRenderError for render failures."""
+        if self.dead:
+            raise WebRenderError(f"browser was stopped ({self.dead})")
         if self._browser is None:
             raise WebRenderError("renderer is not open (use 'async with WebSlideRenderer()')")
         document = build_document(template, data, duration_s=float(duration_s), theme=theme,
@@ -277,9 +306,9 @@ class WebSlideRenderer:
                 await context.close()
 
         try:
-            return await asyncio.wait_for(_go(), timeout_s)
-        except asyncio.TimeoutError:
-            raise WebRenderError(f"still render exceeded {timeout_s:g}s") from None
+            return await dl.await_with_deadline(_go(), timeout_s, what="still render", on_expire=self._hard_kill)
+        except dl.DeadlineExceeded:
+            raise WebRenderError(f"still render exceeded {timeout_s:g}s (browser stopped)") from None
         except WebRenderError:
             raise
         except Exception as e:  # noqa: BLE001
