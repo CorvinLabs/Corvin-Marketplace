@@ -108,11 +108,12 @@ class WebSlideRenderer:
     ``async with WebSlideRenderer() as r: await r.render(...)``
     """
 
-    def __init__(self, fps: int = FPS_DEFAULT, tokens: Optional[Dict[str, Any]] = None):
+    def __init__(self, fps: int = FPS_DEFAULT, tokens: Optional[Dict[str, Any]] = None, style: Any = None):
         if not isinstance(fps, int) or isinstance(fps, bool) or not 12 <= fps <= 60:
             raise ValueError("fps must be an integer in [12, 60]")
         self.fps = fps
         self.tokens = tokens
+        self.style = style
         self._pw = None
         self._browser = None
 
@@ -175,7 +176,7 @@ class WebSlideRenderer:
         document = build_document(
             template, data, duration_s=float(duration_s), theme=theme, tokens=self.tokens,
             scene_index=scene_index, total_scenes=total_scenes, lang=lang, map_focus=map_focus,
-            timeline=timeline, compact=compact, chips=chips,
+            timeline=timeline, compact=compact, chips=chips, style=self.style,
         )
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)

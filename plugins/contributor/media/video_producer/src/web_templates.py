@@ -1079,8 +1079,13 @@ def build_document(
     timeline: Optional["Timeline"] = None,
     compact: bool = False,
     chips: bool = True,
+    style: Any = None,
 ) -> str:
     """Validate and render one slide to a self-contained HTML string.
+
+    ``style`` (a ``style_pack.Style``, PLAN-0945) replaces the Corvin look: tokens, wordmark,
+    mark, decoration and an optional background plate. ``None`` is the built-in Corvin look and
+    takes the exact code path it always did.
 
     With a ``timeline`` (ADR-2245) every element is revealed at its cue and a
     focus clock leads the eye; without one the reveal is spread evenly over the
@@ -1090,6 +1095,8 @@ def build_document(
         raise WebSceneError(f"unknown theme {theme!r} (allowed: {', '.join(THEMES)})")
     if lang not in LANGS:
         lang = "en"
+    if style is not None:
+        tokens = style.tokens
     tokens = validate_tokens(tokens) if tokens is not None else load_tokens()
     palette, typo, anim = tokens[theme], tokens["typography"], tokens["animation"]
     if timeline is None:
@@ -1118,15 +1125,18 @@ def build_document(
     if map_focus is not None and map_focus not in MAP_LAYERS:
         raise WebSceneError(f"unknown map focus {map_focus!r} (allowed: {', '.join(MAP_LAYERS)})")
     # CorvinOS symbol: hexagon + rings + yellow accent dot (ADR-2238 Amendment)
-    symbol = _corvinOS_symbol_svg(48)
-    chrome = f'<div class="wordmark">{symbol}CorvinOS</div>'
+    if style is None:
+        symbol = _corvinOS_symbol_svg(48)
+        chrome = f'<div class="wordmark">{symbol}CorvinOS</div>'
+    else:
+        chrome = _style_wordmark(style)
     if scene_index and total_scenes:
         chrome += f"<div>{int(scene_index):02d} / {int(total_scenes):02d}</div>"
     seed = zlib.crc32(f"{template}|{d.get('title') or d.get('quote') or d.get('label') or ''}".encode("utf-8"))
 
     body = _BUILDERS[template](d)
-    if scene_index == 1:
-        body = _with_intro_mark(template, body)
+    if scene_index == 1 and (style is None or (style.intro_mark and style.mark_png)):
+        body = _with_intro_mark(template, body, style)
     if chip_list:
         row = "".join(f'<span class="chip r" style="--i:{CHIP_STEP0 + c}">{_e(_clean_chip(t))}</span>'
                       for c, (_, t) in enumerate(chip_list))
@@ -1151,27 +1161,70 @@ def build_document(
     body = re.sub(r'style="--i:(\d+)(;--nofocus:1)?', cue, body)
     body = re.sub(r"--amb:(\d+)", lambda m: f"--amb-at:{time_of(int(m.group(1))) + anim['rise_ms'] / 1000.0:.3f}s", body)
     classes = f"theme-{theme}" + (" compact" if compact else "")
+    if style is None:
+        extra_css, plate_html, decor_html = "", "", f'<div class="glow"></div><div class="ring"></div>{_stars(seed)}'
+    else:
+        extra_css, plate_html = _style_css(style), _plate_html(style)
+        decor_html = {"corvin": f'<div class="glow"></div><div class="ring"></div>{_stars(seed)}',
+                      "minimal": '<div class="glow"></div>', "none": ""}[style.decor]
     return (
         f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8">'
-        f"<style>{_font_faces()}:root{{{css_vars}}}{_base_css()}{focus_css}</style></head>"
-        f'<body class="{classes}"><div class="stage"{stage_style}><div class="glow"></div><div class="ring"></div>'
-        f"{_stars(seed)}{body}{_map_strip(map_focus) if map_focus else ''}"
+        f"<style>{_font_faces()}:root{{{css_vars}}}{_base_css()}{focus_css}{extra_css}</style></head>"
+        f'<body class="{classes}"><div class="stage"{stage_style}>{plate_html}{decor_html}'
+        f"{body}{_map_strip(map_focus) if map_focus else ''}"
         f"<div class=\"chrome\">{chrome}</div></div></body></html>"
     )
+
+
+def _mark_img(style: Any, size: int) -> str:
+    uri = "data:image/png;base64," + base64.b64encode(style.mark_png).decode("ascii")
+    return (f'<img class="corvinOS-symbol" alt="" src="{uri}" '
+            f'style="width:{size}px;height:{size}px;object-fit:contain">')
+
+
+def _style_wordmark(style: Any) -> str:
+    mark = _mark_img(style, 48) if style.mark_png else ""
+    word = _e(style.wordmark)
+    if not mark and not word:
+        word = ""
+    out = f'<div class="wordmark">{mark}{word}</div>' if (mark or word) else "<div></div>"
+    if style.credit:
+        out += '<div class="credit">made with CorvinOS</div>'
+    return out
+
+
+def _plate_html(style: Any) -> str:
+    if not style.plate_png:
+        return ""
+    uri = "data:image/png;base64," + base64.b64encode(style.plate_png).decode("ascii")
+    return f'<div class="plate" style="background:url({uri}) 0 0/1920px 1080px no-repeat"></div>'
+
+
+def _style_css(style: Any) -> str:
+    css = ".plate{position:absolute;inset:0}.credit{font-size:18px;opacity:.7}"
+    s = style.plate_safe if style.plate_png else None
+    if s:
+        left, top = max(s["x"], 80), max(s["y"], 60)
+        right, bottom = max(1920 - s["x"] - s["w"], 80), max(1080 - s["y"] - s["h"], 150)
+        css += (f".frame{{padding:{top}px {right}px {bottom}px {left}px}}"
+                f".chrome{{left:{left}px;right:{right}px}}")
+    return css
 
 
 INTRO_MARK_PX = 150
 INTRO_MARK_CORNER_PX = 120
 
 
-def _with_intro_mark(template: str, body: str) -> str:
-    """The CorvinOS mark, large, at the start of EVERY video: in flow above the title on the
+def _with_intro_mark(template: str, body: str, style: Any = None) -> str:
+    """The mark, large, at the start of EVERY video: in flow above the title on the
     hero slide, a corner mark on the first slide when it is not a hero. Not an ``.r`` element,
-    so it takes no reveal step and no focus."""
+    so it takes no reveal step and no focus. CorvinOS's own mark unless a ``style`` brings one."""
+    def sym(px: int) -> str:
+        return _corvinOS_symbol_svg(px) if style is None else _mark_img(style, px)
     if template == "hero":
-        mark = f'<div class="intro-mark">{_corvinOS_symbol_svg(INTRO_MARK_PX)}</div>'
+        mark = f'<div class="intro-mark">{sym(INTRO_MARK_PX)}</div>'
         return body.replace('<div class="frame center">', '<div class="frame center">' + mark, 1)
-    return body + f'<div class="intro-mark corner">{_corvinOS_symbol_svg(INTRO_MARK_CORNER_PX)}</div>'
+    return body + f'<div class="intro-mark corner">{sym(INTRO_MARK_CORNER_PX)}</div>'
 
 
 CHIP_STEP0 = 40

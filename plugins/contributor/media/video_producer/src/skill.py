@@ -32,6 +32,8 @@ try:
     from .screenshot_annotator import annotate_screenshot
     from .web_templates import TEMPLATES, THEMES, WebSceneError, load_tokens, validate_scene_data
     from .web_renderer import FPS_DEFAULT, MAX_SCENE_SECONDS, WebRenderError, WebSlideRenderer
+    from .style_pack import Style, validate_style
+    from .style_store import write_style_snapshot
     from .web_layout import format_issues
     from .web_templates import MAP_LAYERS, console_assets, scene_item_subs, scene_items
     from .web_timeline import AudioPauses, build_timeline, detect_pauses, split_sentences
@@ -45,6 +47,8 @@ except ImportError:  # standalone script use (no package context)
     from screenshot_annotator import annotate_screenshot
     from web_templates import TEMPLATES, THEMES, WebSceneError, load_tokens, validate_scene_data
     from web_renderer import FPS_DEFAULT, MAX_SCENE_SECONDS, WebRenderError, WebSlideRenderer
+    from style_pack import Style, validate_style
+    from style_store import write_style_snapshot
     from web_layout import format_issues
     from web_templates import MAP_LAYERS, console_assets, scene_item_subs, scene_items
     from web_timeline import AudioPauses, build_timeline, detect_pauses, split_sentences
@@ -267,6 +271,20 @@ CHOOSING A VISUAL — pick the template that SHOWS the idea instead of listing i
 """
 
 
+_NEUTRAL_SWAPS = (
+    ("the CorvinOS mark is shown large on it at the start of every video", "the brand mark is shown large on it at the start of the video"),
+    ('"narration_text": "Welcome to Corvin"', '"narration_text": "Welcome"'),
+    ('"visual_description": "Corvin logo on dark background"', '"visual_description": "title card with the brand mark"'),
+    ('"data": {{"title": "Welcome to Corvin", "accent": "The agentic OS"}}', '"data": {{"title": "Welcome", "accent": "A short subtitle"}}'),
+)
+
+
+def _brand_neutral_prompt(prompt: str) -> str:
+    for old, new in _NEUTRAL_SWAPS:
+        prompt = prompt.replace(old, new)
+    return prompt
+
+
 async def generate_storyboard_with_llm(
     task: str,
     max_duration_minutes: int = 60,
@@ -274,9 +292,13 @@ async def generate_storyboard_with_llm(
     model: Optional[str] = None,
     didactic_strategy: Optional[str] = None,
     grounding: Optional[Dict[str, Any]] = None,
+    brand_neutral: bool = False,
 ) -> Storyboard:
     """
     LLM: Task → Storyboard (JSON)
+
+    ``brand_neutral`` (PLAN-0945): the video wears a user's own style, so the prompt must not
+    steer the model toward CorvinOS wording.
 
     Generates a detailed video storyboard from natural language task.
     Enforces constraints: max duration, max scenes, per-scene text budget,
@@ -352,6 +374,8 @@ OUTPUT FORMAT (valid JSON only, no markdown):
 
 RETURN ONLY THE JSON, NO EXPLANATIONS.
 """
+    if brand_neutral:
+        prompt = _brand_neutral_prompt(prompt)
 
     report: Dict[str, Any] = {}
     pack_text = ""
@@ -367,7 +391,8 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
         except Exception as e:  # noqa: BLE001 — remote down: the ordinary path, recorded as unavailable
             logger.warning("grounded storyboard unavailable (%s); writing an ungrounded one", type(e).__name__)
             sb = await generate_storyboard_with_llm(task, max_duration_minutes, backend=backend, model=model,
-                                                    didactic_strategy=didactic_strategy)
+                                                    didactic_strategy=didactic_strategy,
+                                                    brand_neutral=brand_neutral)
             sb.grounding = {"status": "unavailable", "reason": "remote_storyboard_failed"}
             return sb
     else:
@@ -1305,10 +1330,11 @@ class _WebRendererSession:
     A browser that cannot start disables web rendering for the rest of the job;
     every affected scene is reported as a fallback, never silently swapped."""
 
-    def __init__(self, enabled: bool, fps: int, tokens: Optional[Dict[str, Any]]):
+    def __init__(self, enabled: bool, fps: int, tokens: Optional[Dict[str, Any]], style: Any = None):
         self.enabled = bool(enabled)
         self.fps = fps
         self.tokens = tokens
+        self.style = style
         self._renderer: Optional[WebSlideRenderer] = None
         self._unavailable: Optional[str] = None
         self.layout_log: List[Dict[str, Any]] = []  # one entry per scene whose layout collided
@@ -1324,7 +1350,7 @@ class _WebRendererSession:
         if duration_s > MAX_SCENE_SECONDS:
             return None, f"narration longer than {MAX_SCENE_SECONDS:.0f}s"
         if self._renderer is None:
-            renderer = WebSlideRenderer(fps=self.fps, tokens=self.tokens)
+            renderer = WebSlideRenderer(fps=self.fps, tokens=self.tokens, style=self.style)
             try:
                 self._renderer = await renderer.__aenter__()
             except WebRenderError as e:
@@ -1411,6 +1437,7 @@ async def orchestrate_video(
     web_tokens_path: Optional[str] = None,
     grounding_pack: Optional[Dict[str, Any]] = None,
     grounding_status: Optional[Dict[str, Any]] = None,
+    web_style: Optional["Style"] = None,
 ) -> Dict[str, Any]:
     """
     Main orchestrator Skill:
@@ -1445,12 +1472,18 @@ async def orchestrate_video(
         if isinstance(web_fps, bool) or not isinstance(web_fps, int) or not 12 <= web_fps <= 60:
             raise ValueError("web_fps must be an integer between 12 and 60")
         web_tokens = load_tokens(Path(web_tokens_path)) if web_tokens_path else None
+        if web_style is not None:
+            # the host resolved it from the tenant's own store; validated again here, never trusted
+            web_style = validate_style(web_style)
+            web_theme = web_style.default_theme
 
         # Output always lives in this store's own directory — the host cannot
         # be talked into writing a tenant's video anywhere else.
         out_root = storage.videos_dir / job_id
         scenes_dir = out_root / "scenes"
         scenes_dir.mkdir(parents=True, exist_ok=True)
+        if web_style is not None:
+            write_style_snapshot(web_style, out_root / "style")  # reproducibility: the look travels with the video
 
         # Step 1: Generate Storyboard via LLM
         _update_job_progress(storage, job, "storyboard_generating", 0, "Analyzing task...")
@@ -1463,7 +1496,7 @@ async def orchestrate_video(
         else:
             storyboard = await generate_storyboard_with_llm(
                 task, max_duration_minutes, backend=storyboard_backend, model=storyboard_model,
-                grounding=pack,
+                grounding=pack, brand_neutral=web_style is not None,
             )
             if storyboard.grounding is None:
                 if pack is not None:  # a pack, but the backend is local
@@ -1519,7 +1552,7 @@ async def orchestrate_video(
         tts_providers_used: List[str] = []
         renderers_used: List[str] = []
         web_fallbacks: List[Dict[str, Any]] = []
-        web = _WebRendererSession(enabled=web_slides, fps=web_fps, tokens=web_tokens)
+        web = _WebRendererSession(enabled=web_slides, fps=web_fps, tokens=web_tokens, style=web_style)
         cue_log: List[Dict[str, Any]] = []
         # ADR-2245 §6: no keyword chips on a scene whose claims the grounding check could not verify
         unverified_scenes = set(((storyboard.grounding or {}).get("unverified") or {}).get("scenes") or [])
@@ -1754,4 +1787,5 @@ async def start_video_production(
         web_tokens_path=config.get("web_tokens_path"),
         grounding_pack=config.get("grounding_pack"),
         grounding_status=config.get("grounding_status"),
+        web_style=config.get("web_style"),
     )
