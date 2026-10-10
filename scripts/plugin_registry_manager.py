@@ -343,11 +343,10 @@ class PluginRegistryValidator:
         """Check if plugin type is currently invoked by CorvinOS.
 
         From PLUGIN_SYSTEM.md:
-        - Live: router_backend, summary_provider, notification_backend, recall_backend, audit_backend
+        - Live: summary_provider, notification_backend, recall_backend, audit_backend
         - Dead (never invoked): user_backend, stt_provider, data_connector, compute_engine, worker_engine, bridge_channel
         """
         live_types = {
-            "router_backend",
             "summary_provider",
             "notification_backend",
             "recall_backend",

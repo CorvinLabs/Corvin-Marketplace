@@ -75,7 +75,6 @@
       "type": "string",
       "description": "Plugin type - determines which layer extension point this plugin implements (ADR-0233).",
       "enum": [
-        "router_backend",
         "summary_provider",
         "notification_backend",
         "recall_backend",
