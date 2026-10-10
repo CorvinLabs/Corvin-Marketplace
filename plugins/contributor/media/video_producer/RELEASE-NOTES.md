@@ -1,5 +1,27 @@
 # Video Producer Plugin — Release Notes
 
+## Unreleased (toward 1.5.0 - ADR-2247 / PLAN-0946; not released, no readiness claim)
+
+- **Every job runs in its own process** (host default since R1a go; `ProcessJobRunner`, `src/job_main.py`). The
+  console kills the job's process group on cancel, on budget expiry and when the console dies. Measured on the
+  spike tests: first progress after 0.54 s, cap of 3 with a FIFO queue, 0 zombies after 20 jobs, a killed console
+  leaves 0 processes after 0.22 s and the next store open closes the job.
+- **`src/deadline.py` is the only way to run external work.** `run_process` (own session or, inside a job process,
+  the job's group; SIGTERM, SIGKILL after 0.5 s; output capped), `run_blocking` / `run_sync` (the deadline holds with
+  and without a running event loop; an SDK call that cannot be killed is abandoned), `await_with_deadline` (a hung
+  browser cannot hold its own cancellation), `JobBudget`. ffmpeg, ffprobe, the Claude CLI, git, the storyboard and
+  TTS calls and Chromium all go through it; `tests/test_deadline.py` fails on a bare `subprocess.run`.
+- **A hung Chromium is ended.** Every launch carries a marker flag; on a render deadline the browser is found by it
+  and killed together with the Playwright driver (SIGSTOPped real Chromium: gave up after 3.5 s on a 3 s deadline,
+  0 processes left).
+- **Job budget** `min(3 x max_duration_minutes x 60, 2700)` s; expiry ends the job `error` naming the step; the
+  host adds a last-resort group kill 60 s later.
+- **Cancel.** `POST /video/jobs/{id}/cancel` on the console (and so on the gateway, which mounts it); the panel
+  shows **Cancel production**. Thread mode (fallback) cancels through the job's budget and abandons what cannot
+  be killed.
+- Honest limits: Art. 17 erasure does not stop a running job; no delete (R3); the lifecycle audit events other
+  than `job_cancelled` are R2; the job process still inherits the console's whole environment (REVIEW-0039 F6).
+
 ## Unreleased (toward 1.6.0 - ADR-2249)
 
 - **Pinned code lexer (spike S4, not wired yet).** `src/code_lexer.py` tokenizes Python, shell, JSON, YAML and plain

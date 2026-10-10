@@ -19,6 +19,13 @@
 
 **Status per job:** stored in metadata (which TTS ran, which storyboard model, any rendering fallbacks, template repairs)
 
+### Execution and deadlines (unreleased 1.5.0)
+
+Each production runs in its own process; every external call (ffmpeg, ffprobe, the model, TTS, the browser) goes
+through `src/deadline.py` and is stopped, with its process tree, when its deadline or the job's budget
+(`min(3 x max_duration_minutes x 60, 2700)` s) runs out. The console can cancel a running job
+(`POST /video/jobs/{id}/cancel`). A bare `subprocess.run` in `src/` fails `tests/test_deadline.py`.
+
 ## How to use it
 
 **From the Console:** Open `/video-producer` panel, paste a task description, click "Create Video"
