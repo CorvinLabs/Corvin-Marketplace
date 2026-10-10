@@ -139,7 +139,7 @@ def validate_tokens(tokens: Any) -> Dict[str, Any]:
     if not isinstance(typo, dict):
         raise WebSceneError("design tokens: missing typography")
     for key in ("heading_family", "body_family", "mono_family"):
-        if typo.get(key) not in BUNDLED_FONTS:
+        if not isinstance(typo.get(key), str) or typo.get(key) not in BUNDLED_FONTS:
             raise WebSceneError(
                 f"design tokens: typography.{key}={typo.get(key)!r} is not a bundled font "
                 f"({', '.join(BUNDLED_FONTS)}); an unbundled family would silently fall back"
@@ -1084,7 +1084,7 @@ def build_document(
     """Validate and render one slide to a self-contained HTML string.
 
     ``style`` (a ``style_pack.Style``, PLAN-0945) replaces the Corvin look: tokens, wordmark,
-    mark, decoration and an optional background plate. ``None`` is the built-in Corvin look and
+    mark and decoration. ``None`` is the built-in Corvin look and
     takes the exact code path it always did.
 
     With a ``timeline`` (ADR-2245) every element is revealed at its cue and a
@@ -1162,15 +1162,15 @@ def build_document(
     body = re.sub(r"--amb:(\d+)", lambda m: f"--amb-at:{time_of(int(m.group(1))) + anim['rise_ms'] / 1000.0:.3f}s", body)
     classes = f"theme-{theme}" + (" compact" if compact else "")
     if style is None:
-        extra_css, plate_html, decor_html = "", "", f'<div class="glow"></div><div class="ring"></div>{_stars(seed)}'
+        extra_css, decor_html = "", f'<div class="glow"></div><div class="ring"></div>{_stars(seed)}'
     else:
-        extra_css, plate_html = _style_css(style), _plate_html(style)
+        extra_css = _style_css(style)
         decor_html = {"corvin": f'<div class="glow"></div><div class="ring"></div>{_stars(seed)}',
                       "minimal": '<div class="glow"></div>', "none": ""}[style.decor]
     return (
         f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8">'
         f"<style>{_font_faces()}:root{{{css_vars}}}{_base_css()}{focus_css}{extra_css}</style></head>"
-        f'<body class="{classes}"><div class="stage"{stage_style}>{plate_html}{decor_html}'
+        f'<body class="{classes}"><div class="stage"{stage_style}>{decor_html}'
         f"{body}{_map_strip(map_focus) if map_focus else ''}"
         f"<div class=\"chrome\">{chrome}</div></div></body></html>"
     )
@@ -1193,22 +1193,8 @@ def _style_wordmark(style: Any) -> str:
     return out
 
 
-def _plate_html(style: Any) -> str:
-    if not style.plate_png:
-        return ""
-    uri = "data:image/png;base64," + base64.b64encode(style.plate_png).decode("ascii")
-    return f'<div class="plate" style="background:url({uri}) 0 0/1920px 1080px no-repeat"></div>'
-
-
 def _style_css(style: Any) -> str:
-    css = ".plate{position:absolute;inset:0}.credit{font-size:18px;opacity:.7}"
-    s = style.plate_safe if style.plate_png else None
-    if s:
-        left, top = max(s["x"], 80), max(s["y"], 60)
-        right, bottom = max(1920 - s["x"] - s["w"], 80), max(1080 - s["y"] - s["h"], 150)
-        css += (f".frame{{padding:{top}px {right}px {bottom}px {left}px}}"
-                f".chrome{{left:{left}px;right:{right}px}}")
-    return css
+    return ".credit{font-size:18px;opacity:.7}"
 
 
 INTRO_MARK_PX = 150

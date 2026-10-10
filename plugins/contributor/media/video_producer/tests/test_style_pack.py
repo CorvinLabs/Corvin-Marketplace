@@ -103,15 +103,6 @@ def test_wordmark_is_escaped_and_markup_is_stripped():
     assert "<script>alert" not in build_document("hero", SAMPLES["hero"], duration_s=6, style=st)
 
 
-def test_plate_confines_content_to_the_safe_rectangle():
-    st = make_style(plate_png=_png((1920, 1080), (10, 20, 30, 255)),
-                    plate_safe={"x": 240, "y": 160, "w": 1440, "h": 760})
-    doc = build_document("content", SAMPLES["content"], duration_s=6, style=st)
-    assert 'class="plate"' in doc
-    assert ".frame{padding:160px 240px 160px 240px}" in doc
-    assert doc.index('class="plate"') < doc.index('class="frame')  # behind the content
-
-
 # ── safety and contrast rules ────────────────────────────────────────────────
 
 def _tweak(path, value):
@@ -169,14 +160,16 @@ def test_decompression_bomb_dimensions_are_refused():
         make_style(mark_png=_png((2000, 2000)))  # logo cap is 1024 px
 
 
-def test_plate_needs_a_sane_safe_rectangle():
-    plate = _png((1920, 1080))
-    for safe in (None, {"x": 0, "y": 0, "w": 100, "h": 100}, {"x": 1000, "y": 0, "w": 1500, "h": 900},
-                 {"x": "0", "y": 0, "w": 1920, "h": 1080}):
-        with pytest.raises(StyleError):
-            make_style(plate_png=plate, plate_safe=safe)
-    with pytest.raises(StyleError, match="without a plate"):
-        make_style(plate_safe={"x": 0, "y": 0, "w": 1920, "h": 1080})
+def test_plate_keys_are_ignored_not_an_error():
+    st = make_style()
+    wire = sp.draft_to_wire(st)
+    assert not any("plate" in k for k in wire) and "plate" not in st.to_json()
+    wire.update(plate_png_b64="AAAA", plate_safe={"x": 1})
+    back = sp.draft_from_wire(wire, style_id="sty_0a1b2c3d", imported_at="2026-01-01T00:00:00Z")
+    assert back.tokens == st.tokens
+    doc = st.to_json()
+    doc["plate"] = {"safe": {"x": 0, "y": 0, "w": 1920, "h": 1080}}  # an old stored document
+    assert sp.style_from_json(doc, mark_png=st.mark_png).name == "Acme"
 
 
 def test_wordmark_and_name_limits():

@@ -243,6 +243,8 @@ class WebSlideRenderer:
         theme: str = "dark",
         duration_s: float = 6.0,
         timeout_s: float = 30.0,
+        scene_index: Optional[int] = None,
+        total_scenes: Optional[int] = None,
     ) -> bytes:
         """One PNG of a slide at the END state of its entrance animation (style previews).
 
@@ -251,7 +253,8 @@ class WebSlideRenderer:
         if self._browser is None:
             raise WebRenderError("renderer is not open (use 'async with WebSlideRenderer()')")
         document = build_document(template, data, duration_s=float(duration_s), theme=theme,
-                                  tokens=self.tokens, style=self.style)
+                                  tokens=self.tokens, style=self.style,
+                                  scene_index=scene_index, total_scenes=total_scenes)
 
         async def _go() -> bytes:
             context = await self._browser.new_context(

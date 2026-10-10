@@ -5,6 +5,7 @@ Usage: style_sources_section.py <videos/<job>/style>          -> markdown on std
        style_sources_section.py <videos/<job>/style> --copy-to <Corvin-Videos/<name>/source/style>
 
 A video without a snapshot was made with the built-in CorvinOS look and gets a one-line section.
+A snapshot that exists but cannot be read is an error (exit 1), never the built-in look.
 """
 
 import argparse
@@ -13,6 +14,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.style_pack import StyleError  # noqa: E402
 from src.style_store import load_snapshot  # noqa: E402
 
 
@@ -28,7 +30,7 @@ def section(snapshot: Path) -> str:
         f"- Source deck sha256: `{src['sha256']}`" if src.get("sha256") else "- Source deck sha256: n/a",
         f"- Imported: {src.get('imported_at') or 'n/a'}",
         f"- Default theme: {st.default_theme}; decor: {st.decor}; wordmark: {st.wordmark or '(none)'}; "
-        f"logo: {'yes' if st.mark_png else 'no'}; background plate: {'yes' if st.plate_png else 'no'}",
+        f"logo: {'yes' if st.mark_png else 'no'}",
         f"- Accent (dark / light): `{st.tokens['dark']['accent']}` / `{st.tokens['light']['accent']}`",
     ]
     if st.fonts:
@@ -45,10 +47,16 @@ def main(argv=None) -> int:
     ap.add_argument("snapshot", type=Path)
     ap.add_argument("--copy-to", type=Path)
     a = ap.parse_args(argv)
-    print(section(a.snapshot))
-    if a.copy_to and load_snapshot(a.snapshot) is not None:
+    try:
+        text = section(a.snapshot)
+        has_style = load_snapshot(a.snapshot) is not None
+    except StyleError as e:
+        print(f"error: the style snapshot at {a.snapshot} is unreadable or invalid: {e}", file=sys.stderr)
+        return 1
+    print(text)
+    if a.copy_to and has_style:
         a.copy_to.mkdir(parents=True, exist_ok=True)
-        for name in ("style.json", "logo.png", "plate.png"):
+        for name in ("style.json", "logo.png"):
             if (a.snapshot / name).is_file():
                 shutil.copyfile(a.snapshot / name, a.copy_to / name)
     return 0

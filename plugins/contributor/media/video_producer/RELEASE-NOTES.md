@@ -1,5 +1,41 @@
 # Video Producer Plugin — Release Notes
 
+## Version 1.4.0 (2026-10-10)
+
+### What's new
+- **Your own look.** Import a PowerPoint (`.pptx`/`.potx`) as a *style*: palette, fonts (mapped to the three bundled
+  families), logo, wordmark and decoration. Pick it in the composer's **Style** chip; set one as the workspace
+  default; a revision keeps the original video's style. Without a style nothing changes — the CorvinOS look is
+  pinned byte-for-byte by 90 golden hashes. A custom-styled video never shows the CorvinOS mark unless you switch on
+  the "made with CorvinOS" credit.
+- **Safe by construction.** The deck is read in memory with a hardened, dependency-free reader (zip and XML limits,
+  no DTD/entities, no network, macros refused, logos re-encoded as PNG — SVG is dropped), never stored, and slide
+  text/notes/author names are never read. Palettes must meet contrast rules before they can be saved; a palette that
+  does not is repaired at import or refused.
+- **Honest about default colours.** 18 of 29 real decks measured here carry PowerPoint's default palette. Those
+  imports get a flagged neutral accent and ask you to choose one instead of silently producing "default blue".
+- **Reproducible.** The style is copied next to each video (`videos/<job>/style/`);
+  `scripts/style_sources_section.py` prints the Style section for a `sources.md` in Corvin-Videos.
+- **Audited and erasable.** Style import/save/delete/use are audit events; the workspace's Video Producer store is
+  covered by the GDPR Art. 17 erasure layer (see Known limits).
+
+### Known limits
+- Background artwork of slide masters is not reproduced: a spike over 29 decks found layouts to be plain fills plus an
+  occasional small logo, so only colours and the logo are taken. (A background-plate mode was evaluated and not built.)
+- One look per video: a styled video uses the style's default theme for every scene.
+- Fonts map to Newsreader / Instrument Sans / JetBrains Mono only; font files cannot be uploaded (licensing).
+- Erasure: jobs and styles carry no per-user owner, so the erasure layer removes the whole workspace store only when the
+  subject is the workspace itself.
+- Videos grounded on the CorvinOS knowledge base can still use the CorvinOS console screenshot and layer-strip templates.
+- Two hosts cap request bodies for the import routes (25 MB deck, 8 MB for save/preview); the gateway host got a cap
+  for these paths in this release.
+
+### Verified by
+`tests/test_style_pack.py`, `test_style_store.py`, `test_style_import.py` (hostile corpus: zip/XML bombs, traversal,
+macros, SVG, image bombs), `test_style_review_fixes.py` (defects found by two independent adversarial reviews),
+`test_style_sources_section.py`, `test_style_e2e.py` (real Chromium + ffmpeg: the style's accent reaches the frames,
+the Corvin gold does not); console `test_video_producer_styles_e2e.py` (two workspaces, audit chain, erasure).
+
 ## Version 1.3.1 (2026-10-10)
 
 ### What's new

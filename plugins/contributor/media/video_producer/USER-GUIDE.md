@@ -67,7 +67,35 @@ then plays it at full width. **F** (or the fullscreen button) goes fullscreen.
 Select a produced video, or press **Revise** on its card, describe the change ("make scene 2 shorter") and send.
 A new video is produced; the original stays and the new card carries a *revision* badge.
 
-### Step 5: Download
+### Step 6: Use Your Own Look (PowerPoint Style)
+
+By default every video looks like CorvinOS. To make videos that look like *your* deck:
+
+1. Open the **Style** chip next to the mode switch and choose **Import from PowerPoint…**, or attach a `.pptx` / `.potx`
+   file in the composer and choose **Use as style** (a different action from using it as source material).
+2. The import dialog shows three sample slides rendered with the extracted look. Check or change:
+   - **Name** and **Wordmark** (the wordmark is shown in the footer of every slide),
+   - **Default theme** — a styled video uses this theme throughout,
+   - **Decoration** (Corvin constellation, a soft minimal glow, or none),
+   - the **colours** (each swatch has a colour picker; the hints under them show whether text stays readable),
+   - the **fonts** — your deck's fonts are mapped to the three fonts Video Producer bundles, and you can change the mapping,
+   - the **logo** (remove it, or switch off showing it large at the start), and the optional "made with CorvinOS" credit (off by default).
+3. **Save** (or **Save and set as default**). Pick the style in the chip before sending; a video you revise keeps
+   its original style unless you pick another.
+
+What is read from the deck: colours, fonts and a logo picture from the master/layouts. What is **never** read: slide
+text, speaker notes, comments, author names, animations, embedded fonts, linked images, background pictures. The deck
+itself is not stored — only the extracted style. Macro files (`.pptm`) are refused; the limit is 25 MB.
+
+**Decks that use PowerPoint's default colours** (most do) carry no brand colour. You will see a note and a neutral
+accent — pick your own accent in the dialog. If your logo is hard to see on the chosen theme, the dialog says so.
+
+Limits: 20 saved styles per workspace; one look per video (a styled video does not mix light and dark slides); slide
+masters' background artwork is not reproduced (only colours and the logo). Slides that cannot be rendered as web slides
+fall back to a plain slide that uses your palette and wordmark. A style derived from a third-party template does not
+transfer the template's rights. The style used is stored next to each video (`videos/<job>/style/`).
+
+### Step 7: Download
 
 When the status shows ✅ **Complete**, click **Download** to get the MP4.
 

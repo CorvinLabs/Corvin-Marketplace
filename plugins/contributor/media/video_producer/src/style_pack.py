@@ -1,10 +1,9 @@
 """Style Pack: a per-tenant look for the Video Producer (PLAN-0945).
 
-A style is the existing design-tokens document plus brand, decoration and an optional
-background plate. The built-in ``corvin`` style is represented by ``None`` (the renderer's
+A style is the existing design-tokens document plus brand and decoration. The built-in ``corvin`` style is represented by ``None`` (the renderer's
 untouched code path), so it stays byte-identical.
 
-Assets (logo, plate) are PNG bytes held in memory and inlined as ``data:`` URIs by the
+The logo is PNG bytes held in memory and inlined as ``data:`` URIs by the
 renderer, which runs without network access, so a style can never cause a request.
 """
 
@@ -13,6 +12,7 @@ from __future__ import annotations
 import base64
 import binascii
 import io
+import json
 import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
@@ -30,8 +30,12 @@ MAX_ASSET_BYTES = 2 * 1024 * 1024
 MAX_NAME = 60
 MAX_WORDMARK = 40
 MAX_WARNINGS = 40
+MAX_JSON_BYTES = 128 * 1024  # a stored style.json above this is never loaded back
+MAX_LOGO_PX = 1024
+TOKEN_KEYS = ("version", "source", "dark", "light", "typography", "spacing", "layout", "animation", "rhythm")
 MIN_TEXT = 4.5
 MIN_MUTED = 3.0
+MIN_CARD_TEXT = 4.5  # text and muted text are drawn on cards too, not only on the background
 MIN_ACCENT = 3.0
 MIN_HIGHLIGHT = 1.8  # only the start stop of the accent gradient; Corvin's own light theme is 1.94
 MIN_DIM = 2.0
@@ -96,8 +100,6 @@ class Style:
     fonts: List[Dict[str, str]] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     mark_png: Optional[bytes] = None
-    plate_png: Optional[bytes] = None
-    plate_safe: Optional[Dict[str, int]] = None  # x, y, w, h in the 1920x1080 stage
 
     # ── serialisation (style.json holds everything except the PNG bytes) ──
     def to_json(self) -> Dict[str, Any]:
@@ -107,7 +109,6 @@ class Style:
             "brand": {"wordmark": self.wordmark, "has_mark": self.mark_png is not None,
                       "intro_mark": self.intro_mark, "credit": self.credit},
             "decor": self.decor,
-            "plate": {"safe": self.plate_safe} if self.plate_png else None,
             "fonts": {"mapping": self.fonts}, "warnings": self.warnings,
         }
 
@@ -123,7 +124,8 @@ def data_uri(png: bytes) -> str:
 
 
 def check_png(data: Any, what: str, *, max_px: int = 4096) -> bytes:
-    """A stored asset is a PNG we produced: magic, size cap, dimensions and decode all checked."""
+    """A stored asset is a PNG we produced: magic, size cap, dimensions (read from the header,
+    before any pixel is decoded) and decode all checked."""
     if not isinstance(data, (bytes, bytearray)) or not data.startswith(_PNG_MAGIC):
         raise StyleError(f"{what} must be a PNG")
     if len(data) > MAX_ASSET_BYTES:
@@ -170,6 +172,13 @@ def validate_style(style: Style) -> Style:
         validate_tokens(style.tokens)
     except WebSceneError as e:
         raise StyleError(str(e)) from None
+    extra = sorted(str(k) for k in style.tokens if k not in TOKEN_KEYS)
+    if extra:
+        raise StyleError(f"unknown design token group: {extra[0][:40]}")
+    for key in ("version", "source"):
+        v = style.tokens.get(key)
+        if v is not None and (not isinstance(v, str) or len(v) > 120):
+            raise StyleError(f"tokens.{key} must be text of at most 120 characters")
     for theme in THEMES:
         p = style.tokens[theme]
         for key, floor, label in (("text", MIN_TEXT, "text"), ("text_muted", MIN_MUTED, "muted text"),
@@ -179,41 +188,40 @@ def validate_style(style: Style) -> Style:
             ratio = contrast(p["bg"], p[key])
             if ratio < floor:
                 raise StyleError(f"{theme}: {label} on the background is {ratio:.2f}:1, needs {floor}:1")
+        for key, floor, label in (("text", MIN_CARD_TEXT, "text"), ("text_muted", MIN_MUTED, "muted text")):
+            if not re.fullmatch(r"#[0-9a-fA-F]{6}", p["bg_card"]):
+                raise StyleError(f"{theme}.bg_card must be #rrggbb")
+            ratio = contrast(p["bg_card"], p[key])
+            if ratio < floor:
+                raise StyleError(f"{theme}: {label} on a card is {ratio:.2f}:1, needs {floor}:1")
         dimmed = mix(p["bg"], p["text"], DIM)
         if contrast(p["bg"], dimmed) < MIN_DIM:
             raise StyleError(f"{theme}: an out-of-focus item would be unreadable "
                              f"({contrast(p['bg'], dimmed):.2f}:1, needs {MIN_DIM}:1)")
     if style.mark_png is not None:
-        style.mark_png = check_png(style.mark_png, "logo", max_px=1024)
-    if style.plate_png is not None:
-        style.plate_png = check_png(style.plate_png, "background plate", max_px=2160)
-        s = style.plate_safe
-        if not isinstance(s, dict) or set(s) != {"x", "y", "w", "h"} or not all(
-                isinstance(v, int) and not isinstance(v, bool) for v in s.values()):
-            raise StyleError("a plate needs an integer safe rectangle {x, y, w, h}")
-        if not (0 <= s["x"] and 0 <= s["y"] and s["w"] >= 800 and s["h"] >= 500
-                and s["x"] + s["w"] <= 1920 and s["y"] + s["h"] <= 1080):
-            raise StyleError("the plate's safe rectangle must be at least 800x500 and inside the 1920x1080 stage")
-    elif style.plate_safe is not None:
-        raise StyleError("safe rectangle without a plate")
+        style.mark_png = check_png(style.mark_png, "logo", max_px=MAX_LOGO_PX)
     if not isinstance(style.warnings, list) or len(style.warnings) > MAX_WARNINGS:
         raise StyleError("too many warnings")
     style.warnings = [_label(str(w), "warning", 200) for w in style.warnings]
+    if not isinstance(style.fonts, list):
+        raise StyleError("font mapping must be a list")
     for m in style.fonts:
         if not isinstance(m, dict):
             raise StyleError("font mapping entries must be objects")
     style.fonts = [{k: _label(str(m.get(k, "")), f"fonts.{k}", 80, required=False)
                     for k in ("from", "to", "reason")} for m in style.fonts][:20]
+    if len(json.dumps(style.to_json(), indent=2, sort_keys=True).encode()) > MAX_JSON_BYTES:
+        raise StyleError(f"the style is larger than {MAX_JSON_BYTES // 1024} KB")
     return style
 
 
-def style_from_json(doc: Any, *, mark_png: Optional[bytes] = None, plate_png: Optional[bytes] = None) -> Style:
-    """Rebuild a Style from a stored style.json (+ its assets). Fully re-validated."""
+def style_from_json(doc: Any, *, mark_png: Optional[bytes] = None) -> Style:
+    """Rebuild a Style from a stored style.json (+ its logo). Fully re-validated; a legacy
+    ``plate`` key in an old document is ignored."""
     if not isinstance(doc, dict) or doc.get("schema") != SCHEMA:
         raise StyleError("unsupported style document")
     brand = doc.get("brand") or {}
-    plate = doc.get("plate") or {}
-    if not isinstance(brand, dict) or not isinstance(plate, dict):
+    if not isinstance(brand, dict):
         raise StyleError("malformed style document")
     fonts = doc.get("fonts") or {}
     s = Style(
@@ -223,20 +231,19 @@ def style_from_json(doc: Any, *, mark_png: Optional[bytes] = None, plate_png: Op
         decor=doc.get("decor", "minimal"),
         source=doc.get("source") if isinstance(doc.get("source"), dict) else {},
         fonts=fonts.get("mapping", []) if isinstance(fonts, dict) else [],
-        warnings=doc.get("warnings", []), mark_png=mark_png, plate_png=plate_png,
-        plate_safe=plate.get("safe") if plate_png else None,
+        warnings=doc.get("warnings", []), mark_png=mark_png,
     )
     return validate_style(s)
 
 
-def decode_b64_png(value: Any, what: str) -> Optional[bytes]:
+def decode_b64_png(value: Any, what: str, *, max_px: int = 4096) -> Optional[bytes]:
     if value in (None, ""):
         return None
     try:
         raw = base64.b64decode(value, validate=True)
     except (binascii.Error, ValueError, TypeError):
         raise StyleError(f"{what} is not valid base64") from None
-    return check_png(raw, what)
+    return check_png(raw, what, max_px=max_px)
 
 
 # ── wire format: what the import preview shows and the commit step sends back ──
@@ -263,8 +270,6 @@ def draft_to_wire(style: Style) -> Dict[str, Any]:
         "brand": {"wordmark": style.wordmark, "intro_mark": style.intro_mark, "credit": style.credit},
         "fonts": {"mapping": style.fonts}, "source": style.source, "warnings": style.warnings,
         "mark_png_b64": base64.b64encode(style.mark_png).decode("ascii") if style.mark_png else None,
-        "plate_png_b64": base64.b64encode(style.plate_png).decode("ascii") if style.plate_png else None,
-        "plate_safe": style.plate_safe if style.plate_png else None,
     }
 
 
@@ -285,8 +290,6 @@ def draft_from_wire(wire: Any, *, style_id: str, imported_at: str) -> Style:
         source=sanitize_source(wire.get("source"), imported_at=imported_at),
         fonts=fonts.get("mapping", []) if isinstance(fonts.get("mapping", []), list) else [],
         warnings=[str(w) for w in warnings][:MAX_WARNINGS],
-        mark_png=decode_b64_png(wire.get("mark_png_b64"), "logo"),
-        plate_png=decode_b64_png(wire.get("plate_png_b64"), "background plate"),
-        plate_safe=wire.get("plate_safe"),
+        mark_png=decode_b64_png(wire.get("mark_png_b64"), "logo", max_px=MAX_LOGO_PX),
     )
     return validate_style(style)

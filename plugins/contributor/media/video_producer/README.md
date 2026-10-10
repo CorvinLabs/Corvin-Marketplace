@@ -60,6 +60,10 @@ curl -O http://localhost:8765/v1/console/video/videos/video_abc123/download
 | `web_theme` | `dark` | `dark` \| `light` | API only: colour scheme of the web slides |
 | `web_fps` | `30` | integer 12–60 | API only: render frame rate (higher = longer render time) |
 
+### Your Own Look (Style Packs)
+
+A *style* — palette, fonts, logo, wordmark, decoration — is a validated, per-workspace object created from a PowerPoint (`.pptx`/`.potx`) in the console panel. Without a style the CorvinOS look is used and its output is pinned byte-for-byte by golden tests. Details: [USER-GUIDE.md](USER-GUIDE.md) (Step 6). Logos are PNG-only (SVG is dropped by design), the deck is never stored, and contrast rules are enforced when a style is saved.
+
 ### Web Slide Templates
 
 The plugin ships with **15 built-in templates** (hero, content, line chart, donut, flow graph, timeline, cycle, layers, stat, diagram, compare, quote, code, chart, console still). Each item of a slide appears when the narration names it and is highlighted while it is explained — see [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md) for details. The storyboard LLM automatically picks templates based on the scene content; you don't need to specify them.

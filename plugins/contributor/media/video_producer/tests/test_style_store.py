@@ -16,11 +16,11 @@ def store(tmp_path):
 
 
 def test_roundtrip_keeps_everything(store):
-    st = make_style(id=store.new_id(), plate_png=_png((1920, 1080)), plate_safe={"x": 200, "y": 120, "w": 1500, "h": 800})
+    st = make_style(id=store.new_id())
     store.save(st)
     back = store.load(st.id)
-    assert back.tokens == st.tokens and back.mark_png == st.mark_png and back.plate_png == st.plate_png
-    assert back.plate_safe == st.plate_safe and back.wordmark == "Acme Corp"
+    assert back.tokens == st.tokens and back.mark_png == st.mark_png
+    assert back.wordmark == "Acme Corp"
     assert [s.id for s in store.list()] == [st.id]
 
 

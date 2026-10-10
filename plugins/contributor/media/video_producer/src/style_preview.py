@@ -1,7 +1,7 @@
 """Style previews (PLAN-0945 P2): three neutral sample slides rendered in a style's look.
 
 The sample content is fixed and generic on purpose - it is never the user's text and never the
-Corvin text, so a preview shows the LOOK (palette, fonts, decoration, mark, plate) and nothing else.
+Corvin text, so a preview shows the LOOK (palette, fonts, decoration, mark, page counter) and nothing else.
 One headless Chromium per call; the caller bounds concurrency. Fails soft: no browser -> no previews
 and a note, never an exception for the route to turn into a 500.
 """
@@ -56,8 +56,10 @@ async def render_previews(style: Any, *, themes: Optional[List[str]] = None) -> 
     async def _all() -> None:
         async with WebSlideRenderer(style=style) as r:
             for theme in themes:
-                for template, data in SAMPLES:
-                    png = await r.render_still(template, data, theme=theme, timeout_s=PER_SLIDE_TIMEOUT_S)
+                for n, (template, data) in enumerate(SAMPLES, 1):
+                    # scene 1 shows the intro mark (when the style has one), all show the page counter
+                    png = await r.render_still(template, data, theme=theme, timeout_s=PER_SLIDE_TIMEOUT_S,
+                                               scene_index=n, total_scenes=len(SAMPLES))
                     jpg = await asyncio.to_thread(_downscale, png)
                     previews.append({"template": template, "theme": theme,
                                      "data_uri": "data:image/jpeg;base64," + base64.b64encode(jpg).decode("ascii")})

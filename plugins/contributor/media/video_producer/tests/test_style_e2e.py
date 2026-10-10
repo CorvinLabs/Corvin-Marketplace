@@ -92,3 +92,22 @@ async def test_an_invalid_style_fails_the_job_instead_of_rendering_it(tmp_path, 
         await _run(tmp_path, monkeypatch, "job_bad", web_style=st)
     job = get_storage(str(tmp_path / "tenant")).get_job("job_bad")
     assert job.status == "error"
+
+
+async def test_a_styled_video_ignores_a_scenes_own_theme(tmp_path, monkeypatch):
+    """One look per video: the style's default theme wins over a per-scene "theme"."""
+    seen = []
+    real = skill._WebRendererSession.render
+
+    async def spy(self, scene, duration, out_dir, **kw):
+        seen.append(kw.get("theme"))
+        return await real(self, scene, duration, out_dir, **kw)
+    monkeypatch.setattr(skill._WebRendererSession, "render", spy)
+    board = json.loads(json.dumps(STORYBOARD))
+    board["scenes"][1]["theme"] = "light"
+    st = make_style()
+    await _run(tmp_path, monkeypatch, "job_theme", web_style=st, storyboard=board)
+    assert seen == [st.default_theme, st.default_theme]
+    seen.clear()
+    await _run(tmp_path, monkeypatch, "job_theme_plain", storyboard=board)
+    assert seen == ["dark", "light"]  # without a style the scene's choice still applies

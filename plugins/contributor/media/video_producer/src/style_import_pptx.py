@@ -15,6 +15,7 @@ import io
 import posixpath
 import re
 import stat
+import time
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass, field
@@ -38,6 +39,10 @@ MAX_XML_BYTES = 8 * 1024 * 1024
 MAX_MEDIA_BYTES = 10 * 1024 * 1024
 MAX_XML_NODES = 300_000
 MAX_XML_DEPTH = 64
+MAX_XML_NODES_TOTAL = 1_500_000  # all parts of one import together (a 94 KB zip can hold 8M nodes)
+MAX_IMPORT_SECONDS = 8.0
+TOO_COMPLEX = "The presentation is too complex to read."
+LOGO_MIN_CONTRAST = 1.5
 MAX_XML_BUDGET = 60 * 1024 * 1024  # all XML parts together
 MAX_LAYOUTS = 200
 MAX_MASTERS = 5
@@ -83,6 +88,8 @@ class _Package:
     def __init__(self, data: bytes) -> None:
         self.xml_budget = MAX_XML_BUDGET
         self.total_budget = MAX_TOTAL_UNCOMPRESSED
+        self.nodes_left = MAX_XML_NODES_TOTAL
+        self.deadline = time.monotonic() + MAX_IMPORT_SECONDS
         try:
             self.zf = zipfile.ZipFile(io.BytesIO(data))
             infos = self.zf.infolist()
@@ -168,7 +175,12 @@ class _Package:
         self.xml_budget -= len(raw)
         if self.xml_budget < 0:
             raise PptxImportError("The presentation holds too much XML and was refused.")
-        return parse_xml(raw)
+        self.check_time()
+        return parse_xml(raw, self)
+
+    def check_time(self) -> None:
+        if time.monotonic() > self.deadline:
+            raise PptxImportError(TOO_COMPLEX)
 
     def rels(self, part: str) -> List[Dict[str, Any]]:
         d, base = posixpath.split(part)
@@ -176,8 +188,9 @@ class _Package:
         return parse_rels(root, part) if root is not None else []
 
 
-def parse_xml(raw: bytes) -> ET.Element:
-    """Hardened parse: no DTD/entities, NUL-free (no UTF-16 smuggling), node and depth caps."""
+def parse_xml(raw: bytes, pkg: Optional["_Package"] = None) -> ET.Element:
+    """Hardened parse: no DTD/entities, NUL-free (no UTF-16 smuggling), node and depth caps.
+    With ``pkg`` the node count also draws on the import-wide node and time budgets."""
     low = raw.lower()
     if b"\x00" in raw:
         raise PptxImportError("The presentation uses an unsupported text encoding.")
@@ -186,8 +199,11 @@ def parse_xml(raw: bytes) -> ET.Element:
     parser = ET.XMLPullParser(events=("start", "end"))
     root: Optional[ET.Element] = None
     depth = nodes = 0
+    limit = min(MAX_XML_NODES, pkg.nodes_left) if pkg is not None else MAX_XML_NODES
     try:
         for i in range(0, len(raw), 65536):
+            if pkg is not None:
+                pkg.check_time()
             parser.feed(raw[i:i + 65536])
             for ev, el in parser.read_events():
                 if ev == "start":
@@ -195,7 +211,9 @@ def parse_xml(raw: bytes) -> ET.Element:
                         root = el
                     depth += 1
                     nodes += 1
-                    if depth > MAX_XML_DEPTH or nodes > MAX_XML_NODES:
+                    if depth > MAX_XML_DEPTH or nodes > limit:
+                        if pkg is not None and nodes <= MAX_XML_NODES and depth <= MAX_XML_DEPTH:
+                            raise PptxImportError(TOO_COMPLEX)
                         raise PptxImportError("The presentation contains oversized or deeply nested XML.")
                 else:
                     depth -= 1
@@ -206,6 +224,8 @@ def parse_xml(raw: bytes) -> ET.Element:
         raise PptxImportError("The presentation contains malformed XML.") from None
     if root is None:
         raise PptxImportError("The presentation contains an empty XML part.")
+    if pkg is not None:
+        pkg.nodes_left -= nodes
     return root
 
 
@@ -363,8 +383,13 @@ def _palette(bg: str, text: str, accents: List[str], success: str) -> Tuple[Dict
     while contrast(muted, bg) < 4.0 and t > 0:
         t = max(0.0, t - 0.05)
         muted = mix(text, bg, t)
+    card = bg
+    for k in (0.05, 0.03, 0.015, 0.0):  # a card must keep both text colours readable
+        card = mix(bg, text, k)
+        if contrast(card, text) >= 4.5 and contrast(card, muted) >= 3.0:
+            break
     return {
-        "bg": bg, "bg_card": mix(bg, text, 0.05), "border": mix(bg, text, 0.14), "text": text,
+        "bg": bg, "bg_card": card, "border": mix(bg, text, 0.14), "text": text,
         "text_muted": muted, "text_faint": mix(text, bg, 0.7), "accent": accent, "accent_hi": hi,
         "glow": rgba(accent, 0.16 if dark else 0.2), "success": success,
     }, adjusted
@@ -529,6 +554,18 @@ def _image_colors(im: Any) -> List[str]:
         if _is_chromatic(h):
             out.append(h)
     return out
+
+
+def _logo_hard_to_see(im: Any, bg: str) -> bool:
+    """True when the logo's visible pixels (mean luminance) hardly differ from the background."""
+    small = im.copy()
+    small.thumbnail((64, 64))
+    lums = [luminance("#%02x%02x%02x" % p[:3]) for p in small.getdata() if p[3] >= 128]
+    if not lums:
+        return False
+    mean = sum(lums) / len(lums)
+    lb = luminance(bg)
+    return (max(mean, lb) + 0.05) / (min(mean, lb) + 0.05) < LOGO_MIN_CONTRAST
 
 
 # ── entry point ─────────────────────────────────────────────────────────────
@@ -719,6 +756,9 @@ def import_pptx(data: bytes, filename: str = "") -> ImportResult:
 
     if accent_adjusted and not (default_name and accents == [NEUTRAL_ACCENT]):
         style.warnings.append("The accent colour was adjusted slightly so it stays readable on the background.")
+    if logo_img is not None and mark_png is not None and _logo_hard_to_see(logo_img, style.tokens[own_theme]["bg"]):
+        style.warnings.append("The logo may be hard to see on this style's background. "
+                              "Check the preview, or add a logo version that suits it.")
     if aspect != "16:9":
         style.warnings.append(f"This deck is {aspect if aspect == '4:3' else 'not 16:9'}; "
                               "only its colours, fonts and logo are used.")

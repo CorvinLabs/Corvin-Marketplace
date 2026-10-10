@@ -1,4 +1,4 @@
-"""Per-tenant style store (PLAN-0945 P2): ``<base>/styles/<style_id>/{style.json,logo.png,plate.png}``.
+"""Per-tenant style store (PLAN-0945 P2): ``<base>/styles/<style_id>/{style.json,logo.png}``.
 
 ``base`` is the host's tenant directory (the same one ``VideoStorage`` gets), so a tenant can only
 ever reach its own styles. Ids are validated before they touch a path, nothing follows a symlink,
@@ -7,22 +7,23 @@ and every read re-validates the document (a hand-edited file is refused, not tru
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import secrets
 import shutil
 import stat
 import tempfile
+import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
 try:
-    from .style_pack import ID_RE, Style, StyleError, style_from_json, validate_style
+    from .style_pack import ID_RE, MAX_JSON_BYTES, Style, StyleError, style_from_json, validate_style
 except ImportError:  # standalone script use
-    from style_pack import ID_RE, Style, StyleError, style_from_json, validate_style
+    from style_pack import ID_RE, MAX_JSON_BYTES, Style, StyleError, style_from_json, validate_style
 
 MAX_STYLES = 20
-MAX_JSON_BYTES = 128 * 1024
 
 
 class StyleNotFound(KeyError):
@@ -63,30 +64,61 @@ def _atomic_write(path: Path, data: bytes) -> None:
         raise
 
 
+@contextlib.contextmanager
+def _exclusive(path: Path):
+    """Cross-process (and cross-thread) mutual exclusion: an OS lock on ``path``, released on crash."""
+    fd = os.open(str(path), os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        try:
+            import fcntl
+            fcntl.flock(fd, fcntl.LOCK_EX)
+        except ImportError:  # Windows
+            import msvcrt
+            for _ in range(200):
+                try:
+                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError:
+                    time.sleep(0.05)
+            else:
+                raise StyleError("the style store is busy; try again")
+        yield
+    finally:
+        os.close(fd)  # closing releases either kind of lock
+
+
 def write_style_snapshot(style: Style, directory: Path) -> None:
-    """Write style.json (+ assets) into ``directory``: the copy that travels with a video."""
+    """Write style.json (+ logo) into ``directory``: the copy that travels with a video."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     _atomic_write(directory / "style.json", json.dumps(style.to_json(), indent=2, sort_keys=True).encode())
     if style.mark_png:
         _atomic_write(directory / "logo.png", style.mark_png)
-    if style.plate_png:
-        _atomic_write(directory / "plate.png", style.plate_png)
+
+
+def _read_style_dir(d: Path) -> Style:
+    """Read + fully re-validate a style directory. Raises StyleError (message safe to show)."""
+    try:
+        doc = json.loads(_read_regular(d / "style.json", MAX_JSON_BYTES).decode("utf-8"))
+        logo = d / "logo.png"
+        mark = _read_regular(logo, 2 * 1024 * 1024 + 1) if logo.exists() or logo.is_symlink() else None
+    except (OSError, ValueError):
+        raise StyleError("stored style is unreadable") from None
+    return style_from_json(doc, mark_png=mark)
 
 
 def load_snapshot(directory: Path) -> Optional[Style]:
-    """Read back the style a video was rendered with (``videos/<job>/style``); None if it has none
-    or the copy is unreadable/invalid. Fully re-validated, never followed through a symlink."""
+    """Read back the style a video was rendered with (``videos/<job>/style``).
+
+    None ONLY when the video has no snapshot (the built-in look). A snapshot that exists but is
+    unreadable or invalid raises StyleError: silently falling back to the Corvin look would
+    misreport a custom-styled video."""
     d = Path(directory)
-    try:
-        if d.is_symlink() or not (d / "style.json").exists():
-            return None
-        doc = json.loads(_read_regular(d / "style.json", MAX_JSON_BYTES).decode("utf-8"))
-        mark = _read_regular(d / "logo.png", 2 * 1024 * 1024 + 1) if (d / "logo.png").exists() else None
-        plate = _read_regular(d / "plate.png", 2 * 1024 * 1024 + 1) if (d / "plate.png").exists() else None
-        return style_from_json(doc, mark_png=mark, plate_png=plate)
-    except (OSError, ValueError, StyleError):
+    if not d.is_symlink() and not (d / "style.json").exists() and not (d / "style.json").is_symlink():
         return None
+    if d.is_symlink():
+        raise StyleError("stored style is unreadable")
+    return _read_style_dir(d)
 
 
 class StyleStore:
@@ -118,13 +150,16 @@ class StyleStore:
         d = self._dir(style.id)
         if d.exists():
             raise StyleError("a style with this id already exists")
-        if len(self.ids()) >= MAX_STYLES:
-            raise StyleQuotaExceeded(f"at most {MAX_STYLES} styles per tenant; delete one first")
         staging = self.root / f".{style.id}.{secrets.token_hex(3)}.new"
         try:
             staging.mkdir(mode=0o700)
             write_style_snapshot(style, staging)
-            os.rename(staging, d)
+            with _exclusive(self.root / ".lock"):  # quota check and rename are one step
+                if d.exists():
+                    raise StyleError("a style with this id already exists")
+                if len(self.ids()) >= MAX_STYLES:
+                    raise StyleQuotaExceeded(f"at most {MAX_STYLES} styles per tenant; delete one first")
+                os.rename(staging, d)
         except BaseException:
             shutil.rmtree(staging, ignore_errors=True)
             raise
@@ -134,15 +169,9 @@ class StyleStore:
         d = self._dir(style_id)
         if d.is_symlink() or not d.is_dir():
             raise StyleNotFound(style_id)
-        try:
-            doc = json.loads(_read_regular(d / "style.json", MAX_JSON_BYTES).decode("utf-8"))
-            mark = _read_regular(d / "logo.png", 2 * 1024 * 1024 + 1) if (d / "logo.png").exists() else None
-            plate = _read_regular(d / "plate.png", 2 * 1024 * 1024 + 1) if (d / "plate.png").exists() else None
-        except FileNotFoundError:
-            raise StyleNotFound(style_id) from None
-        except (OSError, ValueError):
-            raise StyleError("stored style is unreadable") from None
-        return style_from_json(doc, mark_png=mark, plate_png=plate)
+        if not (d / "style.json").exists() and not (d / "style.json").is_symlink():
+            raise StyleNotFound(style_id)
+        return _read_style_dir(d)
 
     def list(self) -> List[Style]:
         out = []

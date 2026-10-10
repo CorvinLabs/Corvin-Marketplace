@@ -275,7 +275,9 @@ _NEUTRAL_SWAPS = (
     ("the CorvinOS mark is shown large on it at the start of every video", "the brand mark is shown large on it at the start of the video"),
     ('"narration_text": "Welcome to Corvin"', '"narration_text": "Welcome"'),
     ('"visual_description": "Corvin logo on dark background"', '"visual_description": "title card with the brand mark"'),
-    ('"data": {{"title": "Welcome to Corvin", "accent": "The agentic OS"}}', '"data": {{"title": "Welcome", "accent": "A short subtitle"}}'),
+    ('"data": {"title": "Welcome to Corvin", "accent": "The agentic OS"}', '"data": {"title": "Welcome", "accent": "A short subtitle"}'),
+    # a styled video renders every scene in the style's default theme, so the model must not choose one
+    ('Optional per scene: "theme": "dark" (default) or "light".\n', ""),
 )
 
 
@@ -830,6 +832,7 @@ def _render_slide_image(
     strategy: Optional[str] = None,
     scene_index: Optional[int] = None,
     total_scenes: Optional[int] = None,
+    style: Optional["Style"] = None,
 ) -> None:
     """
     Render a real 1280x720 PNG slide via Pillow (this ffmpeg static build ships
@@ -846,7 +849,12 @@ def _render_slide_image(
     progress-dot row — omitted entirely when the caller doesn't have them
     (e.g. a standalone test rendering a single scene), so this stays
     backward compatible.
+
+    ``style`` (a user's own look) replaces the Corvin navy/teal with the style's default-theme
+    palette and draws its wordmark/logo; ``None`` keeps the original output byte for byte.
     """
+    import io
+
     from PIL import Image, ImageDraw, ImageFont
 
     kind_label = {
@@ -877,6 +885,12 @@ def _render_slide_image(
     bg_top = _COLOR_NAVY_DARK if scene.kind == "title" else tuple(c + 6 for c in _COLOR_NAVY)
     bg_bottom = (8, 14, 22) if scene.kind == "title" else _COLOR_NAVY_DARK
     accent_color = _KIND_ACCENT.get(scene.kind, (138, 180, 255))
+    text_color = _COLOR_ICE
+    if style is not None:
+        pal = style.tokens[style.default_theme]
+        rgb = lambda h: tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))  # noqa: E731 - validated #rrggbb
+        bg_top, bg_bottom = rgb(pal["bg"]), rgb(pal["bg_card"])
+        accent_color, text_color = rgb(pal["accent"]), rgb(pal["text"])
 
     img = Image.new("RGB", (w, h))
     _draw_vertical_gradient(img, bg_top, bg_bottom)
@@ -910,7 +924,7 @@ def _render_slide_image(
         total_height = line_height * len(body_lines)
         y = h - 80 - total_height
         for line in body_lines:
-            draw.text((centered_x(line, body_font), y), line, font=body_font, fill=_COLOR_ICE)
+            draw.text((centered_x(line, body_font), y), line, font=body_font, fill=text_color)
             y += line_height
     else:
         # Minimal/default layout: the kind label, large and centred, plus any placeholder text.
@@ -919,11 +933,22 @@ def _render_slide_image(
         total_height = line_height * len(body_lines)
         y = (h - total_height) // 2 + 20
         for line in body_lines:
-            draw.text((centered_x(line, body_font), y), line, font=body_font, fill=_COLOR_ICE)
+            draw.text((centered_x(line, body_font), y), line, font=body_font, fill=text_color)
             y += line_height
 
     if scene_index is not None and total_scenes is not None:
         _draw_progress_dots(draw, w, h, scene_index, total_scenes, accent_color)
+
+    if style is not None:
+        x = 40
+        if style.mark_png:
+            logo = Image.open(io.BytesIO(style.mark_png)).convert("RGBA")
+            logo.thumbnail((56, 56), Image.LANCZOS)
+            img.paste(logo, (x, 28), logo)
+            x += logo.width + 14
+        if style.wordmark:
+            draw.text((x, 34), style.wordmark, font=ImageFont.truetype(_FONT_BOLD_PATH, 28),
+                      fill=rgb(pal["text_muted"]))
 
     img.save(out_path)
 
@@ -1602,7 +1627,8 @@ async def orchestrate_video(
                         t_render = datetime.now()
                         frames, reason = await web.render(
                             scene, audio_duration, scenes_dir / f"scene_{i:03d}_frames", cues=cues,
-                            theme=scene.theme or web_theme, scene_index=i, total_scenes=total, lang=lang,
+                            # one look per video: a style fixes the theme, a scene's own "theme" is ignored
+                            theme=web_theme if web_style is not None else (scene.theme or web_theme), scene_index=i, total_scenes=total, lang=lang,
                             map_focus=(scene.map or {}).get("focus") if isinstance(scene.map, dict) else None,
                         )
                         tl = getattr(frames, "timeline", None) if frames else None
@@ -1636,7 +1662,7 @@ async def orchestrate_video(
                     else:
                         _render_slide_image(
                             scene, image_path, strategy=storyboard.didactic_strategy,
-                            scene_index=i, total_scenes=total,
+                            scene_index=i, total_scenes=total, style=web_style,
                         )
                         renderers_used.append("pillow")
 
