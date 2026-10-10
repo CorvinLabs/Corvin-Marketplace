@@ -2,7 +2,7 @@
 
 **What ships live today: turn a task description into a professional narrated MP4 with animated slides in the corvin-labs.com design language.**
 
-> **2026-10-09 — Production Ready.** This version documents the live implementation: LLM-written storyboard, OpenAI TTS narration, deterministic web-slide rendering, and ffmpeg assembly. All components are wired and tested. See [ADR-2238](../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md) (web slides) and [ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md) (narration quality).
+> **Readiness: not claimed — see the ready-gate (ADR-2247) once it exists.** This version documents the live implementation: LLM-written storyboard, OpenAI TTS narration, deterministic web-slide rendering, and ffmpeg assembly. See [ADR-2238](../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md) (web slides) and [ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md) (narration quality).
 
 ## How it works
 

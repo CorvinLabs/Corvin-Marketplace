@@ -118,9 +118,9 @@ console, and the console's fresh-install lifecycle spec against this repository 
 ### Verified by
 `tests/test_layout_check.py` (collision kinds with positive controls, all templates, a pipeline E2E with a real collision), the plugin suite, and the console's fresh-install lifecycle spec: install from this repository on GitHub, panel in the sidebar, a video produced through the panel and checked (h264 1920x1080, audio, no subtitles, every scene a web slide, the gold dot of the mark present, motion over time), uninstall.
 
-## Version 1.1.0 — Production Ready (2026-10-09)
+## Version 1.1.0 (2026-10-09)
 
-**This is the first production-ready release.** The plugin has been stabilized, documented, and tested end-to-end.
+**Production readiness: not claimed — see the ready-gate (ADR-2247) once it exists.** The plugin was stabilized, documented, and tested end-to-end in this release.
 
 ### 🎉 What's New
 

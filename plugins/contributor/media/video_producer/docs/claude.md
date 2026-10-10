@@ -5,7 +5,7 @@
 
 **Plugin:** `media/video_producer`  
 **Type:** Contributor (Marketplace)  
-**Status:** Production-Ready  
+**Status:** Readiness not claimed — see the ready-gate (ADR-2247) once it exists  
 **Last Updated:** 2026-09-22
 
 ---

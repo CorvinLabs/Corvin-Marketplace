@@ -256,7 +256,7 @@ Response:
 
 ## Summary
 
-**Phase 1 is complete and production-ready for:**
+**Phase 1 is complete (production readiness: not claimed — see the ready-gate (ADR-2247) once it exists) for:**
 - ✅ Input asset validation (8 checks, fail-closed)
 - ✅ Adaptive encoding (codec/bitrate selection)
 - ✅ Colorspace detection

@@ -107,7 +107,7 @@ video-producer:CONCEPT-0001 (3-Tier Animation & Didactic Storyboards)
 **Phase 4 (Hardening, Weeks 10–11):**
 - Performance optimization, error handling
 - Deployment readiness
-- Deliverable: Production-ready plugin
+- Deliverable: plugin (readiness: not claimed — see the ready-gate (ADR-2247) once it exists)
 
 ---
 
@@ -201,4 +201,4 @@ Before declaring a plugin "done," verify:
 ---
 
 **Last Updated:** 2026-09-14  
-**Status:** APPROVED — Production-Ready Plugin Pattern
+**Status:** APPROVED — Plugin Pattern (readiness: not claimed — see the ready-gate (ADR-2247) once it exists)
