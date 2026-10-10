@@ -1,5 +1,13 @@
 # Video Producer Plugin — Release Notes
 
+## Unreleased (toward 1.6.0 - ADR-2249)
+
+- **Pinned code lexer (spike S4, not wired yet).** `src/code_lexer.py` tokenizes Python, shell, JSON, YAML and plain
+  text with one fixed, fragment-tolerant scanner (no Pygments, no `tokenize`, no dependence on the Python version).
+  Its contract - the joined tokens equal the input byte for byte, for any input - is enforced by
+  `tests/test_code_lexer.py` (stdlib files, fragments cut at random offsets, fuzz, hostile linear-time inputs). Nothing
+  calls it yet: the `code` template is unchanged until Code v2 (task T-0109) wires it in behind `highlight: true`.
+
 ## Version 1.4.1 (2026-10-10)
 
 Fixes from an adversarial review (two independent reviewers, every finding reproduced or traced in code).
