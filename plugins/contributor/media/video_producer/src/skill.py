@@ -292,13 +292,11 @@ async def generate_storyboard_with_llm(
     model: Optional[str] = None,
     didactic_strategy: Optional[str] = None,
     grounding: Optional[Dict[str, Any]] = None,
-    brand_neutral: bool = False,
+    brand_neutral: bool = False,  # a user's own style: no CorvinOS wording in the prompt
 ) -> Storyboard:
     """
     LLM: Task → Storyboard (JSON)
 
-    ``brand_neutral`` (PLAN-0945): the video wears a user's own style, so the prompt must not
-    steer the model toward CorvinOS wording.
 
     Generates a detailed video storyboard from natural language task.
     Enforces constraints: max duration, max scenes, per-scene text budget,

@@ -235,6 +235,53 @@ class WebSlideRenderer:
         finally:
             await context.close()
 
+    async def render_still(
+        self,
+        template: str,
+        data: Dict[str, Any],
+        *,
+        theme: str = "dark",
+        duration_s: float = 6.0,
+        timeout_s: float = 30.0,
+    ) -> bytes:
+        """One PNG of a slide at the END state of its entrance animation (style previews).
+
+        Same hardening as the video path: JavaScript off, every request aborted, bundled fonts
+        required. Raises WebSceneError for invalid data and WebRenderError for render failures."""
+        if self._browser is None:
+            raise WebRenderError("renderer is not open (use 'async with WebSlideRenderer()')")
+        document = build_document(template, data, duration_s=float(duration_s), theme=theme,
+                                  tokens=self.tokens, style=self.style)
+
+        async def _go() -> bytes:
+            context = await self._browser.new_context(
+                viewport=VIEWPORT, device_scale_factor=1, java_script_enabled=False,
+                reduced_motion="no-preference", service_workers="block",
+            )
+            try:
+                await context.route("**/*", lambda route: route.abort())
+                page = await context.new_page()
+                cdp = await context.new_cdp_session(page)
+                await page.set_content(document, wait_until="load")
+                missing = await page.evaluate(_LOAD_FONTS_JS)
+                if missing:
+                    raise WebRenderError(f"bundled fonts did not load: {missing}")
+                anim_end_ms = float((await page.evaluate(_ANIM_TIMING_JS))[0])
+                await page.evaluate(_SEEK_JS, anim_end_ms)
+                shot = await cdp.send("Page.captureScreenshot", {"format": "png"})
+                return base64.b64decode(shot["data"])
+            finally:
+                await context.close()
+
+        try:
+            return await asyncio.wait_for(_go(), timeout_s)
+        except asyncio.TimeoutError:
+            raise WebRenderError(f"still render exceeded {timeout_s:g}s") from None
+        except WebRenderError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            raise WebRenderError(f"still render failed: {type(e).__name__}: {e}") from None
+
     async def _shot(self, cdp, out_dir: Path, index: int) -> Path:
         path = out_dir / f"{index:05d}.png"
         tmp = path.with_suffix(".png.tmp")

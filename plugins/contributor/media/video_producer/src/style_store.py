@@ -74,6 +74,21 @@ def write_style_snapshot(style: Style, directory: Path) -> None:
         _atomic_write(directory / "plate.png", style.plate_png)
 
 
+def load_snapshot(directory: Path) -> Optional[Style]:
+    """Read back the style a video was rendered with (``videos/<job>/style``); None if it has none
+    or the copy is unreadable/invalid. Fully re-validated, never followed through a symlink."""
+    d = Path(directory)
+    try:
+        if d.is_symlink() or not (d / "style.json").exists():
+            return None
+        doc = json.loads(_read_regular(d / "style.json", MAX_JSON_BYTES).decode("utf-8"))
+        mark = _read_regular(d / "logo.png", 2 * 1024 * 1024 + 1) if (d / "logo.png").exists() else None
+        plate = _read_regular(d / "plate.png", 2 * 1024 * 1024 + 1) if (d / "plate.png").exists() else None
+        return style_from_json(doc, mark_png=mark, plate_png=plate)
+    except (OSError, ValueError, StyleError):
+        return None
+
+
 class StyleStore:
     def __init__(self, base_path: str):
         if not base_path:
