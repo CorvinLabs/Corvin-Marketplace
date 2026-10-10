@@ -42,7 +42,9 @@ def install_fake_openai(monkeypatch, fail=None, calls=None):
             return R()
 
     class OpenAI:
-        def __init__(self, api_key=None):
+        def __init__(self, api_key=None, timeout=None, max_retries=None):
+            # a call without a timeout could hold a job worker forever (review 2026-10-10)
+            assert timeout is not None and timeout <= 120, timeout
             calls.append({"api_key_given": bool(api_key)})
             self.audio = types.SimpleNamespace(speech=_Speech())
 
@@ -58,8 +60,21 @@ def test_openai_is_the_default_engine_everywhere():
     assert skill.DEFAULT_TTS_ENGINE == "openai"
     assert skill.SUPPORTED_TTS_ENGINES[0] == "openai"
     assert inspect.signature(skill.orchestrate_video).parameters["tts_engine"].default == "openai"
-    src = inspect.getsource(skill.start_video_production)
-    assert 'config.get("tts_engine", DEFAULT_TTS_ENGINE)' in src
+    # the host's entry point: a config without tts_engine reaches the orchestrator as "openai"
+    import asyncio
+    seen = {}
+
+    async def spy(**kw):
+        seen.update(kw)
+        return {}
+
+    real = skill.orchestrate_video
+    skill.orchestrate_video = spy
+    try:
+        asyncio.run(skill.start_video_production("job_x", "t", {"storage_base": "/nonexistent"}))
+    finally:
+        skill.orchestrate_video = real
+    assert seen["tts_engine"] == "openai"
 
 
 # ── strict engine ──

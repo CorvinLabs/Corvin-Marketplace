@@ -13,11 +13,12 @@ def test_invalid_scene_becomes_quote_slide_not_placeholder():
     assert "Die Kette" in html
 
 
-def test_valid_and_capture_scenes_untouched():
+def test_a_valid_scene_is_untouched_and_a_former_capture_scene_gets_a_slide():
+    # 1.4.1: nothing is captured live any more, so a "screenshot" scene is degraded like any other
     scenes = [{"id": "a", "template": "hero", "data": {"title": "x"}, "narration_text": "Hi there."},
               {"id": "b", "kind": "screenshot", "narration_text": "Look."}]
-    assert _degrade_to_web_slides(scenes) == 0
-    assert scenes[0]["template"] == "hero" and "template" not in scenes[1]
+    assert _degrade_to_web_slides(scenes) == 1
+    assert scenes[0]["template"] == "hero" and scenes[1]["template"] == "quote"
 
 
 def test_logo_is_the_real_mark_with_gold_dot():

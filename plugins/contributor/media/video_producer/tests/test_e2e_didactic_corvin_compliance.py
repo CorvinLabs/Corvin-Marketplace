@@ -77,26 +77,28 @@ class TestCallSiteWiring:
     is defined, unit-tested in isolation, and never invoked by production
     code."""
 
-    def test_validator_is_called_from_generate_storyboard(self):
-        src = SKILL_PY.read_text()
-        fn_start = src.index("async def generate_storyboard_with_llm")
-        fn_end = src.index("\nasync def ", fn_start + 10)
-        fn_body = src[fn_start:fn_end]
-        assert "validate_storyboard_dict(" in fn_body, (
-            "generate_storyboard_with_llm() must call the shared validator "
-            "primitive — a regression that removes this call silently "
-            "reopens the call-site-band-aid pattern (inline ad hoc checks)."
-        )
-        assert ".raise_if_invalid()" in fn_body
+    def test_validator_is_called_from_generate_storyboard(self, monkeypatch):
+        """Behavioural: an LLM storyboard over the scene ceiling is refused by
+        generate_storyboard_with_llm — removing its validate_storyboard_dict call lets it through."""
+        import asyncio
+        import json
 
-    def test_validator_is_called_from_orchestrate_video(self):
-        src = SKILL_PY.read_text()
-        fn_start = src.index("async def orchestrate_video")
-        fn_body = src[fn_start:fn_start + 6000]
-        assert "validate_storyboard(" in fn_body, (
-            "orchestrate_video() must call validate_storyboard() to surface "
-            "didactic warnings into the feedback/audit trail."
-        )
+        from src import skill
+
+        scenes = [{"id": f"s{i}", "kind": "problem", "duration_ms": 8000,
+                   "narration_text": "x" * 200, "visual_description": "d"} for i in range(150)]
+        monkeypatch.setattr(skill, "_call_storyboard_llm", lambda *a, **k: json.dumps({"scenes": scenes}))
+        with pytest.raises(Exception, match=r"(?i)scene"):
+            asyncio.run(skill.generate_storyboard_with_llm("t", 60, backend="claude_cli"))
+
+    def test_validator_is_called_from_orchestrate_video(self, run_orchestrate):
+        """Behavioural: orchestrate_video runs the didactic validation on the storyboard it produces."""
+        scenes = [{"id": "s1", "kind": "problem", "duration_ms": 8000,
+                   "narration_text": "Ein kurzer Satz fuer den Test, der lang genug ist um sauber zu validieren.",
+                   "visual_description": "shield icon"}]
+        result, spies = run_orchestrate(scenes, spies_for=("validate_storyboard",))
+        assert result["success"] is True
+        assert len(spies["validate_storyboard"]) == 1
 
     def test_no_duplicated_ad_hoc_scene_count_check(self):
         """The single-primitive invariant: MAX_SCENES / duration-ceiling
@@ -114,18 +116,50 @@ class TestCallSiteWiring:
             "narration_validator's primitive, must call validate_storyboard_dict() instead"
         )
 
-    def test_icon_renderer_is_called_from_render_slide_image(self):
-        src = SKILL_PY.read_text()
-        fn_start = src.index("def _render_slide_image")
-        fn_body = src[fn_start:fn_start + 3000]
-        assert "_detect_icon(" in fn_body
-        assert "_draw_icon(" in fn_body
+    def test_icon_renderer_is_called_from_render_slide_image(self, tmp_path):
+        """Behavioural: a rich_visual slide whose visual_description names an icon has icon pixels
+        in the icon region; the same slide without a recognisable icon word does not. Removing the
+        _detect_icon/_draw_icon call makes the two renders identical there."""
+        from PIL import Image, ImageChops
 
-    def test_strategy_detection_is_called_from_generate_storyboard(self):
-        src = SKILL_PY.read_text()
-        fn_start = src.index("async def generate_storyboard_with_llm")
-        fn_body = src[fn_start:fn_start + 1500]
-        assert "detect_didactic_strategy(" in fn_body
+        def render(desc, name, strategy="rich_visual"):
+            out = tmp_path / name
+            _render_slide_image(Scene(id="s", kind="solution", duration_ms=8000, narration_text="n",
+                                      visual_description=desc), out, strategy=strategy)
+            return Image.open(out).convert("RGB").crop((540, 100, 740, 260))  # 140 px icon at (640, 180)
+
+        assert _detect_icon("shield icon") == "shield" and _detect_icon("calm mood") is None
+        with_icon = render("shield icon", "a.png")
+        without = render("calm mood", "b.png")
+        assert ImageChops.difference(with_icon, without).getbbox() is not None, "no icon pixels drawn"
+        # the icon is a rich_visual feature: minimal_visual stays text-first
+        minimal = render("shield icon", "c.png", strategy="minimal_visual")
+        assert ImageChops.difference(minimal, without).getbbox() is None
+
+    def test_strategy_detection_is_called_from_generate_storyboard(self, monkeypatch):
+        """Behavioural: the prompt sent to the model carries the strategy detected from the task."""
+        import asyncio
+
+        from src import skill
+
+        prompts = []
+
+        def capture(prompt, *a, **k):
+            prompts.append(prompt)
+            raise RuntimeError("stop after capture")
+
+        monkeypatch.setattr(skill, "_call_storyboard_llm", capture)
+        for task, expected in (("Explain the loop principle", "minimal_visual"),
+                               ("Explain the system architecture", "rich_visual")):
+            assert detect_didactic_strategy(task) == expected
+            with pytest.raises(RuntimeError):
+                asyncio.run(skill.generate_storyboard_with_llm(task, 5, backend="claude_cli"))
+            assert f"Didactic strategy: {expected}" in prompts[-1]
+        # an explicit strategy wins over detection
+        with pytest.raises(RuntimeError):
+            asyncio.run(skill.generate_storyboard_with_llm("Explain the system architecture", 5,
+                                                           backend="claude_cli", didactic_strategy="minimal_visual"))
+        assert "Didactic strategy: minimal_visual" in prompts[-1]
 
 
 # ===========================================================================

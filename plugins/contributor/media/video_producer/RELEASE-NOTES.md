@@ -1,5 +1,45 @@
 # Video Producer Plugin — Release Notes
 
+## Version 1.4.1 (2026-10-10)
+
+Fixes from an adversarial review (two independent reviewers, every finding reproduced or traced in code).
+
+### Security
+- **No scene can make the host fetch a page.** A storyboard scene of kind `screenshot` carried a URL that a browser
+  on the console's own loopback opened. Because the console's local login trusts any loopback caller, one
+  workspace's video could contain another workspace's console (reproduced). The live capture path, its two modules
+  and the `screenshot_url`/`highlight_selector` fields are removed; a `screenshot`/`screencast` scene now renders as
+  an ordinary slide. Website captures come back only as a user-initiated, proxied asset (central ADR-2249 D4).
+
+### Correctness
+- **No silent videos.** When every narration voice declined (OpenAI, edge-tts, Piper), the job used to fall back to
+  a silent placeholder and still end `complete`. That tier is gone from the production chain; the job now fails
+  with "No narration voice is available". The console's quality panel fails the voice check for older silent jobs.
+- **One language per video.** The language was guessed per scene from eight German words, so short German
+  sentences were voiced, hyphenated and chipped as English. It is now decided once per video from all of its
+  narration (function-word count) and stored in the output metadata (`language`); a revision names it in its brief.
+- **Bounded external calls.** ffmpeg (30 min), ffprobe (60 s) and each TTS call (90 s, OpenAI with two retries)
+  have timeouts; a hung step no longer holds one of the three job workers for good. A job-wide deadline and a
+  cancel button are not built yet (PLAN-0946 R1b).
+- **Job status cannot be closed by another host.** The job's lock is now taken by the host's runner when it accepts
+  the job and released only after the record is terminal, on the thread runner too. Before, a second console on the
+  same store could mark a running job "interrupted" and the finished video was then never shown as complete.
+
+### Internal (not active by default)
+- `ProcessJobRunner` (each job in its own process group, `src/job_main.py`) and the R0 baseline/honesty corpus
+  (`tests/corpus/`) ship as the PLAN-0946 R1a spike. The console still runs jobs on threads (`_JOB_RUNNER = "thread"`
+  in the host route); the process runner's cancel kills the job's group, and Chromium, which Playwright starts in its
+  own group, exits with its driver.
+
+### Correction to the 1.2.0 notes
+- "A colliding slide is swapped for a clean quote slide" was too strong: when no variant renders clean, the original
+  slide is kept and recorded as `action: "kept"` in `layout_collisions`. Since 1.4.1 the console's quality panel
+  fails a job that shipped such a slide.
+
+### Known limits
+- Art. 17 erasure of a workspace does not stop a job that is running at that moment; its files can reappear after
+  the purge. Cancel the job's production first (or restart the console) before erasing.
+
 ## Version 1.4.0 (2026-10-10)
 
 ### What's new
@@ -133,7 +173,7 @@ console, and the console's fresh-install lifecycle spec against this repository 
 
 #### OpenAI TTS Default (ADR-2211)
 - **Natural narration:** OpenAI TTS (`tts-1-hd`, voice `onyx`) is now the default
-- **Fallback chain:** If OpenAI key is absent or API fails, automatically falls back to edge-tts → Piper → silent mock
+- **Fallback chain:** If OpenAI key is absent or API fails, automatically falls back to edge-tts → Piper (until 1.4.1 a silent mock came last; since 1.4.1 the job fails instead of shipping a mute video)
 - **Quality metadata:** Every job records which TTS engine actually ran (`tts_provider_used`)
 
 #### Claude Storyboard (new default)

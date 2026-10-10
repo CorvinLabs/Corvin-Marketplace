@@ -12,6 +12,7 @@ requests>=2.31.0
 gTTS>=2.5.0              # legacy engine (tts_engine="gtts")
 openai>=1.0.0            # default narration engine: OpenAI TTS (ADR-2211)
 Pillow>=10.0.0
+numpy>=1.24    # scripts/measure_engagement.py still-time measurement (reports skip, not a number, without it)
 
 # TTS fallback chain (ADR-2211): openai -> edge-tts -> piper-tts -> mock.
 # edge-tts is free, no API key, Microsoft's cloud voices (network required).

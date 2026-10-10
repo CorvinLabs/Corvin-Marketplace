@@ -146,7 +146,9 @@ def test_import_warns_when_the_logo_is_hard_to_see_on_the_background():
 GOLDEN_CLASSIC = {
     "rich": "ff8401ff60dab1728d8df12a755ad8cf5f8b3196ae0ea7867f5be624ca662d83",
     "title": "ba94480079dc0cf30eecb3004d8a70e31ad20f5838fca335b71f7cb9c4c67eac",
-    "shot": "39f6d252f25152817911029c66f3e6fc9afe068c2c90225e1021b6b3a9d17c09",
+    # was "shot" (kind screenshot, retired in 1.4.1); the animation placeholder takes its place. Hash taken
+    # from the unchanged 1.4.0 code (f91896b), so it still pins pre-style output, not a self-generated value.
+    "anim": "5262fc67fc09e42105f5d09970b20219b3909794a9d7682f616df1377652e270",
 }
 
 
@@ -155,7 +157,7 @@ def test_classic_slide_without_a_style_is_byte_identical(tmp_path):
         "rich": (Scene(id="s", kind="example", duration_ms=8000, visual_description="check icon"),
                  dict(strategy="rich_visual", scene_index=2, total_scenes=5)),
         "title": (Scene(id="s", kind="title", duration_ms=8000), dict(strategy="minimal_visual")),
-        "shot": (Scene(id="s", kind="screenshot", duration_ms=8000, visual_description="a shield"),
+        "anim": (Scene(id="s", kind="animation", duration_ms=8000, visual_description="a shield"),
                  dict(strategy="rich_visual", scene_index=1, total_scenes=3)),
     }
     for name, (scene, kw) in cases.items():

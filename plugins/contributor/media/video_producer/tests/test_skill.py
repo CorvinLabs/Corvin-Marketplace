@@ -12,7 +12,6 @@ from src.storage import VideoStorage
 from src.skill import (
     generate_storyboard_with_llm,
     orchestrate_video,
-    has_screenshot_scenes,
     emit_job_progress,
 )
 from src.async_runner import VideoProductionRunner, reset_runner, get_runner
@@ -160,9 +159,11 @@ class TestAsyncRunner:
         reset_runner()
         runner = get_runner()
 
+        import tempfile
+
         job_id = "job_immediate"
         task = "Quick test"
-        config = {"output_folder": "/tmp"}
+        config = {"storage_base": tempfile.mkdtemp(prefix="vp-runner-")}  # the host always passes it
 
         # Should return immediately
         result = await runner.start_job(job_id, task, config)
@@ -194,40 +195,3 @@ class TestProgressTracking:
 
         # Events stored internally (tested in websocket tests)
 
-
-class TestHelperFunctions:
-    def test_has_screenshot_scenes(self):
-        """Test scene type detection."""
-        sb_no_screenshots = Storyboard(
-            id="sb1",
-            task="Test",
-            scenes=[
-                Scene(id="s1", kind="title", duration_ms=3000),
-                Scene(id="s2", kind="narration", duration_ms=5000)
-            ]
-        )
-
-        assert has_screenshot_scenes(sb_no_screenshots) is False
-
-        sb_with_screenshots = Storyboard(
-            id="sb2",
-            task="Test",
-            scenes=[
-                Scene(id="s1", kind="title", duration_ms=3000),
-                Scene(id="s2", kind="screenshot", duration_ms=5000)
-            ]
-        )
-
-        assert has_screenshot_scenes(sb_with_screenshots) is True
-
-    def test_has_screencast_scenes(self):
-        """Test screencast scene detection."""
-        sb_with_screencast = Storyboard(
-            id="sb3",
-            task="Test",
-            scenes=[
-                Scene(id="s1", kind="screencast", duration_ms=10000)
-            ]
-        )
-
-        assert has_screenshot_scenes(sb_with_screencast) is True

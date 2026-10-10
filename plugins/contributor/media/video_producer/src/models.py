@@ -120,11 +120,14 @@ class AssetAnalysisResult:
         )
 
 
+_RETIRED_KINDS = frozenset({"screenshot", "screencast"})
+
+
 @dataclass
 class Scene:
     """A single scene in a storyboard."""
     id: str
-    kind: str  # "title", "opening", "problem", "solution", "example", "summary", "anchor", "narration", "screenshot", "screencast"
+    kind: str  # "title", "opening", "problem", "solution", "example", "summary", "anchor", "narration", "animation"
     duration_ms: int
     narration_text: Optional[str] = None
     visual_description: Optional[str] = None
@@ -134,15 +137,6 @@ class Scene:
     # not invalid.
     character_count: Optional[int] = None
     pacing_note: Optional[str] = None
-    # Screenshot capture (CONCEPT-0095): only meaningful when kind=="screenshot".
-    # screenshot_url replaces a keyword-guessed URL map — it is explicit, so a
-    # wrong URL fails loudly (selector lookup fails) instead of silently
-    # screenshotting the wrong page. highlight_selector is a CSS selector
-    # resolved against the real DOM to a bounding box for the spotlight
-    # call-out; a selector that doesn't resolve is a hard error, never a
-    # silently un-annotated screenshot.
-    screenshot_url: Optional[str] = None
-    highlight_selector: Optional[str] = None
     # Web slide (ADR-2238): a scene carrying a template is rendered as an
     # animated HTML slide; ``kind`` keeps its didactic meaning. ``data`` is
     # validated against the template contract in web_templates before use.
@@ -162,7 +156,13 @@ class Scene:
     @classmethod
     def from_dict(cls, data: dict):
         known = {f for f in cls.__dataclass_fields__}
-        return cls(**{k: v for k, v in data.items() if k in known})
+        kw = {k: v for k, v in data.items() if k in known}
+        # No scene can make the host fetch a page: live capture was a model-chosen URL fetched by a
+        # browser on the console's loopback (cross-tenant, review 2026-10-09 #1). Old records and
+        # model output that still say "screenshot" render as an ordinary slide. ADR-2249 D4.
+        if kw.get("kind") in _RETIRED_KINDS:
+            kw["kind"] = "example"
+        return cls(**kw)
 
 
 @dataclass
@@ -228,12 +228,18 @@ class VideoJob:
     current_step: Optional[str] = None
     current_scene: Optional[int] = None
     total_scenes: Optional[int] = None
+    # why a job ended without finishing: a closed vocabulary (storage.REASONS), set by the writer that closed it
+    reason: Optional[str] = None
+    # late / out-of-order writes the status rules refused (storage.advance_job); an audit counter, not a status
+    dropped_events: int = 0
 
     def to_dict(self):
         return {
             "id": self.id,
             "task": self.task,
             "status": self.status,
+            "reason": self.reason,
+            "dropped_events": self.dropped_events,
             "storyboard": self.storyboard.to_json() if self.storyboard else None,
             "created_at": self.created_at.isoformat(),
             "started_at": self.started_at.isoformat() if self.started_at else None,
@@ -262,6 +268,8 @@ class VideoJob:
             current_step=data.get("current_step"),
             current_scene=data.get("current_scene"),
             total_scenes=data.get("total_scenes"),
+            reason=data.get("reason"),
+            dropped_events=int(data.get("dropped_events") or 0),
         )
 
 

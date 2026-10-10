@@ -1,0 +1,276 @@
+{
+ "schema": 1,
+ "purpose": "PLAN-0946 R0 corpus baseline: task texts + already-measured numbers. Task text only; no audio, video or narration.",
+ "measured_on": "2026-10-10",
+ "plugin_version_measuring": "1.4.0",
+ "note": "The seven 2026-10-09 jobs are the videos as produced BEFORE ADR-2245 (engagement) landed, re-measured today with scripts/measure_engagement.py (still time via numpy; no whisper). The two LDD entries carry the measurements stored with those videos (made 2026-10-09/10 with plugin 1.3.0 / 1.3.1, whisper alignment included). The numbers are therefore from different plugin versions; they are the ratchet to improve on, not a like-for-like set.",
+ "entries": [
+  {
+   "id": "job_13fae6f0",
+   "source": "tenant job record, created 2026-10-09T00:28:17",
+   "language": "de",
+   "task": "Erkläre in gut zwei Minuten, was der Video Producer von CorvinOS jetzt grafisch kann. Ablauf: Ein Auftrag geht an Claude, das ein Storyboard schreibt; daraus entstehen parallel die Sprachspur mit OpenAI TTS und animierte Web-Folien in Chromium; ffmpeg schneidet beides zum fertigen Video. Eine Folie liegt auf fünf Schichten: Storyboard, Templates, Design-Tokens, Chromium-Rendering, ffmpeg. Jedes Video verbessert das nächste über eine Lernschleife: Planen, Rendern, Prüfen, Lernen. Gemessen: Ein Storyboard dauerte mit dem lokalen Modell qwen3 65 Sekunden, mit Claude Sonnet 14 Sekunden. Die Zahl der Folien-Templates stieg von 8 auf 14. Die 14 Templates teilen sich auf in 5 Strukturdiagramme (Pipeline, Graph, Kreislauf, Schichten, Zeitstrahl), 5 Text-Layouts und 4 Datengrafiken. Entwicklung: September 2026 statische Pillow-Folien, Anfang Oktober Web-Folien im corvin-labs.com-Design, heute animierte Datengrafiken mit fließenden Datenpulsen, als Nächstes Design-Tokens live aus Figma.",
+   "measured": {
+    "scene_count": 8,
+    "duration_s": 114,
+    "layout_collisions_kept": null,
+    "grounding_unverified": null,
+    "grounding_status": null,
+    "renderer_mix": {
+     "web": 7,
+     "pillow": 1
+    },
+    "tts_tier": "openai",
+    "storyboard_llm": "claude_cli:claude-sonnet-5-5",
+    "dead_share": 0.517,
+    "longest_still_s": 17.25,
+    "scenes_still_ge_5s": 7,
+    "frozen_share_freezedetect": 0.727,
+    "cue_gap_max_s": null,
+    "cue_alignment_median_s": null,
+    "cue_alignment_p90_s": null,
+    "null_reasons": {
+     "cue_gap_max_s": "video predates the cue log (no metadata.cues)",
+     "cue_alignment_*": "needs cues and a whisper run; not run (costs money)",
+     "grounding_unverified": "job was not grounded",
+     "layout_collisions_kept": "metadata carries no layout_collisions (job predates it)"
+    }
+   }
+  },
+  {
+   "id": "job_21a8c536",
+   "source": "tenant job record, created 2026-10-09T00:38:17",
+   "language": "de",
+   "task": "Erkläre in gut zwei Minuten, was der Video Producer von CorvinOS jetzt grafisch kann. Ablauf: Ein Auftrag geht an Claude, das ein Storyboard schreibt; daraus entstehen parallel die Sprachspur mit OpenAI TTS und animierte Web-Folien in Chromium; ffmpeg schneidet beides zum fertigen Video. Eine Folie liegt auf fünf Schichten: Storyboard, Templates, Design-Tokens, Chromium-Rendering, ffmpeg. Jedes Video verbessert das nächste über eine Lernschleife: Planen, Rendern, Prüfen, Lernen. Gemessen: Ein Storyboard dauerte mit dem lokalen Modell qwen3 65 Sekunden, mit Claude Sonnet 14 Sekunden. Die Zahl der Folien-Templates stieg von 8 auf 14. Die 14 Templates teilen sich auf in 5 Strukturdiagramme (Pipeline, Graph, Kreislauf, Schichten, Zeitstrahl), 5 Text-Layouts und 4 Datengrafiken. Entwicklung: September 2026 statische Pillow-Folien, Anfang Oktober Web-Folien im corvin-labs.com-Design, heute animierte Datengrafiken mit fließenden Datenpulsen, als Nächstes Design-Tokens live aus Figma.",
+   "measured": {
+    "scene_count": 8,
+    "duration_s": 113,
+    "layout_collisions_kept": null,
+    "grounding_unverified": null,
+    "grounding_status": null,
+    "renderer_mix": {
+     "web": 8
+    },
+    "tts_tier": "openai",
+    "storyboard_llm": "claude_cli:claude-sonnet-5-5",
+    "dead_share": 0.402,
+    "longest_still_s": 9.0,
+    "scenes_still_ge_5s": 6,
+    "frozen_share_freezedetect": 0.71,
+    "cue_gap_max_s": null,
+    "cue_alignment_median_s": null,
+    "cue_alignment_p90_s": null,
+    "null_reasons": {
+     "cue_gap_max_s": "video predates the cue log (no metadata.cues)",
+     "cue_alignment_*": "needs cues and a whisper run; not run (costs money)",
+     "grounding_unverified": "job was not grounded",
+     "layout_collisions_kept": "metadata carries no layout_collisions (job predates it)"
+    }
+   }
+  },
+  {
+   "id": "job_58827bae",
+   "source": "tenant job record, created 2026-10-09T19:17:21",
+   "language": "de",
+   "task": "ich bin data scientist. erzeuge mir ein video wo du tiefgründig also > 5 min skills 2.0, acp und das lerning von corvinos erklärst. und wie alles zusammen spielt. von high level bis konkret. was kann ich damit tun und was bringt es dem user",
+   "measured": {
+    "scene_count": 10,
+    "duration_s": 251,
+    "layout_collisions_kept": 2,
+    "grounding_unverified": 0,
+    "grounding_status": "grounded",
+    "renderer_mix": {
+     "web": 10
+    },
+    "tts_tier": "openai",
+    "storyboard_llm": "claude_cli:claude-sonnet-5-5",
+    "dead_share": 0.716,
+    "longest_still_s": 23.0,
+    "scenes_still_ge_5s": 10,
+    "frozen_share_freezedetect": 0.856,
+    "cue_gap_max_s": null,
+    "cue_alignment_median_s": null,
+    "cue_alignment_p90_s": null,
+    "null_reasons": {
+     "cue_gap_max_s": "video predates the cue log (no metadata.cues)",
+     "cue_alignment_*": "needs cues and a whisper run; not run (costs money)"
+    }
+   }
+  },
+  {
+   "id": "job_66cce242",
+   "source": "tenant job record, created 2026-10-09T18:59:32",
+   "language": "de",
+   "task": "schau dir mal die readme.md von corvinos an und erzeuge ein 3min video über corvin wo du auf alle features eingehst. es soll das ofizielle video von corvinos sein. also auch marketing ideen rein bringen. quasi was kann man damit machen und was bringt es dem user oder firmen.",
+   "measured": {
+    "scene_count": 10,
+    "duration_s": 195,
+    "layout_collisions_kept": 0,
+    "grounding_unverified": 0,
+    "grounding_status": "grounded",
+    "renderer_mix": {
+     "web": 10
+    },
+    "tts_tier": "openai",
+    "storyboard_llm": "claude_cli:claude-sonnet-5-5",
+    "dead_share": 0.612,
+    "longest_still_s": 19.5,
+    "scenes_still_ge_5s": 10,
+    "frozen_share_freezedetect": 0.715,
+    "cue_gap_max_s": null,
+    "cue_alignment_median_s": null,
+    "cue_alignment_p90_s": null,
+    "null_reasons": {
+     "cue_gap_max_s": "video predates the cue log (no metadata.cues)",
+     "cue_alignment_*": "needs cues and a whisper run; not run (costs money)"
+    }
+   }
+  },
+  {
+   "id": "job_91bce362",
+   "source": "tenant job record, created 2026-10-09T18:00:57",
+   "language": "de",
+   "task": "erkläre mir ausführlich wie das learning von der audit chain funktioniert. was wird gelernt und wo werden die parameter geändert um das gelernte zu hinterlegen. mach ein ausführliches video wo du konzeptionel, strukturel und konkret denkst. ich als data scientist muss es verstehen.",
+   "measured": {
+    "scene_count": 8,
+    "duration_s": 134,
+    "layout_collisions_kept": 1,
+    "grounding_unverified": null,
+    "grounding_status": null,
+    "renderer_mix": {
+     "web": 8
+    },
+    "tts_tier": "openai",
+    "storyboard_llm": "claude_cli:claude-sonnet-5-5",
+    "dead_share": 0.572,
+    "longest_still_s": 12.0,
+    "scenes_still_ge_5s": 8,
+    "frozen_share_freezedetect": 0.769,
+    "cue_gap_max_s": null,
+    "cue_alignment_median_s": null,
+    "cue_alignment_p90_s": null,
+    "null_reasons": {
+     "cue_gap_max_s": "video predates the cue log (no metadata.cues)",
+     "cue_alignment_*": "needs cues and a whisper run; not run (costs money)",
+     "grounding_unverified": "job was not grounded"
+    }
+   }
+  },
+  {
+   "id": "job_925521fb",
+   "source": "tenant job record, created 2026-10-08T22:26:52",
+   "language": "de",
+   "task": "Erkläre in drei kurzen Szenen, was die Audit-Chain von CorvinOS ist und warum sie Compliance beweist.",
+   "measured": {
+    "scene_count": 7,
+    "duration_s": 46,
+    "layout_collisions_kept": null,
+    "grounding_unverified": null,
+    "grounding_status": null,
+    "renderer_mix": {
+     "web": 4,
+     "pillow": 3
+    },
+    "tts_tier": "openai",
+    "storyboard_llm": null,
+    "dead_share": 0.478,
+    "longest_still_s": 8.25,
+    "scenes_still_ge_5s": 3,
+    "frozen_share_freezedetect": 0.771,
+    "cue_gap_max_s": null,
+    "cue_alignment_median_s": null,
+    "cue_alignment_p90_s": null,
+    "null_reasons": {
+     "cue_gap_max_s": "video predates the cue log (no metadata.cues)",
+     "cue_alignment_*": "needs cues and a whisper run; not run (costs money)",
+     "grounding_unverified": "job was not grounded",
+     "layout_collisions_kept": "metadata carries no layout_collisions (job predates it)"
+    }
+   }
+  },
+  {
+   "id": "job_a6618e32",
+   "source": "tenant job record, created 2026-10-09T13:54:21",
+   "language": "de",
+   "task": "Erkläre in drei Minuten (etwa 450 Wörter, gesprochenes Deutsch), wie die Audit Chain von CorvinOS funktioniert: was ein Eintrag enthält, wie die Hash-Verkettung Manipulation sichtbar macht, wo die Kette pro Tenant liegt, was beim Booten geprüft wird und wo die Grenzen sind. Für Entwickler, die Corvin zum ersten Mal sehen. Zeige die echte Console, wo es passt.",
+   "measured": {
+    "scene_count": 10,
+    "duration_s": 164,
+    "layout_collisions_kept": null,
+    "grounding_unverified": 0,
+    "grounding_status": "grounded",
+    "renderer_mix": {
+     "web": 10
+    },
+    "tts_tier": "openai",
+    "storyboard_llm": "claude_cli:claude-sonnet-5-5",
+    "dead_share": 0.489,
+    "longest_still_s": 17.0,
+    "scenes_still_ge_5s": 8,
+    "frozen_share_freezedetect": 0.757,
+    "cue_gap_max_s": null,
+    "cue_alignment_median_s": null,
+    "cue_alignment_p90_s": null,
+    "null_reasons": {
+     "cue_gap_max_s": "video predates the cue log (no metadata.cues)",
+     "cue_alignment_*": "needs cues and a whisper run; not run (costs money)",
+     "layout_collisions_kept": "metadata carries no layout_collisions (job predates it)"
+    }
+   }
+  },
+  {
+   "id": "ldd-bei-architekturentscheidungen.de",
+   "source": "Corvin-Videos/ldd-bei-architekturentscheidungen (job_de64411e)",
+   "language": "de",
+   "task": "Erkläre in etwa zweieinhalb Minuten auf Deutsch, wie Loss-Driven Development (LDD) in CorvinOS bei Architekturentscheidungen (ADRs) wirkt. Zielgruppe: Entwicklerinnen und Entwickler, die neu im Projekt sind.\n\nDidaktischer Bogen:\n1. Ausgangsfrage: Woher weiß ein Team, dass eine Architekturentscheidung richtig war und nicht nur gut klang?\n2. Die Idee von LDD: Fortschritt wird gemessen, nicht behauptet. Ein Loss-Signal ist alles, was messbar sagt \"das ist noch nicht gut\": ein roter Test, eine gemessene Kennzahl, ein Befund aus einem Gegen-Review, Abweichung zwischen Code und Dokumentation.\n3. Wie ein Loss-Signal zur Entscheidung wird: Das ADR-Gate fragt zwei Dinge — gab es eine echte Wahl zwischen Alternativen, und bindet sie die Struktur (Protokoll, Sicherheitsmechanismus, schwer umkehrbarer Default, mehrere Repos)? Nur dann entsteht eine ADR, beschrieben auf drei Ebenen: konzeptionell, strukturell, Umsetzung.\n4. Wie die Entscheidung umsetzungsreif wird: Konzept, Plan und ein geschlossener Review sind Voraussetzungen; eine Aufgabe, die eine Entscheidung umsetzt, gilt erst als erledigt mit Nachweis: eine produktive Aufrufstelle, ein E2E-Test, Exit-Code 0 und ein Commit auf main.\n5. Wie die Schleife sich schließt: Ein regelmäßiger Sweep merkt, wenn ein Nachweis verschwindet, und legt eine Regressions-Aufgabe an; wiederkehrende Befunde werden zu Hinweisen, die künftige Arbeit anleiten.\n6. Ein echtes Beispiel aus diesem Projekt: Gemessen standen 77 Prozent der Bildschirmzeit der Erklärvideos still. Daraus wurde ADR-2245 (Folien folgen der Stimme). Ein Gegen-Review fand 13 Schwachstellen vor dem Bau. Die erste Messung nach dem Bau zeigte, dass die ursprüngliche Kennzahl selbst falsch maß — sanfte Einblendungen galten als Stillstand; korrigiert lag die Ausgangsbasis bei 57 Prozent Leerlauf. Nach dem Bau sank der Leerlauf, gemessen auf denselben sieben Themen, auf 19 Prozent. Ein Ziel blieb verfehlt: Im ungünstigsten Zehntel erscheint ein Element über vier Sekunden neben dem gesprochenen Wort — auch das hält die Messung fest, statt es schönzureden. Zuletzt prüft ein E2E-Test von der frischen Installation bis zum fertigen Video, dass alles wirklich läuft.\n7. Merksatz zum Schluss: Eine Entscheidung ist erst dann fertig, wenn ihre Wirkung gemessen ist.\n\nNutze Diagramme, Flüsse, Kreisläufe und Schichten statt Aufzählungen, und benenne in jedem Satz das Element, das gerade erklärt wird.\n\nJeder der sieben Punkte bekommt mindestens eine eigene Szene; kein Punkt wird ausgelassen. Die Zahlen in Punkt 6 stehen in ADR-2245 (Amendment, Punkt 7).\n",
+   "measured": {
+    "scene_count": 10,
+    "duration_s": 168,
+    "layout_collisions_kept": 1,
+    "grounding_unverified": 0,
+    "grounding_status": "grounded",
+    "renderer_mix": {
+     "web": 10
+    },
+    "tts_tier": "openai",
+    "storyboard_llm": "claude_cli:claude-sonnet-5-5",
+    "dead_share": 0.251,
+    "longest_still_s": 9.25,
+    "scenes_still_ge_5s": 6,
+    "frozen_share_freezedetect": 0.896,
+    "cue_gap_max_s": 11.26,
+    "cue_alignment_median_s": 0.73,
+    "cue_alignment_p90_s": 3.37,
+    "cue_alignment_n": 29,
+    "null_reasons": {}
+   }
+  },
+  {
+   "id": "ldd-bei-architekturentscheidungen.en",
+   "source": "Corvin-Videos/ldd-bei-architekturentscheidungen (job_87b3a395)",
+   "language": "en",
+   "task": "Explain in about two and a half minutes, in English, how Loss-Driven Development (LDD) works on architecture decisions (ADRs) in CorvinOS. Audience: developers who are new to the project.\n\nTeaching arc:\n1. Opening question: How does a team know that an architecture decision was right and did not just sound good?\n2. The idea of LDD: progress is measured, not claimed. A loss signal is anything that measurably says \"this is not good yet\": a red test, a measured metric, a finding from an adversarial review, a mismatch between code and documentation.\n3. How a loss signal becomes a decision: the ADR gate asks two things — was there a real choice between alternatives, and does it bind the structure (protocol, security mechanism, hard-to-reverse default, several repos)? Only then an ADR is written, described on three levels: conceptual, structural, implementation.\n4. How the decision becomes ready to build: a concept, a plan and a closed review are prerequisites; a task that implements a decision counts as done only with proof: a production call site, an E2E test, exit code 0 and a commit on main.\n5. How the loop closes: a regular sweep notices when a proof disappears and opens a regression task; recurring findings become guidance that steers future work.\n6. A real example from this project: measured, 77 percent of the screen time of the explainer videos stood still. That became ADR-2245 (slides follow the voice). An adversarial review found 13 weaknesses before the build. The first measurement after the build showed that the original metric itself measured wrongly — soft fade-ins counted as standstill; corrected, the baseline was 57 percent idle time. After the build, idle time, measured on the same seven topics, fell to 19 percent. One goal stayed missed: in the worst tenth, an element appears more than four seconds away from the spoken word — the measurement records that too, instead of talking it away. Finally, an E2E test from a fresh install to the finished video checks that everything really runs.\n7. Closing line: A decision is only finished when its effect has been measured.\n\nUse diagrams, flows, cycles and layers instead of bullet lists, and name in every sentence the element that is being explained.\n\nEach of the seven points gets at least one scene of its own; no point is left out. The numbers in point 6 are in ADR-2245 (amendment, point 7).\n",
+   "measured": {
+    "scene_count": 10,
+    "duration_s": 156,
+    "layout_collisions_kept": 1,
+    "grounding_unverified": 0,
+    "grounding_status": "grounded",
+    "renderer_mix": {
+     "web": 10
+    },
+    "tts_tier": "openai",
+    "storyboard_llm": "claude_cli:claude-sonnet-5-5",
+    "dead_share": 0.303,
+    "longest_still_s": 10.0,
+    "scenes_still_ge_5s": 7,
+    "frozen_share_freezedetect": 0.861,
+    "cue_gap_max_s": 12.19,
+    "cue_alignment_median_s": 1.56,
+    "cue_alignment_p90_s": 6.3,
+    "cue_alignment_n": 27,
+    "null_reasons": {}
+   }
+  }
+ ]
+}

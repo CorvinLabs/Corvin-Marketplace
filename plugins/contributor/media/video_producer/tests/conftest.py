@@ -108,3 +108,66 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "e2e: mark test as end-to-end"
     )
+
+
+@pytest.fixture
+def run_orchestrate(tmp_path, monkeypatch):
+    """Drive the real ``orchestrate_video`` on an operator storyboard with only the
+    network/slow edges replaced: TTS writes 1.2 s of real silence (ffmpeg), web slides off.
+    Returns ``run(scenes, spies_for=(), replace=None) -> (result, spies)`` where spies records what the pipeline called."""
+    import asyncio
+    import shutil
+    import subprocess
+
+    from src import skill
+    from src.models import VideoJob
+    from src.storage import get_storage
+
+    if shutil.which("ffmpeg") is None:
+        pytest.skip("ffmpeg not on PATH — needed to drive orchestrate_video for real")
+
+    def _record(log, fn):
+        if asyncio.iscoroutinefunction(fn):
+            async def w(*a, **k):
+                log.append((a, k))
+                return await fn(*a, **k)
+        else:
+            def w(*a, **k):
+                log.append((a, k))
+                return fn(*a, **k)
+        return w
+
+    def fake_tts(text, out_path, lang):
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
+                        "-t", "1.2", "-q:a", "9", str(out_path)], check=True)
+
+    monkeypatch.setattr(skill, "_synthesize_narration_openai", fake_tts)
+
+    def run(scenes, spies_for=(), replace=None):
+        spies = {}
+        for name, fn in (replace or {}).items():  # stands in for the edge; the call is still recorded
+            spies[name] = []
+            monkeypatch.setattr(skill, name, _record(spies[name], fn))
+        for name in spies_for:
+            real = getattr(skill, name)
+            spies[name] = []
+
+            def make(name=name, real=real):
+                if asyncio.iscoroutinefunction(real):
+                    async def spy(*a, **k):
+                        spies[name].append((a, k))
+                        return await real(*a, **k)
+                else:
+                    def spy(*a, **k):
+                        spies[name].append((a, k))
+                        return real(*a, **k)
+                return spy
+            monkeypatch.setattr(skill, name, make())
+        base = str(tmp_path / "store")
+        get_storage(base).save_job(VideoJob(id="job_callsite", task="t", status="pending"))
+        result = asyncio.run(skill.orchestrate_video(
+            job_id="job_callsite", task="t", storage_base=base, web_slides=False,
+            storyboard={"id": "sb_callsite", "didactic_strategy": "rich_visual", "scenes": scenes}))
+        return result, spies
+
+    return run

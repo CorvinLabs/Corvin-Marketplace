@@ -61,9 +61,19 @@ CHANGE_SHARE = 0.0015
 DEAD_MIN_S = 5.0
 
 
+SKIP_NUMPY = {"verdict": "skip", "reason": "numpy missing"}
+
+
+class NumpyMissing(RuntimeError):
+    """Still time cannot be measured without numpy: report a skip, never a number."""
+
+
 def still_stretches(clip: Path) -> List[tuple]:
     """Intervals (s) in which the median-filtered content state does not change."""
-    import numpy as np
+    try:
+        import numpy as np
+    except ImportError as e:
+        raise NumpyMissing("numpy missing") from e
     raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(clip), "-vf", f"fps={SAMPLE_FPS},scale=480:270",
                           "-f", "rawvideo", "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
     frames = np.frombuffer(raw, dtype=np.uint8).reshape(-1, 270, 480)
@@ -132,10 +142,13 @@ def measure_job(videos_dir: Path, job_id: str, api_key: Optional[str]) -> Dict[s
         n = int(clip.stem.split("_")[1])
         dur = _duration(clip)
         iv = frozen_intervals(clip)
-        still = still_stretches(clip)
+        try:
+            still = still_stretches(clip)
+        except NumpyMissing:
+            still = None
         row: Dict[str, Any] = {"scene": n, "duration": round(dur, 2),
-                               "dead_s": round(sum(b - a for a, b in still if b - a >= DEAD_MIN_S), 2),
-                               "longest_still": round(max((b - a for a, b in still), default=0.0), 2),
+                               "dead_s": None if still is None else round(sum(b - a for a, b in still if b - a >= DEAD_MIN_S), 2),
+                               "longest_still": None if still is None else round(max((b - a for a, b in still), default=0.0), 2),
                                "frozen_s": round(sum(b - a for a, b in iv), 2),
                                "longest_frozen": round(max((b - a for a, b in iv), default=0.0), 2)}
         c = cues.get(n)
@@ -155,13 +168,15 @@ def measure_job(videos_dir: Path, job_id: str, api_key: Optional[str]) -> Dict[s
         scenes.append(row)
     total = sum(s["duration"] for s in scenes) or 1.0
     frozen = sum(s["frozen_s"] for s in scenes)
-    dead = sum(s["dead_s"] for s in scenes)
+    no_still = any(s["dead_s"] is None for s in scenes)
+    dead = 0 if no_still else sum(s["dead_s"] for s in scenes)
     errs = sorted(e for s in scenes for e in s.get("align_errors", []))
     return {
         "job": job_id, "scenes": scenes, "duration": round(total, 1), "frozen_share": round(frozen / total, 3),
-        "dead_share": round(dead / total, 3),
-        "longest_still": max((s["longest_still"] for s in scenes), default=0.0),
-        "scenes_still_ge_5s": sum(s["longest_still"] >= DEAD_MIN_S for s in scenes),
+        "still": SKIP_NUMPY if no_still else {"verdict": "measured"},
+        "dead_share": None if no_still else round(dead / total, 3),
+        "longest_still": None if no_still else max((s["longest_still"] for s in scenes), default=0.0),
+        "scenes_still_ge_5s": None if no_still else sum(s["longest_still"] >= DEAD_MIN_S for s in scenes),
         "max_cue_gap": max((s["cue_gap"] for s in scenes if "cue_gap" in s), default=None),
         "scenes_frozen_ge_5s": sum(s["longest_frozen"] >= 5 for s in scenes),
         "beats_fallback_rate": meta.get("beats_fallback_rate"),
@@ -185,15 +200,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     results = [measure_job(a.videos_dir, j, key) for j in a.jobs]
     total = sum(r["duration"] for r in results) or 1.0
     frozen = sum(r["frozen_share"] * r["duration"] for r in results)
-    dead = sum(r["dead_share"] * r["duration"] for r in results)
+    no_still = any(r["dead_share"] is None for r in results)
+    dead = 0 if no_still else sum(r["dead_share"] * r["duration"] for r in results)
     errs = sorted(e for r in results for s in r["scenes"] for e in s.get("align_errors", []))
-    stills = sorted(s["longest_still"] for r in results for s in r["scenes"])
+    stills = [] if no_still else sorted(s["longest_still"] for r in results for s in r["scenes"])
     summary = {
         "jobs": len(results), "scenes": sum(len(r["scenes"]) for r in results), "duration_s": round(total, 1),
-        "dead_share": round(dead / total, 3),
+        "still": SKIP_NUMPY if no_still else {"verdict": "measured"},
+        "dead_share": None if no_still else round(dead / total, 3),
         "longest_still_p50": stills[len(stills) // 2] if stills else None,
         "longest_still_max": stills[-1] if stills else None,
-        "scenes_still_ge_5s": sum(r["scenes_still_ge_5s"] for r in results),
+        "scenes_still_ge_5s": None if no_still else sum(r["scenes_still_ge_5s"] for r in results),
         "frozen_share": round(frozen / total, 3),
         "scenes_frozen_ge_5s": sum(r["scenes_frozen_ge_5s"] for r in results),
         "max_cue_gap": max((r["max_cue_gap"] or 0 for r in results), default=None),
@@ -202,7 +219,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "align_n": len(errs),
     }
     for r in results:
-        print(f"{r['job']}: {r['duration']:.0f}s dead {r['dead_share'] * 100:.0f}% longest_still {r['longest_still']} "
+        print(f"{r['job']}: {r['duration']:.0f}s dead {'skip (numpy missing)' if r['dead_share'] is None else format(r['dead_share'] * 100, '.0f') + '%'} longest_still {r['longest_still']} "
               f"frozen {r['frozen_share'] * 100:.0f}% "
               f"max_cue_gap {r['max_cue_gap']} fallback {r['beats_fallback_rate']} align_p90 {r['align_p90']}")
     print("SUMMARY", json.dumps(summary))

@@ -1,6 +1,6 @@
 ---
 id: video-producer:ADR-0005
-status: accepted
+status: superseded
 depends_on: [video-producer:ADR-0004]
 related: [CONCEPT-0095, ADR-0694]
 paths:
@@ -17,7 +17,15 @@ plugin_info:
 
 # ADR-0005: Annotated Screenshot Capture — Playwright Worker, Allowlist, Spotlight Annotation
 
-**Status:** ACCEPTED
+**Status:** SUPERSEDED (2026-10-10) — the live capture path is removed. A model-written
+`screenshot_url` was fetched by a browser on the console's loopback, where `local-login` hands any
+loopback peer an owner session of tenant `_default`: one tenant's job could put another tenant's
+console into its video (review 2026-10-09 #1, reproduced again 2026-10-10). `screenshot_capturer.py`,
+`screenshot_annotator.py` and the `screenshot_url`/`highlight_selector` scene fields are gone; a scene
+of kind `screenshot`/`screencast` renders as an ordinary slide. Website captures return only as a
+user-initiated, proxied asset (central ADR-2249 D4). The text below is the historical record.
+
+~~ACCEPTED~~
 **Decision:** Implement CONCEPT-0095 (annotated screenshot capture for UI
 walkthrough videos) as two new modules — a Playwright-based capturer and a
 pure-PIL annotator — wired into `orchestrate_video()`'s per-scene loop for

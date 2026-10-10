@@ -28,8 +28,6 @@ try:
     from .models import VideoJob, Storyboard, Scene, VideoOutput
     from .storage import get_storage, TERMINAL_STATUSES
     from .narration_validator import validate_storyboard_dict, validate_storyboard, CHAR_BUDGETS
-    from .screenshot_capturer import capture_screenshot, ScreenshotCaptureError
-    from .screenshot_annotator import annotate_screenshot
     from .web_templates import TEMPLATES, THEMES, WebSceneError, load_tokens, validate_scene_data
     from .web_renderer import FPS_DEFAULT, MAX_SCENE_SECONDS, WebRenderError, WebSlideRenderer
     from .style_pack import Style, validate_style
@@ -43,8 +41,6 @@ except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
     from narration_validator import validate_storyboard_dict, validate_storyboard, CHAR_BUDGETS
-    from screenshot_capturer import capture_screenshot, ScreenshotCaptureError
-    from screenshot_annotator import annotate_screenshot
     from web_templates import TEMPLATES, THEMES, WebSceneError, load_tokens, validate_scene_data
     from web_renderer import FPS_DEFAULT, MAX_SCENE_SECONDS, WebRenderError, WebSlideRenderer
     from style_pack import Style, validate_style
@@ -331,8 +327,7 @@ Didactic strategy: {strategy} — target {budget['min']}-{budget['max']} charact
 narration per scene (sweet spot {budget['target']}).
 
 Generate scenes of types: "title", "opening", "problem", "solution", "example",
-"summary", "anchor" (use "screenshot"/"screencast"/"animation" only if the task
-is literally about a UI walkthrough).
+"summary", "anchor".
 
 DESIGN RULES (measured from real didactic videos, apply them):
 - Scene 1 is "title" (short hook, under {budget['min']}ch).
@@ -454,14 +449,32 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
 # Real audio/image/video pipeline (ffmpeg + gTTS — no external API keys)
 # --------------------------------------------------------------------------
 
+_DE_WORDS = frozenset("""
+der die das den dem des und ist sind für ein eine einen einem einer nicht mit von zu zum zur wir
+sie ich es sich auch auf bei hier sehen unser unsere wird werden hat haben wie was oder aber noch
+nur schon im über unter durch kann können dass jeder jede jedes sein seine seinen ihr ihre eigenen
+eigene heute dann wenn weil denn diese dieser dieses man mehr kein keine alle""".split())
+_EN_WORDS = frozenset("""
+the and is are for a an not with of to we you it this that these those on at here see our will be
+has have how what or but only already in by can into from each every its their today then when
+because there more no all""".split())
+_WORD_RE = re.compile(r"[a-zäöüß]+")
+
+
 def _detect_lang(text: str) -> str:
-    """Cheap heuristic: German diacritics/words → 'de', else 'en'."""
-    german_markers = "äöüÄÖÜßÜ"
-    german_words = (" der ", " die ", " das ", " und ", " ist ", " für ", " ein ", " eine ")
-    padded = f" {text} "
-    if any(ch in text for ch in german_markers) or any(w in padded for w in german_words):
-        return "de"
-    return "en"
+    """'de' or 'en' by counting function words (umlauts count double). Call it on as much text as
+    there is - ``_storyboard_lang`` uses the whole narration: one short sentence like "Jeder Agent
+    bekommt seinen eigenen Kontext." used to come out English and was voiced/hyphenated as such."""
+    words = _WORD_RE.findall((text or "").lower())
+    de = sum(w in _DE_WORDS for w in words) + 2 * sum(ch in "äöüß" for ch in (text or "").lower())
+    en = sum(w in _EN_WORDS for w in words)
+    return "de" if de > en else "en"
+
+
+def _storyboard_lang(texts: List[str]) -> str:
+    """One language per video, from all its narration (review 2026-10-10: per-scene guessing
+    mixed English phonetics, hyphenation and keyword chips into German videos)."""
+    return _detect_lang(" ".join(t for t in texts if t))
 
 
 OPENAI_TTS_MODEL = "tts-1-hd"
@@ -482,7 +495,7 @@ def _openai_speech(text: str, out_path: Path, api_key: str) -> None:
     """One OpenAI TTS call; raises on any failure (callers decide: decline or fail)."""
     from openai import OpenAI
 
-    response = OpenAI(api_key=api_key).audio.speech.create(
+    response = OpenAI(api_key=api_key, timeout=_TTS_CALL_TIMEOUT_S, max_retries=2).audio.speech.create(
         model=OPENAI_TTS_MODEL, voice=OPENAI_TTS_VOICE, input=(text or "").strip() or "...",
     )
     response.stream_to_file(str(out_path))
@@ -515,7 +528,7 @@ def _synthesize_narration(text: str, out_path: Path, lang: str) -> None:
     from gtts import gTTS
 
     text = (text or "").strip() or "..."
-    tts = gTTS(text=text, lang=lang)
+    tts = gTTS(text=text, lang=lang, timeout=_TTS_CALL_TIMEOUT_S)
     tts.save(str(out_path))
 
 
@@ -576,7 +589,7 @@ def _tts_tier_edge(text: str, out_path: Path, lang: str) -> bool:
     try:
         async def _run() -> None:
             communicate = edge_tts.Communicate((text or "").strip() or "...", voice)
-            await communicate.save(str(out_path))
+            await asyncio.wait_for(communicate.save(str(out_path)), _TTS_CALL_TIMEOUT_S)
 
         _run_coroutine_blocking(_run)
         return out_path.exists() and out_path.stat().st_size > 0
@@ -611,9 +624,8 @@ def _tts_tier_piper(text: str, out_path: Path, lang: str) -> bool:
 
 
 def _tts_tier_mock(text: str, out_path: Path, lang: str) -> bool:
-    """Tier 4: last resort — a silent placeholder WAV, duration estimated from
-    text length (~150 words/minute), so a network-isolated CI environment
-    still produces a pipeline result instead of a hard failure."""
+    """Test seam only (never in ``_TTS_CHAIN``): a silent placeholder WAV, duration estimated
+    from text length (~150 words/minute), so an offline test drives the real pipeline."""
     import wave
     import struct
 
@@ -631,12 +643,24 @@ def _tts_tier_mock(text: str, out_path: Path, lang: str) -> bool:
     return True
 
 
+# The silent mock tier is NOT in the production chain: with it, a job whose real voices all
+# declined ended "complete" with a mute MP4 and passed the voice-track check (review 2026-10-10).
+# Tests put it in explicitly (monkeypatch ``_TTS_CHAIN``).
+# Every external step of a job is bounded: a hung ffmpeg or TTS call used to hold one of the
+# three job workers for good (review 2026-10-10). A job-wide deadline + cancel is PLAN-0946 R1b.
+_FFPROBE_TIMEOUT_S = 60
+_FFMPEG_TIMEOUT_S = 1800
+_TTS_CALL_TIMEOUT_S = 90
+
 _TTS_CHAIN = (
     ("openai", _tts_tier_openai),
     ("edge", _tts_tier_edge),
     ("piper", _tts_tier_piper),
-    ("mock", _tts_tier_mock),
 )
+
+
+class NoVoiceAvailable(RuntimeError):
+    """Every real TTS tier declined: the job fails instead of shipping a silent video."""
 
 
 def _synthesize_narration_chain(text: str, out_path: Path, lang: str) -> str:
@@ -645,8 +669,7 @@ def _synthesize_narration_chain(text: str, out_path: Path, lang: str) -> str:
     for provider_name, tier_fn in _TTS_CHAIN:
         if tier_fn(text, out_path, lang):
             return provider_name
-    # Unreachable: the mock tier never declines, but keep the contract explicit.
-    raise RuntimeError("tts chain: every tier declined, including mock")
+    raise NoVoiceAvailable("No narration voice is available (OpenAI, edge-tts and Piper all declined).")
 
 
 def _ffprobe_duration(path: Path) -> float:
@@ -655,7 +678,7 @@ def _ffprobe_duration(path: Path) -> float:
             "ffprobe", "-v", "error", "-show_entries", "format=duration",
             "-of", "default=noprint_wrappers=1:nokey=1", str(path),
         ],
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True, check=True, timeout=_FFPROBE_TIMEOUT_S,
     )
     return float(result.stdout.strip())
 
@@ -866,20 +889,12 @@ def _render_slide_image(
         "summary": "SUMMARY",
         "anchor": "ANCHOR",
         "narration": "NARRATION",
-        # Real capture (CONCEPT-0095) happens in _render_screenshot_scene(),
-        # called from orchestrate_video() BEFORE this function for
-        # kind=="screenshot" — this label only shows if _render_slide_image
-        # is called directly for a screenshot scene (bypassing the real
-        # capture path, e.g. in a test), which is why it still says
-        # "placeholder" here and nowhere else.
-        "screenshot": "SCREENSHOT (placeholder — call _render_screenshot_scene via orchestrate_video for a real capture)",
-        "screencast": "SCREENCAST (not implemented — CONCEPT-0095 Tier 2/video capture is out of scope)",
         "animation": "ANIMATION (placeholder)",
     }.get(scene.kind, scene.kind.upper())
 
     # The spoken text is never drawn on a slide — that would be a burned-in subtitle.
     # Only the placeholder kinds show their visual_description (a description, not narration).
-    body_source = scene.visual_description if scene.kind in ("screenshot", "screencast", "animation") else ""
+    body_source = scene.visual_description if scene.kind == "animation" else ""
     body_lines = _wrap_text(body_source) if body_source else []
 
     bg_top = _COLOR_NAVY_DARK if scene.kind == "title" else tuple(c + 6 for c in _COLOR_NAVY)
@@ -953,38 +968,6 @@ def _render_slide_image(
     img.save(out_path)
 
 
-async def _render_screenshot_scene(scene: Scene, image_path: Path) -> None:
-    """Capture a real screenshot for a kind=='screenshot' scene (CONCEPT-0095),
-    optionally annotated with a spotlight call-out around
-    ``scene.highlight_selector``'s resolved bounding box.
-
-    Hard errors (ScreenshotCaptureError, or a missing screenshot_url)
-    propagate to the caller — a scene that can't be captured correctly must
-    fail the job, not silently fall back to a placeholder slide shipped as
-    if it were correct.
-    """
-    if not scene.screenshot_url:
-        raise ValueError(
-            f"Scene {scene.id!r} has kind='screenshot' but no screenshot_url set "
-            f"— cannot capture nothing"
-        )
-
-    capture = await capture_screenshot(
-        scene.screenshot_url,
-        image_path,
-        highlight_selector=scene.highlight_selector,
-    )
-
-    if capture.bounding_box:
-        # Annotate into a temp file, then atomically replace — never leave
-        # image_path in a partially-written state if annotation fails
-        # partway through (CLAUDE.md: every write goes through a fresh temp
-        # + swap, not an in-place overwrite of the file a reader might see).
-        tmp_path = image_path.with_suffix(".annotated.png.tmp")
-        annotate_screenshot(image_path, capture.bounding_box, tmp_path)
-        os.replace(tmp_path, image_path)
-
-
 def _ground_storyboard(storyboard_json: Dict[str, Any], pack: Dict[str, Any], pack_text: str,
                        report: Dict[str, Any], model: Optional[str], max_duration_minutes: int) -> Dict[str, Any]:
     """Claims check + one repair round (PLAN-0942 D9). Returns the job-safe grounding
@@ -1034,15 +1017,14 @@ def _degrade_to_web_slides(scenes: List[Dict[str, Any]]) -> int:
     their own narration, so no scene falls back to the plain placeholder slide
     (which looks nothing like the rest of the video). Returns how many."""
     n = 0
+    lang = _storyboard_lang([str(s.get("narration_text") or "") for s in scenes if isinstance(s, dict)])
     for scene in scenes:
         if not isinstance(scene, dict) or scene.get("template") is not None:
-            continue
-        if scene.get("kind") in ("screenshot", "screencast"):
             continue
         text = " ".join(str(scene.get("narration_text") or "").split())
         if not text:
             continue
-        trial = _quote_trial(text)
+        trial = _quote_trial(text, lang)
         if not _apply_web_scene_contract([trial], strict=False):
             scene["template"], scene["data"] = trial["template"], trial["data"]
             scene.pop("beats", None)
@@ -1056,8 +1038,8 @@ def _first_sentence(text: str) -> str:
     return first if len(first) <= 200 else first[:197].rstrip() + "..."
 
 
-def _quote_trial(text: str) -> Dict[str, Any]:
-    return {"template": "quote", "data": {"quote": _first_sentence(text), "locale": _detect_lang(text)}}
+def _quote_trial(text: str, lang: Optional[str] = None) -> Dict[str, Any]:
+    return {"template": "quote", "data": {"quote": _first_sentence(text), "locale": lang or _detect_lang(text)}}
 
 
 def _repair_web_scenes(scenes: List[Dict[str, Any]], report: Dict[str, Any], model: Optional[str]) -> List[str]:
@@ -1224,7 +1206,7 @@ def _assemble_frames_clip(frames_dir: Path, n_frames: int, audio_path: Path, aud
         "-t", f"{total:.3f}",
         str(out_path),
     ]
-    subprocess.run(cmd, capture_output=True, text=True, check=True)
+    subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=_FFMPEG_TIMEOUT_S)
     return total
 
 
@@ -1246,7 +1228,7 @@ def _assemble_scene_clip(image_path: Path, audio_path: Path, out_path: Path) -> 
         "-shortest",
         str(out_path),
     ]
-    subprocess.run(cmd, capture_output=True, text=True, check=True)
+    subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=_FFMPEG_TIMEOUT_S)
 
 
 def _concat_clips(clip_paths: List[Path], out_path: Path, work_dir: Path) -> None:
@@ -1264,12 +1246,7 @@ def _concat_clips(clip_paths: List[Path], out_path: Path, work_dir: Path) -> Non
         "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(filelist),
         "-c", "copy", str(out_path),
     ]
-    subprocess.run(cmd, capture_output=True, text=True, check=True)
-
-
-def has_screenshot_scenes(storyboard: Storyboard) -> bool:
-    """Check if storyboard has screenshot or screencast scenes."""
-    return any(s.kind in ["screenshot", "screencast"] for s in storyboard.scenes)
+    subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=_FFMPEG_TIMEOUT_S)
 
 
 def emit_feedback(job_id: str, event_type: str, metrics: Dict[str, Any]):
@@ -1413,7 +1390,7 @@ class _WebRendererSession:
         if content and not _apply_web_scene_contract([content], strict=False):
             attempts.append(("replaced_with_content", "content", content["data"], {}, False))
         if text and template != "quote":
-            quote = _quote_trial(text)
+            quote = _quote_trial(text, cues.lang if cues is not None else None)
             if not _apply_web_scene_contract([quote], strict=False):
                 attempts.append(("replaced_with_quote", "quote", quote["data"], {}, False))
         for action, tmpl, tdata, opts, use_beats in attempts:
@@ -1581,6 +1558,7 @@ async def orchestrate_video(
         unverified_scenes = set(((storyboard.grounding or {}).get("unverified") or {}).get("scenes") or [])
 
         try:
+            video_lang = _storyboard_lang([sc.narration_text or "" for sc in storyboard.scenes])
             for i, scene in enumerate(storyboard.scenes, start=1):
                 pct = int(((i - 1) / total) * 90)  # 0..90% spans scene production
                 _update_job_progress(
@@ -1594,11 +1572,7 @@ async def orchestrate_video(
                 clip_path = scenes_dir / f"scene_{i:03d}.mp4"
 
                 narration = scene.narration_text or scene.visual_description or scene.id
-                # Detect per-scene (not per-task): the LLM doesn't always honor the
-                # "answer in the task's language" instruction, especially the small
-                # local fallback model — matching the actual narration text avoids
-                # e.g. German TTS phonetics being applied to English narration.
-                lang = _detect_lang(narration)
+                lang = video_lang  # one language per video, from all of its narration
                 if tts_engine == "auto":
                     tts_provider_used = _synthesize_narration_chain(narration, audio_path, lang)
                 elif tts_engine == "openai":
@@ -1615,56 +1589,52 @@ async def orchestrate_video(
                     current_scene=i, total_scenes=total,
                 )
                 frames: Optional[List[Path]] = None
-                if scene.kind == "screenshot":
-                    await _render_screenshot_scene(scene, image_path)
-                    renderers_used.append("screenshot")
+                if scene.template:
+                    cues = _SceneCues(
+                        narration=narration, pauses=detect_pauses(audio_path, audio_duration), lang=lang,
+                        chips_allowed=i not in unverified_scenes, beats=scene.beats,
+                    )
+                    t_render = datetime.now()
+                    frames, reason = await web.render(
+                        scene, audio_duration, scenes_dir / f"scene_{i:03d}_frames", cues=cues,
+                        # one look per video: a style fixes the theme, a scene's own "theme" is ignored
+                        theme=web_theme if web_style is not None else (scene.theme or web_theme), scene_index=i, total_scenes=total, lang=lang,
+                        map_focus=(scene.map or {}).get("focus") if isinstance(scene.map, dict) else None,
+                    )
+                    tl = getattr(frames, "timeline", None) if frames else None
+                    if tl is not None:
+                        final_t = getattr(frames, "template", scene.template)
+                        final_items = scene_items(final_t, validate_scene_data(final_t, frames.data))
+                        cue_log.append({
+                            "scene": i, "template": final_t,
+                            "beats_source": tl.source, "notes": tl.notes[:2],
+                            "reveals": len(tl.step_times), "focus_moves": len(tl.focus),
+                            "chips": len(tl.chips),
+                            # cue times (s): what the measurement script aligns with the spoken words
+                            "items": [{"label": lb[:40], "at": tl.step_times.get(st)} for lb, st in final_items],
+                            "focus_at": [t for t, _ in tl.focus], "chips_at": [t for t, _ in tl.chips],
+                            "captured_frames": len(frames),
+                            "render_s": round((datetime.now() - t_render).total_seconds(), 1),
+                        })
+                    if frames is None and reason:
+                        web_fallbacks.append({"scene": i, "reason": reason})
+                        emit_feedback(job_id=job_id, event_type="web_render_fallback",
+                                      metrics={"scene": i, "reason": reason})
+                        _update_job_progress(
+                            storage, job, "skills_running", pct,
+                            f"Scene {i}/{total}: web slide unavailable ({reason}) — using classic slide",
+                            current_scene=i, total_scenes=total,
+                        )
+                if frames:
+                    loop_start = getattr(frames, "loop_start", None)
+                    shutil.copyfile(frames[loop_start - 1] if loop_start else frames[-1], image_path)
+                    renderers_used.append("web")
                 else:
-                    if scene.template:
-                        cues = _SceneCues(
-                            narration=narration, pauses=detect_pauses(audio_path, audio_duration), lang=lang,
-                            chips_allowed=i not in unverified_scenes, beats=scene.beats,
-                        )
-                        t_render = datetime.now()
-                        frames, reason = await web.render(
-                            scene, audio_duration, scenes_dir / f"scene_{i:03d}_frames", cues=cues,
-                            # one look per video: a style fixes the theme, a scene's own "theme" is ignored
-                            theme=web_theme if web_style is not None else (scene.theme or web_theme), scene_index=i, total_scenes=total, lang=lang,
-                            map_focus=(scene.map or {}).get("focus") if isinstance(scene.map, dict) else None,
-                        )
-                        tl = getattr(frames, "timeline", None) if frames else None
-                        if tl is not None:
-                            final_t = getattr(frames, "template", scene.template)
-                            final_items = scene_items(final_t, validate_scene_data(final_t, frames.data))
-                            cue_log.append({
-                                "scene": i, "template": final_t,
-                                "beats_source": tl.source, "notes": tl.notes[:2],
-                                "reveals": len(tl.step_times), "focus_moves": len(tl.focus),
-                                "chips": len(tl.chips),
-                                # cue times (s): what the measurement script aligns with the spoken words
-                                "items": [{"label": lb[:40], "at": tl.step_times.get(st)} for lb, st in final_items],
-                                "focus_at": [t for t, _ in tl.focus], "chips_at": [t for t, _ in tl.chips],
-                                "captured_frames": len(frames),
-                                "render_s": round((datetime.now() - t_render).total_seconds(), 1),
-                            })
-                        if frames is None and reason:
-                            web_fallbacks.append({"scene": i, "reason": reason})
-                            emit_feedback(job_id=job_id, event_type="web_render_fallback",
-                                          metrics={"scene": i, "reason": reason})
-                            _update_job_progress(
-                                storage, job, "skills_running", pct,
-                                f"Scene {i}/{total}: web slide unavailable ({reason}) — using classic slide",
-                                current_scene=i, total_scenes=total,
-                            )
-                    if frames:
-                        loop_start = getattr(frames, "loop_start", None)
-                        shutil.copyfile(frames[loop_start - 1] if loop_start else frames[-1], image_path)
-                        renderers_used.append("web")
-                    else:
-                        _render_slide_image(
-                            scene, image_path, strategy=storyboard.didactic_strategy,
-                            scene_index=i, total_scenes=total, style=web_style,
-                        )
-                        renderers_used.append("pillow")
+                    _render_slide_image(
+                        scene, image_path, strategy=storyboard.didactic_strategy,
+                        scene_index=i, total_scenes=total, style=web_style,
+                    )
+                    renderers_used.append("pillow")
 
                 _update_job_progress(
                     storage, job, "skills_running", pct,
@@ -1723,6 +1693,7 @@ async def orchestrate_video(
                 "scenes": total,
                 "tts_engine": tts_engine,
                 "tts_provider_used": provider_used,
+                "language": video_lang,
                 "renderers": renderers_used,
                 "layout_collisions": web.layout_log,
                 # ADR-2245: how each web scene's cues were built
