@@ -21,9 +21,12 @@ from __future__ import annotations
 
 import json
 import math
+import os
+import re
 import shutil
 import tempfile
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set
 
@@ -55,6 +58,11 @@ class SignalContext:
     grounding_requested: bool = False
     style_accent: Optional[str] = None       # "#rrggbb" of the theme the video used; None = no custom style
     templates: Set[str] = field(default_factory=set)
+    # storyboard per scene: template, narration_text, beats, data - read by signals, never stored
+    storyboard_scenes: List[Dict[str, Any]] = field(default_factory=list)
+    narrations: List[str] = field(default_factory=list)
+    base_narrations: Optional[List[str]] = None      # a revision's base video; None = not a revision
+    transcribe: Optional[Callable[[Path], List[Dict[str, Any]]]] = None  # post-hoc only (whisper-1)
 
     @property
     def scenes(self) -> List[Dict[str, Any]]:
@@ -365,3 +373,450 @@ def _style_fidelity(ctx: SignalContext) -> SignalValue:
                        threshold={"delta_e_max": STYLE_DELTA_E_MAX, "corvin_mark_frames": 0},
                        reason=None if ok else ("Corvin mark on a frame" if mark_frames else "accent off by more than 3"),
                        detail={"corvin_mark_frames": mark_frames})
+
+
+# ── still_time (ADR-2245 definition, moved here from scripts/measure_engagement.py, T-0094) ─────
+#
+# A frame state is the per-pixel median over +-1 s (that removes ambient dots, orbits and ring pulses -
+# motion without information); a state change is > 0.15 % of pixels moving by more than 12 grey levels
+# against the state 1 s earlier. Still stretches are the runs without a change; the dead time of a scene
+# is the time in still stretches of at least 5 s. The numbers are the script's, unchanged: the script now
+# calls this code, and the agreement with the pre-move script is measured on the corpus
+# (scripts/still_time_agreement.py, tests/corpus/still_time_agreement.json).
+
+STILL_SAMPLE_FPS = 4
+STILL_STATE_WINDOW = 4        # +-1 s at STILL_SAMPLE_FPS
+STILL_CHANGE_LEVEL = 12
+STILL_CHANGE_SHARE = 0.0015
+DEAD_MIN_S = 5.0
+STILL_DEAD_SHARE_MAX = 0.20   # ADR-2247 still_time gate: dead share <= 20 %
+STILL_LONGEST_P90_MAX_S = 8.0  # ... and p90 over scenes of the longest still stretch <= 8 s
+_STILL_DECODE_S = 300.0
+_STILL_W, _STILL_H = 480, 270
+_STILL_MAX_BYTES = 512 * 1024 * 1024
+
+
+class NumpyMissing(RuntimeError):
+    """Still time cannot be measured without numpy: a skip, never a number."""
+
+
+def still_stretches(clip: Path) -> List[tuple]:
+    """Intervals (s) of ``clip`` in which the median-filtered content state does not change."""
+    try:
+        import numpy as np
+    except ImportError as e:
+        raise NumpyMissing("numpy missing") from e
+    raw = dl.run_process(["ffmpeg", "-v", "error", "-i", str(clip), "-vf",
+                          f"fps={STILL_SAMPLE_FPS},scale={_STILL_W}:{_STILL_H}", "-f", "rawvideo",
+                          "-pix_fmt", "gray", "-"], check=True, deadline_s=_STILL_DECODE_S,
+                         max_output=_STILL_MAX_BYTES, what="ffmpeg decode (still_time)")
+    if getattr(raw, "truncated", False):
+        raise RuntimeError("clip too long for the still-time decode")
+    frames = np.frombuffer(raw.stdout, dtype=np.uint8).reshape(-1, _STILL_H, _STILL_W)
+    n = len(frames)
+    if n < 2:
+        return []
+    w = STILL_STATE_WINDOW
+    state = np.stack([np.median(frames[max(0, i - w): i + w + 1], axis=0) for i in range(n)]).astype(np.int16)
+    lag = STILL_SAMPLE_FPS
+    changed = [False] * n
+    for i in range(lag, n):
+        share = (np.abs(state[i] - state[i - lag]) > STILL_CHANGE_LEVEL).mean()
+        if share > STILL_CHANGE_SHARE:
+            for k in range(i - lag, i + 1):
+                changed[k] = True
+    out, start = [], None
+    for i, c in enumerate(changed + [True]):
+        if not c and start is None:
+            start = i
+        elif c and start is not None:
+            out.append((start / STILL_SAMPLE_FPS, i / STILL_SAMPLE_FPS))
+            start = None
+    return out
+
+
+def clip_duration_s(clip: Path) -> float:
+    return _format_s(_probe(clip)) or 0.0
+
+
+def still_time_of_scene(clip: Path) -> Dict[str, Any]:
+    """``{duration_s, dead_s, longest_still_s}`` of one scene clip (raises NumpyMissing)."""
+    dur = clip_duration_s(clip)
+    still = still_stretches(clip)
+    return {"duration_s": round(dur, 2),
+            "dead_s": round(sum(b - a for a, b in still if b - a >= DEAD_MIN_S), 2),
+            "longest_still_s": round(max((b - a for a, b in still), default=0.0), 2)}
+
+
+def _p90(values: Sequence[float]) -> Optional[float]:
+    v = sorted(values)
+    return v[min(len(v) - 1, int(len(v) * 0.9))] if v else None
+
+
+def still_time_summary(rows: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    total = sum(r["duration_s"] for r in rows)
+    dead = sum(r["dead_s"] for r in rows)
+    return {"dead_share": round(dead / total, 3) if total > 0 else None,
+            "longest_still_p90_s": _p90([r["longest_still_s"] for r in rows]),
+            "longest_still_max_s": max((r["longest_still_s"] for r in rows), default=None),
+            "scenes_still_ge_5s": sum(r["longest_still_s"] >= DEAD_MIN_S for r in rows),
+            "duration_s": round(total, 2)}
+
+
+@register("still_time", unit="share of runtime in still stretches >= 5 s",
+          description="time in which the slide's content does not change (ADR-2245); a degraded scene counts")
+def _still_time(ctx: SignalContext) -> SignalValue:
+    threshold = {"dead_share_max": STILL_DEAD_SHARE_MAX, "longest_still_p90_max_s": STILL_LONGEST_P90_MAX_S}
+    clips = [(s["index"], ctx.job_dir / "scenes" / f"scene_{s['index']:03d}.mp4") for s in ctx.scenes]
+    clips = [(i, c) for i, c in clips if c.is_file()]
+    if not clips:
+        return SignalValue(None, "skip", threshold=threshold, reason="no scene clip")
+    try:
+        rows = [{"scene": i, **still_time_of_scene(c)} for i, c in clips]
+    except NumpyMissing:
+        return SignalValue(None, "skip", threshold=threshold, reason="numpy missing")
+    summ = still_time_summary(rows)
+    if summ["dead_share"] is None:
+        return SignalValue(None, "skip", threshold=threshold, reason="scenes have no length")
+    misses = [m for m, bad in (("dead share above 20 %", summ["dead_share"] > STILL_DEAD_SHARE_MAX),
+                               ("p90 longest still above 8 s",
+                                (summ["longest_still_p90_s"] or 0) > STILL_LONGEST_P90_MAX_S)) if bad]
+    return SignalValue(summ["dead_share"], "warn" if misses else "pass",
+                       n=len(rows) - summ["scenes_still_ge_5s"], of=len(rows), threshold=threshold,
+                       reason="; ".join(misses) or None,
+                       detail={"longest_still_p90_s": summ["longest_still_p90_s"],
+                               "longest_still_max_s": summ["longest_still_max_s"],
+                               "scenes_still_ge_5s": summ["scenes_still_ge_5s"],
+                               "per_scene": [{k: r[k] for k in ("scene", "dead_s", "longest_still_s")}
+                                             for r in rows][:40]})
+
+
+# ── revision_locality (ADR-2247: information) ───────────────────────────────────────────────
+
+def _words(text: Any) -> List[str]:
+    return " ".join(str(text or "").split()).split(" ") if str(text or "").strip() else []
+
+
+def revision_locality(base_narrations: Sequence[str], narrations: Sequence[str]) -> Dict[str, Any]:
+    """Share of the base video's scenes whose narration the revision kept word-identical (whitespace
+    ignored; position free - a kept scene may move)."""
+    pool: Dict[str, int] = {}
+    for t in narrations:
+        k = " ".join(_words(t))
+        pool[k] = pool.get(k, 0) + 1
+    kept = 0
+    for t in base_narrations:
+        k = " ".join(_words(t))
+        if k and pool.get(k, 0) > 0:
+            pool[k] -= 1
+            kept += 1
+    n = len(base_narrations)
+    return {"kept": kept, "of": n, "share": round(kept / n, 3) if n else None}
+
+
+@register("revision_locality", unit="share of the base video's scenes kept word-identical", gated=False,
+          description="how much of the base video a revision kept (information; a change may touch everything)")
+def _revision_locality(ctx: SignalContext) -> SignalValue:
+    if ctx.base_narrations is None:
+        return SignalValue(None, "skip", reason="not a revision")
+    if not ctx.base_narrations or not ctx.narrations:
+        return SignalValue(None, "skip", reason="a storyboard has no scene")
+    r = revision_locality(ctx.base_narrations, ctx.narrations)
+    return SignalValue(r["share"], "info", n=r["kept"], of=r["of"],
+                       detail={"base_scenes": r["of"], "revision_scenes": len(ctx.narrations)})
+
+
+# ── language_parity (ADR-2247; checked at storage time, Corvin-Videos convention) ───────────────
+
+PARITY_SCENE_DELTA = 1          # scene counts may differ by one
+PARITY_TEMPLATE_SHARE = 0.80    # >= 80 % identical template positions
+_NUM_WORDS = {
+    # 2..20 written out (0 and 1 are articles/pronouns too often to count as facts)
+    "zwei": "2", "drei": "3", "vier": "4", "fünf": "5", "sechs": "6", "sieben": "7", "acht": "8", "neun": "9",
+    "zehn": "10", "elf": "11", "zwölf": "12", "dreizehn": "13", "vierzehn": "14", "fünfzehn": "15",
+    "sechzehn": "16", "siebzehn": "17", "achtzehn": "18", "neunzehn": "19", "zwanzig": "20",
+    "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9",
+    "ten": "10", "eleven": "11", "twelve": "12", "thirteen": "13", "fourteen": "14", "fifteen": "15",
+    "sixteen": "16", "seventeen": "17", "eighteen": "18", "nineteen": "19", "twenty": "20",
+}
+_NUM_RE = re.compile(r"(?<![\w.,])(\d{1,3}(?:[.,\u202f\u00a0]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)"
+                     r"(\s?(?:%|prozent|percent))?", re.IGNORECASE)
+
+
+def _norm_number(tok: str) -> str:
+    """Locale-free form of a number token: ``1.234,5`` = ``1,234.5`` = ``1234.5``; ``4,5`` = ``4.5``;
+    ``1.000`` = ``1,000`` = ``1000`` (one separator before exactly three digits reads as thousands)."""
+    t = tok.replace("\u202f", ".").replace("\u00a0", ".")
+    seps = [c for c in t if c in ".,"]
+    if not seps:
+        return t.lstrip("0") or "0"
+    groups = re.split(r"[.,]", t)
+    if len(set(seps)) == 1 and all(len(g) == 3 for g in groups[1:]):
+        return "".join(groups).lstrip("0") or "0"
+    k = max(t.rfind("."), t.rfind(","))
+    whole = re.sub(r"[.,]", "", t[:k]).lstrip("0") or "0"
+    frac = t[k + 1:].rstrip("0")
+    return whole + ("." + frac if frac else "")
+
+
+def numeric_facts(text: str) -> Dict[str, int]:
+    """Every number / percentage in a narration, locale-normalised (``77 %`` = ``77%`` = ``77 Prozent``)."""
+    out: Dict[str, int] = {}
+    s = str(text or "")
+    for m in _NUM_RE.finditer(s):
+        key = _norm_number(m.group(1)) + ("%" if m.group(2) else "")
+        out[key] = out.get(key, 0) + 1
+    for w in re.findall(r"[^\W\d_]+", s.lower()):
+        if w in _NUM_WORDS:
+            out[_NUM_WORDS[w]] = out.get(_NUM_WORDS[w], 0) + 1
+    return out
+
+
+def _bare(fact: str) -> str:
+    return fact[:-1] if fact.endswith("%") else fact
+
+
+def language_parity(a: Sequence[Dict[str, Any]], b: Sequence[Dict[str, Any]], *,
+                    langs: Sequence[str] = ("de", "en")) -> Dict[str, Any]:
+    """Parity of two language versions of one video (storyboard scenes: ``template``, ``narration_text``).
+
+    pass = scene counts within one, >= 80 % identical template positions, and every numeric fact of one
+    narration in the other (a percentage matches the same number written without the sign: locales
+    differ in whether they say "Prozent"). Independent of grounding by design (ADR-2247)."""
+    ta = [str((s or {}).get("template") or "-") for s in a]
+    tb = [str((s or {}).get("template") or "-") for s in b]
+    longest = max(len(ta), len(tb))
+    same = sum(1 for x, y in zip(ta, tb) if x == y)
+    share = round(same / longest, 3) if longest else None
+    fa = numeric_facts(" ".join(str((s or {}).get("narration_text") or "") for s in a))
+    fb = numeric_facts(" ".join(str((s or {}).get("narration_text") or "") for s in b))
+    bare_a, bare_b = {_bare(k) for k in fa}, {_bare(k) for k in fb}
+    only_a = sorted(k for k in fa if _bare(k) not in bare_b)
+    only_b = sorted(k for k in fb if _bare(k) not in bare_a)
+    misses = []
+    if abs(len(ta) - len(tb)) > PARITY_SCENE_DELTA:
+        misses.append("scene count differs by more than one")
+    if share is None or share < PARITY_TEMPLATE_SHARE:
+        misses.append("template sequence below 80 % identical")
+    if only_a or only_b:
+        misses.append("numeric facts differ")
+    la, lb = (list(langs) + ["a", "b"])[:2]
+    return {"id": "language_parity", "verdict": "fail" if misses else "pass", "reasons": misses,
+            "scenes": {la: len(ta), lb: len(tb)},
+            "templates": {"identical_positions": same, "of": longest, "share": share,
+                          "threshold": PARITY_TEMPLATE_SHARE, la: ta, lb: tb},
+            "numeric_facts": {la: sorted(fa), lb: sorted(fb), f"only_{la}": only_a, f"only_{lb}": only_b}}
+
+
+# ── cue_alignment (post-hoc, opt-in: whisper-1 word times; ADR-2247 / PLAN-0946 R5) ──────────────
+
+ALIGN_MEDIAN_GOAL_S = 1.0
+ALIGN_P90_GOAL_S = 1.5
+WHISPER_URL = "https://api.openai.com/v1/audio/transcriptions"
+_WHISPER_S = 120.0
+
+
+def whisper_words(mp3: Path, api_key: str) -> List[Dict[str, Any]]:
+    """Word times of one scene's narration from OpenAI whisper-1 (an independent clock, not the
+    estimate the cues were built from). Network; bounded by the deadline primitive."""
+    import requests
+
+    def call():
+        with open(mp3, "rb") as f:
+            r = requests.post(WHISPER_URL, headers={"Authorization": f"Bearer {api_key}"},
+                              data={"model": "whisper-1", "response_format": "verbose_json",
+                                    "timestamp_granularities[]": "word"},
+                              files={"file": (mp3.name, f, "audio/mpeg")}, timeout=(10, _WHISPER_S))
+        r.raise_for_status()
+        return r.json()
+    return list((dl.run_sync(call, deadline_s=_WHISPER_S + 15, what="whisper-1") or {}).get("words") or [])
+
+
+def _norm_word(s: str) -> str:
+    return re.sub(r"[^\w]", "", str(s).lower())
+
+
+def _label_tokens(label: str) -> List[str]:
+    return [_norm_word(t) for t in re.split(r"[\s\-+/]+|(?<=[a-zäöü])(?=[A-ZÄÖÜ])", label) if len(_norm_word(t)) >= 4]
+
+
+def spoken_time(label: str, words: List[Dict[str, Any]], start: int = 0) -> Optional[float]:
+    """Start of the first word (or run of up to 4 words) at or after ``start`` matching the whole label,
+    else the first matching label token at or after ``start``."""
+    toks = _label_tokens(label)
+    whole = _norm_word(label)
+    normed = [_norm_word(w.get("word", "")) for w in words]
+    for i in range(max(0, start), len(words)):
+        run = ""
+        for j in range(i, min(i + 4, len(words))):
+            run += normed[j]
+            if whole and run == whole:
+                return float(words[i]["start"])
+    for t in sorted(toks, key=len, reverse=True):
+        for i in range(max(0, start), len(normed)):
+            w = normed[i]
+            if t in w or (len(w) >= 5 and w in t):
+                return float(words[i]["start"])
+    return None
+
+
+def _word_index_of(char_pos: int, text: str, words: List[Dict[str, Any]]) -> int:
+    """Index into the whisper words of the narration word that starts at ``char_pos`` of ``text``
+    (sequence alignment of the two word lists; whisper may split, merge or mishear words)."""
+    import difflib
+    narr = [_norm_word(w) for w in text[:char_pos].split()]
+    n = len([w for w in narr if w])
+    a = [w for w in (_norm_word(x) for x in text.split()) if w]
+    b = [_norm_word(w.get("word", "")) for w in words]
+    for blk in difflib.SequenceMatcher(None, a, b, autojunk=False).get_matching_blocks():
+        if blk.size and blk.a + blk.size > n:
+            return blk.b + max(0, n - blk.a)
+    return len(b)
+
+
+def align_scene(narration: str, beats: Any, items: Sequence[Dict[str, Any]], words: List[Dict[str, Any]],
+                *, lead_s: float = 0.25) -> List[Dict[str, Any]]:
+    """Per item ``{label, error_s | None}``: |cue + lead - spoken time|. The spoken time is the first
+    occurrence of the item AFTER THE START OF THE SENTENCE THAT NAMES IT - the beat sentence the cue was
+    placed on, else the first sentence mentioning it - never simply the first in the scene (an item
+    named in an introductory sentence would otherwise be measured against the wrong time)."""
+    try:
+        from .web_timeline import find_mentions, split_sentences
+    except ImportError:  # pragma: no cover - script use
+        from web_timeline import find_mentions, split_sentences
+    text = " ".join(str(narration or "").split())
+    spans = split_sentences(text)
+    beat_list = beats if isinstance(beats, list) and len(beats) == len(spans) else None
+    mentions = find_mentions(text, [str(it.get("label") or "") for it in items]) if items else []
+    out: List[Dict[str, Any]] = []
+    for j, it in enumerate(items):
+        label = str(it.get("label") or "")
+        at = it.get("at")
+        if at is None or not label:
+            out.append({"label": label, "error_s": None, "why": "no cue"})
+            continue
+        k = None
+        if beat_list is not None:
+            k = next((s for s, b in enumerate(beat_list) if isinstance(b, int) and not isinstance(b, bool) and b == j), None)
+        char = spans[k][0] if k is not None and k < len(spans) else (mentions[j][0] if j < len(mentions) and mentions[j] else 0)
+        if k is None and j < len(mentions) and mentions[j]:
+            # the sentence holding the first mention: search from that sentence's start
+            char = next((a for a, e in spans if a <= mentions[j][0] < e), mentions[j][0])
+        t = spoken_time(label, words, _word_index_of(char, text, words) if char else 0)
+        if t is None:
+            out.append({"label": label, "error_s": None, "why": "not heard"})
+        else:
+            out.append({"label": label, "error_s": round(abs(float(at) + lead_s - t), 2)})
+    return out
+
+
+def _scene_item_count(template: Optional[str], data: Any) -> int:
+    if not template or not isinstance(data, dict):
+        return 0
+    try:
+        try:
+            from .web_templates import scene_items, validate_scene_data
+        except ImportError:  # pragma: no cover
+            from web_templates import scene_items, validate_scene_data
+        return len(scene_items(template, validate_scene_data(template, data)))
+    except Exception:  # noqa: BLE001 - data the template refused has no countable items
+        return 0
+
+
+@register("cue_alignment", unit="s between a reveal and the spoken word (median)", kind="posthoc",
+          description="whisper-1 word times vs the reveal cues; coverage = matched / all items with a cue "
+                      "(Pillow scenes and uncued items count as unmatched)")
+def _cue_alignment(ctx: SignalContext) -> SignalValue:
+    threshold = {"median_max_s": ALIGN_MEDIAN_GOAL_S, "p90_max_s": ALIGN_P90_GOAL_S, "coverage": "ratchet"}
+    if ctx.transcribe is None:
+        return SignalValue(None, "skip", threshold=threshold, reason="not run (opt-in, needs the operator)")
+    cues = {c.get("scene"): c for c in (ctx.metadata.get("cues") or []) if isinstance(c, dict)}
+    sb = ctx.storyboard_scenes or []
+    errs: List[float] = []
+    total = 0
+    per_scene: List[Dict[str, Any]] = []
+    for idx, scene in enumerate(sb, start=1):
+        c = cues.get(idx)
+        if c is None:
+            n_items = _scene_item_count(scene.get("template"), scene.get("data"))
+            total += n_items
+            if n_items:
+                per_scene.append({"scene": idx, "items": n_items, "matched": 0, "why": "no cue (classic slide)"})
+            continue
+        items = [it for it in (c.get("items") or []) if isinstance(it, dict)]
+        total += len(items)
+        if not items:
+            continue
+        mp3 = ctx.job_dir / "scenes" / f"scene_{idx:03d}.mp3"
+        if not mp3.is_file():
+            per_scene.append({"scene": idx, "items": len(items), "matched": 0, "why": "no narration audio"})
+            continue
+        words = ctx.transcribe(mp3)
+        same_template = c.get("template") == scene.get("template")
+        rows = align_scene(scene.get("narration_text") or "", scene.get("beats") if same_template else None,
+                           items, words)
+        got = [r["error_s"] for r in rows if r["error_s"] is not None]
+        errs.extend(got)
+        per_scene.append({"scene": idx, "items": len(items), "matched": len(got)})
+    if total == 0:
+        return SignalValue(None, "skip", threshold=threshold, reason="no item with a cue in this video")
+    errs.sort()
+    median = errs[len(errs) // 2] if errs else None
+    p90 = _p90(errs)
+    coverage = round(len(errs) / total, 3)
+    ok = median is not None and median <= ALIGN_MEDIAN_GOAL_S and (p90 or 0) <= ALIGN_P90_GOAL_S
+    return SignalValue(median, "pass" if ok else "warn", n=len(errs), of=total, threshold=threshold,
+                       reason=None if ok else ("no item matched" if median is None else "above the goal"),
+                       detail={"p90_s": p90, "coverage": coverage, "per_scene": per_scene[:40]})
+
+
+# ── post-hoc run on a finished job (the host calls this after its gates; T-0094) ────────────────
+
+def storyboard_scene_dicts(storyboard: Any) -> List[Dict[str, Any]]:
+    """``template``, ``narration_text``, ``beats``, ``data`` per storyboard scene (dict, JSON or object)."""
+    if isinstance(storyboard, str):
+        try:
+            storyboard = json.loads(storyboard)
+        except ValueError:
+            return []
+    scenes = storyboard.get("scenes") if isinstance(storyboard, dict) else getattr(storyboard, "scenes", None)
+    out = []
+    for s in scenes or []:
+        g = (lambda k: s.get(k)) if isinstance(s, dict) else (lambda k: getattr(s, k, None))
+        out.append({"template": g("template"), "narration_text": g("narration_text") or "",
+                    "beats": g("beats"), "data": g("data")})
+    return out
+
+
+def measure_posthoc(job_dir: Path, storyboard: Any, metadata: Dict[str, Any], *,
+                    transcribe: Optional[Callable[[Path], List[Dict[str, Any]]]] = None,
+                    only: Sequence[str] = ("cue_alignment",), refused: Optional[str] = None) -> Dict[str, Any]:
+    """Run post-hoc signals over a finished job and merge them into its ``report.json`` (same record,
+    same validation - no narration text can enter it). Returns ``{signals, stored, reason}``; a job
+    without a report gets the numbers back but nothing is stored (``stored: False``). ``refused``: the
+    host's gate refused the measurement - every signal in ``only`` is recorded as ``skip`` with that
+    reason, nothing runs."""
+    try:
+        from . import report as rp
+    except ImportError:  # pragma: no cover
+        import report as rp
+    job_dir = Path(job_dir)
+    scenes = storyboard_scene_dicts(storyboard)
+    rep = rp.read(job_dir) if (job_dir / rp.REPORT_NAME).is_file() and not (job_dir / rp.REPORT_NAME).is_symlink() else None
+    ctx = SignalContext(job_dir=job_dir, report=rep or {"scenes": [{"index": i} for i in range(1, len(scenes) + 1)]},
+                        metadata=metadata or {}, storyboard_scenes=scenes, transcribe=transcribe,
+                        narrations=[s["narration_text"] for s in scenes])
+    if refused is not None:
+        recs = [_record(spec, SignalValue(None, "skip", reason=refused)) for spec in registered("posthoc") if spec.id in only]
+    else:
+        recs = run(ctx, kind="posthoc", only=only)
+    if rep is None:
+        return {"signals": recs, "stored": False, "reason": "no report"}
+    keep = [s for s in rep.get("signals") or [] if s.get("id") not in {r["id"] for r in recs}]
+    rep["signals"] = keep + recs
+    rep["posthoc_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    text = rp.validate(rep, forbidden_texts=[s["narration_text"] for s in scenes])
+    tmp = job_dir / (rp.REPORT_NAME + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, job_dir / rp.REPORT_NAME)
+    return {"signals": recs, "stored": True, "reason": None}

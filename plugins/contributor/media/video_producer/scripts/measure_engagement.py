@@ -2,7 +2,7 @@
 """Measure how much of a produced video stands still (ADR-2245 release gate).
 
 Per scene clip of a finished job:
-  still       stretches in which the slide's content does not change. A frame
+  still       (the ``still_time`` signal of src/signals.py) stretches in which the slide's content does not change. A frame
               state is the per-pixel median over ±1 s (this removes ambient dots,
               orbits and ring pulses — motion without information); a state change
               is > 0.15 % of pixels moving by more than 12 levels against the state
@@ -34,6 +34,9 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src import signals as sg  # noqa: E402
+
 REVEAL_LEAD_S = 0.25
 
 
@@ -54,49 +57,21 @@ def frozen_intervals(clip: Path) -> List[tuple]:
     return list(zip(starts, ends))
 
 
-SAMPLE_FPS = 4
-STATE_WINDOW = 4       # ±1 s at SAMPLE_FPS
-CHANGE_LEVEL = 12
-CHANGE_SHARE = 0.0015
-DEAD_MIN_S = 5.0
-
+# The still-time logic lives in the plugin (src/signals.py, the ``still_time`` signal) since T-0094; this
+# script calls it so there is one definition. Constants are re-exported for readers of this file.
+SAMPLE_FPS = sg.STILL_SAMPLE_FPS
+STATE_WINDOW = sg.STILL_STATE_WINDOW
+CHANGE_LEVEL = sg.STILL_CHANGE_LEVEL
+CHANGE_SHARE = sg.STILL_CHANGE_SHARE
+DEAD_MIN_S = sg.DEAD_MIN_S
 
 SKIP_NUMPY = {"verdict": "skip", "reason": "numpy missing"}
-
-
-class NumpyMissing(RuntimeError):
-    """Still time cannot be measured without numpy: report a skip, never a number."""
+NumpyMissing = sg.NumpyMissing
 
 
 def still_stretches(clip: Path) -> List[tuple]:
-    """Intervals (s) in which the median-filtered content state does not change."""
-    try:
-        import numpy as np
-    except ImportError as e:
-        raise NumpyMissing("numpy missing") from e
-    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(clip), "-vf", f"fps={SAMPLE_FPS},scale=480:270",
-                          "-f", "rawvideo", "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
-    frames = np.frombuffer(raw, dtype=np.uint8).reshape(-1, 270, 480)
-    n = len(frames)
-    if n < 2:
-        return []
-    w = STATE_WINDOW
-    state = np.stack([np.median(frames[max(0, i - w): i + w + 1], axis=0) for i in range(n)]).astype(np.int16)
-    lag = SAMPLE_FPS
-    changed = [False] * n
-    for i in range(lag, n):
-        share = (np.abs(state[i] - state[i - lag]) > CHANGE_LEVEL).mean()
-        if share > CHANGE_SHARE:
-            for k in range(i - lag, i + 1):
-                changed[k] = True
-    out, start = [], None
-    for i, c in enumerate(changed + [True]):
-        if not c and start is None:
-            start = i
-        elif c and start is not None:
-            out.append((start / SAMPLE_FPS, i / SAMPLE_FPS))
-            start = None
-    return out
+    """Intervals (s) in which the median-filtered content state does not change (src/signals.py)."""
+    return sg.still_stretches(clip)
 
 
 def _norm(s: str) -> str:
@@ -104,33 +79,13 @@ def _norm(s: str) -> str:
 
 
 def whisper_words(mp3: Path, api_key: str) -> List[Dict[str, Any]]:
-    import requests
-    with open(mp3, "rb") as f:
-        r = requests.post("https://api.openai.com/v1/audio/transcriptions",
-                          headers={"Authorization": f"Bearer {api_key}"},
-                          data={"model": "whisper-1", "response_format": "verbose_json",
-                                "timestamp_granularities[]": "word"},
-                          files={"file": (mp3.name, f, "audio/mpeg")}, timeout=120)
-    r.raise_for_status()
-    return r.json().get("words") or []
+    return sg.whisper_words(mp3, api_key)
 
 
 def spoken_time(label: str, words: List[Dict[str, Any]]) -> Optional[float]:
-    """Start of the first word (or word run) matching the label or one of its parts."""
-    toks = [_norm(t) for t in re.split(r"[\s\-+/]+|(?<=[a-zäöü])(?=[A-ZÄÖÜ])", label) if len(_norm(t)) >= 4]
-    whole = _norm(label)
-    normed = [_norm(w.get("word", "")) for w in words]
-    for i in range(len(words)):
-        run = ""
-        for j in range(i, min(i + 4, len(words))):
-            run += normed[j]
-            if whole and run == whole:
-                return float(words[i]["start"])
-    for t in sorted(toks, key=len, reverse=True):
-        for i, w in enumerate(normed):
-            if t in w or (len(w) >= 5 and w in t):
-                return float(words[i]["start"])
-    return None
+    """First occurrence anywhere in the scene (the script's historical measure; the ``cue_alignment``
+    signal in src/signals.py searches from the sentence that names the item instead)."""
+    return sg.spoken_time(label, words)
 
 
 def measure_job(videos_dir: Path, job_id: str, api_key: Optional[str]) -> Dict[str, Any]:

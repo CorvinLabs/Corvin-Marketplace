@@ -5,6 +5,9 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+# tests/fixtures/ holds data, not tests: the release_lint fixtures carry historical test_*.py files
+collect_ignore_glob = ["fixtures/*"]
+
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 

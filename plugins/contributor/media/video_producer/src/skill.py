@@ -1481,6 +1481,7 @@ async def orchestrate_video(
     grounding_pack: Optional[Dict[str, Any]] = None,
     grounding_status: Optional[Dict[str, Any]] = None,
     web_style: Optional["Style"] = None,
+    revision_base_narrations: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Main orchestrator Skill:
@@ -1575,6 +1576,7 @@ async def orchestrate_video(
         job.storyboard = storyboard
         report.storyboard_llm = storyboard.llm_backend or "operator"
         report_texts += [t for sc in storyboard.scenes for t in (sc.narration_text, sc.visual_description) if t]
+        report_texts += [str(t) for t in (revision_base_narrations or []) if t]
         grounding_requested = pack is not None or (
             isinstance(grounding_status, dict) and grounding_status.get("status") == "unavailable")
         budget.check("storyboard")
@@ -1801,6 +1803,11 @@ async def orchestrate_video(
             plan_ms=[sc.duration_ms for sc in storyboard.scenes], grounding_requested=grounding_requested,
             style_accent=(web_style.tokens.get(web_theme, {}).get("accent") if web_style is not None else None),
             templates={c["template"] for c in cue_log if c.get("template")},
+            storyboard_scenes=sg.storyboard_scene_dicts(storyboard),
+            narrations=[sc.narration_text or "" for sc in storyboard.scenes],
+            # a revision: the host hands over the base video's narrations (revision_locality, information)
+            base_narrations=([str(t or "") for t in revision_base_narrations]
+                             if isinstance(revision_base_narrations, list) else None),
         ))
         report.finish("complete")
         video_output.metadata["report"] = rp.REPORT_NAME if _write_report(report, out_root, report_texts) else None
@@ -1911,4 +1918,5 @@ async def start_video_production(
         grounding_pack=config.get("grounding_pack"),
         grounding_status=config.get("grounding_status"),
         web_style=config.get("web_style"),
+        revision_base_narrations=config.get("revision_base_narrations"),
     )

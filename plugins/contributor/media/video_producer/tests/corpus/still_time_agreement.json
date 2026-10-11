@@ -1,0 +1,145 @@
+{
+ "summary": {
+  "measured_at": "2026-10-12T00:49:55+0200",
+  "host": {
+   "python": "3.11.15",
+   "cpus": 16,
+   "loadavg": [
+    13.12939453125,
+    7.38232421875,
+    5.533203125
+   ]
+  },
+  "jobs": 9,
+  "of": 9,
+  "video_min": 22.33,
+  "max_diff_points_vs_recorded": 0.0,
+  "max_diff_points_vs_reference": 0.0,
+  "pooled_s_per_min": 2.58,
+  "max_s_per_min": 2.92,
+  "limits": {
+   "diff_points": 1.0,
+   "s_per_min": 15.0
+  },
+  "verdict": "pass"
+ },
+ "jobs": [
+  {
+   "entry": "job_13fae6f0",
+   "job": "job_13fae6f0",
+   "recorded_dead_share": 0.517,
+   "scenes": 8,
+   "duration_s": 114.22,
+   "dead_share": 0.517,
+   "signal_s": 4.97,
+   "s_per_min": 2.61,
+   "reference_dead_share": 0.517,
+   "diff_points_vs_recorded": 0.0,
+   "diff_points_vs_reference": 0.0
+  },
+  {
+   "entry": "job_21a8c536",
+   "job": "job_21a8c536",
+   "recorded_dead_share": 0.402,
+   "scenes": 8,
+   "duration_s": 113.22,
+   "dead_share": 0.402,
+   "signal_s": 4.9,
+   "s_per_min": 2.6,
+   "reference_dead_share": 0.402,
+   "diff_points_vs_recorded": 0.0,
+   "diff_points_vs_reference": 0.0
+  },
+  {
+   "entry": "job_58827bae",
+   "job": "job_58827bae",
+   "recorded_dead_share": 0.716,
+   "scenes": 10,
+   "duration_s": 250.58,
+   "dead_share": 0.716,
+   "signal_s": 10.15,
+   "s_per_min": 2.43,
+   "reference_dead_share": 0.716,
+   "diff_points_vs_recorded": 0.0,
+   "diff_points_vs_reference": 0.0
+  },
+  {
+   "entry": "job_66cce242",
+   "job": "job_66cce242",
+   "recorded_dead_share": 0.612,
+   "scenes": 10,
+   "duration_s": 194.83,
+   "dead_share": 0.612,
+   "signal_s": 9.49,
+   "s_per_min": 2.92,
+   "reference_dead_share": 0.612,
+   "diff_points_vs_recorded": 0.0,
+   "diff_points_vs_reference": 0.0
+  },
+  {
+   "entry": "job_91bce362",
+   "job": "job_91bce362",
+   "recorded_dead_share": 0.572,
+   "scenes": 8,
+   "duration_s": 134.16,
+   "dead_share": 0.572,
+   "signal_s": 5.18,
+   "s_per_min": 2.32,
+   "reference_dead_share": 0.572,
+   "diff_points_vs_recorded": 0.0,
+   "diff_points_vs_reference": 0.0
+  },
+  {
+   "entry": "job_925521fb",
+   "job": "job_925521fb",
+   "recorded_dead_share": 0.478,
+   "scenes": 7,
+   "duration_s": 45.51,
+   "dead_share": 0.478,
+   "signal_s": 1.86,
+   "s_per_min": 2.45,
+   "reference_dead_share": 0.478,
+   "diff_points_vs_recorded": 0.0,
+   "diff_points_vs_reference": 0.0
+  },
+  {
+   "entry": "job_a6618e32",
+   "job": "job_a6618e32",
+   "recorded_dead_share": 0.489,
+   "scenes": 10,
+   "duration_s": 163.95,
+   "dead_share": 0.489,
+   "signal_s": 6.92,
+   "s_per_min": 2.53,
+   "reference_dead_share": 0.489,
+   "diff_points_vs_recorded": 0.0,
+   "diff_points_vs_reference": 0.0
+  },
+  {
+   "entry": "ldd-bei-architekturentscheidungen.de",
+   "job": "job_de64411e",
+   "recorded_dead_share": 0.251,
+   "scenes": 10,
+   "duration_s": 167.53,
+   "dead_share": 0.251,
+   "signal_s": 6.62,
+   "s_per_min": 2.37,
+   "reference_dead_share": 0.251,
+   "diff_points_vs_recorded": 0.0,
+   "diff_points_vs_reference": 0.0
+  },
+  {
+   "entry": "ldd-bei-architekturentscheidungen.en",
+   "job": "job_87b3a395",
+   "recorded_dead_share": 0.303,
+   "scenes": 10,
+   "duration_s": 155.98,
+   "dead_share": 0.303,
+   "signal_s": 7.56,
+   "s_per_min": 2.91,
+   "reference_dead_share": 0.303,
+   "diff_points_vs_recorded": 0.0,
+   "diff_points_vs_reference": 0.0
+  }
+ ]
+}

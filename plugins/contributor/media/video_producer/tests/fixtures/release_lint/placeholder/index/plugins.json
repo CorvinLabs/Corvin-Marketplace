@@ -1,0 +1,42 @@
+{
+ "plugins": [
+  {
+   "id": "plugin:contributor-media-video_producer",
+   "name": "Video Producer",
+   "version": "1.3.0",
+   "category": "media",
+   "tier": "contributor"
+  }
+ ],
+ "by_id": {
+  "plugin:contributor-media-video_producer": {
+   "id": "plugin:contributor-media-video_producer",
+   "name": "Video Producer",
+   "version": "1.3.0",
+   "category": "media",
+   "tier": "contributor"
+  }
+ },
+ "by_category": {
+  "media": [
+   {
+    "id": "plugin:contributor-media-video_producer",
+    "name": "Video Producer",
+    "version": "1.3.0",
+    "category": "media",
+    "tier": "contributor"
+   }
+  ]
+ },
+ "by_tier": {
+  "contributor": [
+   {
+    "id": "plugin:contributor-media-video_producer",
+    "name": "Video Producer",
+    "version": "1.3.0",
+    "category": "media",
+    "tier": "contributor"
+   }
+  ]
+ }
+}

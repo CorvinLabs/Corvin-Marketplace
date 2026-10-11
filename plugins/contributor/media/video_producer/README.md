@@ -51,13 +51,21 @@ curl -X DELETE http://localhost:8765/v1/console/video/jobs/video_abc123
 
 **Storage (unreleased 1.5.0):** each workspace's video store has a quota, `spec.video_producer.storage_quota_gb` in
 its `tenant.corvin.yaml` (default 5 GB); beyond it new videos are refused until you delete some. A GDPR erasure
-request removes every video job the person created or that names them (see CorvinOS
-`docs/skills/video-producer-guide.md`).
+request removes every video job the person created or that names them (see the guide in
+CorvinOS `docs/skills/video-producer-guide.md`).
 
 **Tenant isolation (unreleased 1.5.0):** the console loads this plugin only for a workspace that enabled it
 (never at console start), and no storyboard can make the plugin fetch a page - a `screenshot` scene from any
 source renders as an ordinary slide (since 1.4.1). Proofs are in CorvinOS `docs/skills/video-producer-guide.md`
 ("Tenant isolation").
+
+**Quality signals (unreleased 1.5.0):** every job's `report.json` carries named signals, among them `still_time`
+(share of the runtime in which the slide stands still). The cue-to-word alignment (`cue_alignment`, whisper-1) runs
+only when the operator asks for it (CorvinOS `POST /v1/console/video/jobs/{id}/measure`, gated like the job's TTS).
+Store a German/English pair in Corvin-Videos with `scripts/store_video_pair.py`: it refuses a pair whose two
+versions differ in scenes, templates or numbers (`language_parity`) and writes the result into `sources.md`.
+Before a release: `python scripts/release_lint.py` (versions, placeholders, named tests and paths; also run by the
+Marketplace workflow `video-producer-release-lint.yml`).
 
 ## Configuration & Customization
 
@@ -100,7 +108,7 @@ python -m pytest tests/test_skill.py tests/test_models.py tests/test_storage.py 
 
 Last run (2026-10-09, dev host): 91 passed in 160 s. `tests/test_web_slides_e2e.py` drives the real pipeline (fake `claude` binary, real Chromium, real ffmpeg) and is the end-to-end proof; there is no separate "job end to end" test.
 
-Known red tests, pre-existing and unrelated to the live path: four status-code tests in `tests/test_api_routes.py` and `test_icon_renderer_is_called_from_render_slide_image`.
+Known red tests: none since the 1.5.0 baseline work (ADR-2247 R0, `974bf30`). The four red status-code tests of that run tested a copy of the routes written inside their own test file; that file was deleted (the real routes are tested in CorvinOS), and `test_icon_renderer_is_called_from_render_slide_image` was made a behavioural test.
 
 ## Documentation
 
@@ -114,7 +122,7 @@ Known red tests, pre-existing and unrelated to the live path: four status-code t
 - **[docs/README.md](docs/README.md)** — Navigation guide through all documentation
 
 ### Historical (not current)
-- `docs/ADR-0001` / `ADR-0002` / `ADR-0003` — 3-tier/director-mode architecture (never activated; kept for reference)
+- `docs/ADR-0001-director-mode.md` / `docs/ADR-0002-3tier-animation.md` / `docs/ADR-0003-didactic-storyboard.md` — 3-tier/director-mode architecture (never activated; kept for reference)
 
 ## License
 

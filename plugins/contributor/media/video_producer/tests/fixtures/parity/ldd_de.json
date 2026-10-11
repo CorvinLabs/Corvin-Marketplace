@@ -1,0 +1,45 @@
+{
+ "provenance": "Corvin-Videos/ldd-bei-architekturentscheidungen/source/storyboard.de.json (storyboard sb_6c502daf of job_de64411e, the published 2026-10-09/10 DE version); template and narration per scene only",
+ "scenes": [
+  {
+   "template": "hero",
+   "narration_text": "Loss-Driven Development in CorvinOS: So wird aus einer guten Architekturidee eine gemessene Entscheidung."
+  },
+  {
+   "template": "compare",
+   "narration_text": "Eine Architekturentscheidung kann überzeugend klingen. Die Ausgangsfrage lautet: Woher weiß das Team, dass die Entscheidung richtig war und nicht nur gut klang? Ohne Messung bleibt jede Entscheidung eine bloße Behauptung."
+  },
+  {
+   "template": "diagram",
+   "narration_text": "Loss-Driven Development misst Fortschritt, statt ihn zu behaupten. Ein Loss-Signal ist alles, was messbar sagt: Das ist noch nicht gut. Das kann ein roter Test sein. Auch eine gemessene Kennzahl zählt. Ebenso ein Befund aus einem Gegen-Review. Und die Abweichung zwischen Code und Dokumentation."
+  },
+  {
+   "template": "flow",
+   "narration_text": "Ein Loss-Signal wird zur Entscheidung über das ADR-Gate. Das ADR-Gate stellt zwei Fragen. Erstens: Gab es eine echte Wahl zwischen Alternativen? Zweitens: Bindet die Entscheidung die Struktur, etwa als Protokoll, Sicherheitsmechanismus, schwer umkehrbarer Default oder über mehrere Repos? Nur wenn beides zutrifft, entsteht eine ADR."
+  },
+  {
+   "template": "layers",
+   "narration_text": "Eine ADR beschreibt die Entscheidung auf drei Ebenen. Die konzeptionelle Ebene hält fest, welches Problem gelöst wird und welche Alternativen es gab. Die strukturelle Ebene benennt, was sich im Aufbau ändert. Die Umsetzungsebene beschreibt konkret, wie es gebaut wird."
+  },
+  {
+   "template": "diagram",
+   "narration_text": "Eine Entscheidung wird umsetzungsreif, wenn drei Dinge vorliegen. Das Konzept. Der Plan. Der geschlossene Review. Dann startet die Aufgabe, die die Entscheidung umsetzt. Sie gilt erst mit Nachweis als erledigt: produktive Aufrufstelle, E2E-Test, Exit-Code 0 und ein Commit auf main."
+  },
+  {
+   "template": "cycle",
+   "narration_text": "So schließt sich die Schleife: Am Anfang steht der Nachweis. Der regelmäßige Sweep prüft diesen Nachweis. Verschwindet er, legt der Sweep eine Regressions-Aufgabe an. Wiederkehrende Befunde werden zu Hinweisen, die künftige Arbeit anleiten."
+  },
+  {
+   "template": "timeline",
+   "narration_text": "Ein echtes Beispiel: Die Messung zeigte, dass bei den Erklärvideos ein Großteil der Bildschirmzeit stillstand. Daraus wurde die Entscheidung Folien folgen der Stimme. Ein Gegen-Review fand vor dem Bau Schwachstellen. Die erste Messung zeigte dann, dass die Kennzahl selbst falsch maß: Sanfte Einblendungen galten als Stillstand."
+  },
+  {
+   "template": "chart",
+   "narration_text": "Korrigiert lag die Ausgangsbasis des Leerlaufs bei 57 Prozent. Danach lag der Leerlauf, gemessen auf denselben sieben Themen, bei 19 Prozent. Ein Ziel bleibt verfehlt: Im ungünstigsten Zehntel liegt ein Element 4,5 Sekunden neben dem gesprochenen Wort, das Ziel waren 1,5. Auch das hält die Messung fest."
+  },
+  {
+   "template": "quote",
+   "narration_text": "Zuletzt prüft ein E2E-Test von der frischen Installation bis zum fertigen Video, dass alles wirklich läuft. Der Merksatz: Eine Entscheidung ist erst dann fertig, wenn ihre Wirkung gemessen ist. Darum bleibt jedes Loss-Signal sichtbar, bis es sich messbar verbessert."
+  }
+ ]
+}

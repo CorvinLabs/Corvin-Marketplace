@@ -1,0 +1,45 @@
+{
+ "provenance": "Corvin-Videos/ldd-bei-architekturentscheidungen/source/storyboard.en.json (storyboard sb_2c025dcc of job_87b3a395, the published 2026-10-09/10 EN version); template and narration per scene only",
+ "scenes": [
+  {
+   "template": "hero",
+   "narration_text": "Loss-Driven Development in CorvinOS: how an architecture decision proves that it was right, instead of just sounding good."
+  },
+  {
+   "template": "compare",
+   "narration_text": "Every team makes architecture decisions. The hard question is how the team knows that a decision was right and did not just sound good. A decision that only sounds good stays a claim, while a right decision leaves a measurable trace."
+  },
+  {
+   "template": "flow",
+   "narration_text": "Loss-Driven Development, or LDD, means that progress is measured, not claimed. The loss signal is anything that measurably says: this is not good yet. Four sources feed it: a red test, a measured metric, an adversarial review finding, and a mismatch between code and documentation."
+  },
+  {
+   "template": "flow",
+   "narration_text": "A loss signal arrives at the ADR gate. The gate asks first: was there a real choice between alternatives? It asks second: does the decision bind the structure, such as a protocol, a security mechanism, a hard-to-reverse default, or several repos? Only then the ADR is written, on three levels: conceptual, structural and implementation."
+  },
+  {
+   "template": "flow",
+   "narration_text": "Before building, the decision needs three prerequisites: a concept, a plan and a closed review. Then the task that implements the decision begins. The task counts as done only with proof: a production call site, an E2E test, exit code 0 and a commit on main."
+  },
+  {
+   "template": "cycle",
+   "narration_text": "The loop closes with a regular sweep. The sweep notices when a proof disappears. The sweep then opens a regression task. Recurring findings become guidance, and the guidance steers future work."
+  },
+  {
+   "template": "stat",
+   "narration_text": "Now a real example from this project. In the explainer videos, every reveal landed in the first half of a scene, while the voice kept explaining. On the seven baseline tasks, 57 percent of the screen time was dead. The proposed answer: slides follow the voice, driven by a cue timeline. With it, the dead share fell to 19 percent."
+  },
+  {
+   "template": "chart",
+   "narration_text": "The first measurement after the build showed that the original metric itself measured wrongly, because soft fade-ins counted as standstill. Corrected, the baseline was 57 percent idle time. After the build, idle time on the same seven topics fell to 19 percent."
+  },
+  {
+   "template": "compare",
+   "narration_text": "One goal stayed missed. In the worst tenth of the cases, an element appears more than four seconds away from the spoken word. The measurement records that too, instead of talking it away. Finally, an E2E test from a fresh install to the finished video checks that everything really runs."
+  },
+  {
+   "template": "quote",
+   "narration_text": "That is Loss-Driven Development: a loss signal opens the decision, proof closes the task, and the sweep guards it. A decision is only finished when its effect has been measured."
+  }
+ ]
+}

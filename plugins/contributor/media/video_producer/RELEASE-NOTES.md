@@ -74,6 +74,32 @@
   at start: it loads the source on the first request of a workspace that has the plugin enabled and never for one
   that has not (`core/console/tests/test_video_producer_plugin_import_e2e.py`, including a fresh-interpreter import
   with the plugin directory absent). Plugin code is unchanged by this.
+- **Post-hoc signals and release lint (R5, T-0094).**
+  - `still_time` moved from `scripts/measure_engagement.py` into `src/signals.py` and runs at the end of every
+    job (dead share = time in still stretches >= 5 s; `warn` above 20 % or above an 8 s p90 longest still;
+    `skip` without numpy); the script now calls it. `scripts/still_time_agreement.py` measured it on the nine
+    corpus videos of `tests/corpus/baseline.json` (2026-10-12): 0.0 points from the pre-move script and from the
+    recorded baseline on all 9, 2.32-2.92 s per minute of video (pooled 2.58 s; limit 15 s). Result:
+    `tests/corpus/still_time_agreement.json`.
+  - `cue_alignment` (`kind="posthoc"`): median and p90 seconds from a reveal to the spoken word (whisper-1 word
+    times) plus **coverage** - items of a scene that fell back to a classic slide, uncued items and unheard items
+    count as unmatched. The spoken time is the first occurrence after the start of the sentence that names the
+    item (its beat sentence), no longer the first mention in the scene. It runs only on the host's request
+    (`measure_posthoc`; the CorvinOS route `POST /video/jobs/{id}/measure` gates it like the job's OpenAI TTS and
+    audits it) and is merged into `report.json`; a refused measurement is stored as `skip` with the reason.
+    Tested on a recorded whisper-1 response (`tests/fixtures/whisper/`, provenance inside; no network in tests).
+  - `revision_locality` (information): the share of the base video's scenes a revision kept word-identical; the
+    host passes `revision_base_narrations`.
+  - `language_parity` + the storage step `scripts/store_video_pair.py`: scene count within one, >= 80 % identical
+    template positions, the same numeric facts in both narrations (locale-normalised); the block goes into the
+    video's `sources.md`, and only a passing pair is copied into Corvin-Videos. Positive control: the published
+    LDD pair fails it (4 of 10 template positions; 1.5, 2 and 4.5 only in German, 4 only in English).
+  - `scripts/release_lint.py` + the Marketplace workflow `video-producer-release-lint.yml`: one version in
+    `plugin.json`, `plugin.yaml`, `provider.py`, `setup.py` and the four index blocks; no placeholder token; every
+    backticked test and plugin path in README, user guide and the current release notes exists. Its fixtures
+    (`tests/fixtures/release_lint/`) reproduce the three historical defects and each is caught; the plugin as it is
+    passes. It found two real stale lines in this README (a deleted test file named as "known red", an ADR path
+    without its file name) - fixed. Not checked yet: limits quoted in a guide.
 - Honest limits: jobs made before 1.5.0 have no owner entry, so a per-user erasure removes them only when their
   record names the subject (the task text is never searched); no retention period (`retention_days`) yet; the job
   process still inherits the console's whole environment (REVIEW-0039 F6).
