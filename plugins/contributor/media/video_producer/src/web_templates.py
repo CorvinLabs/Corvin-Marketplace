@@ -346,9 +346,24 @@ def validate_scene_data(template: Any, data: Any) -> Dict[str, Any]:
             raise WebSceneError(f"field 'locale' must be one of {LANGS}")
         out.update(quote=_text(data, "quote", 220), attribution=_text(data, "attribution", 80, False), locale=locale)
     elif template == "code":
-        _unknown(data, ("eyebrow", "title", "language", "lines"))
-        out.update(title=_text(data, "title", 80), language=_text(data, "language", 24, False),
-                   lines=[_code_line(l, 90) for l in _list(data, "lines", 1, 12)])
+        # V2 opt-in: highlight=true uses code_v2 schema; without it, v1 schema
+        if data.get("highlight") is True:
+            try:
+                from . import code_v2
+            except ImportError:
+                import code_v2
+            out.update(code_v2.validate(data, text=_text, code_line=_code_line, lst=_list, unknown=_unknown, err=WebSceneError))
+        else:
+            # Check for v2 fields without highlight=true (error case)
+            v2_only_fields = ("groups", "diff", "annotations", "output")
+            extra = [k for k in data if k in v2_only_fields]
+            if extra:
+                raise WebSceneError(f"code v2 fields {extra} need \"highlight\": true")
+            # V1 path: strip highlight field if present (backward compat)
+            code_data = {k: v for k, v in data.items() if k != "highlight"}
+            _unknown(code_data, ("eyebrow", "title", "language", "lines"))
+            out.update(title=_text(code_data, "title", 80), language=_text(code_data, "language", 24, False),
+                       lines=[_code_line(l, 90) for l in _list(code_data, "lines", 1, 12)])
     elif template == "line":
         _unknown(data, ("eyebrow", "title", "labels", "series", "unit", "decimals", "highlight", "locale"))
         labels = [_text({"x": x}, "x", 12) for x in _list(data, "labels", 3, 12)]
@@ -511,6 +526,12 @@ def reveal_steps(template: str, data: Dict[str, Any]) -> int:
     """Number of staggered entrance steps (header steps excluded)."""
     if template == "flow":
         return _flow_columns(data) + 1
+    if template == "code" and data.get("highlight") is True:
+        try:
+            from . import code_v2
+        except ImportError:
+            import code_v2
+        return code_v2.reveal_steps(data)
     return {
         "hero": 4,
         "content": len(data.get("bullets") or []),
@@ -542,6 +563,12 @@ def scene_items(template: str, data: Dict[str, Any]) -> List[Tuple[str, int]]:
     if template == "compare":
         return [(d["left"]["title"], 2), (d["right"]["title"], 3)]
     if template == "code":
+        if d.get("highlight") is True:
+            try:
+                from . import code_v2
+            except ImportError:
+                import code_v2
+            return code_v2.scene_items(d)
         return [(ln.strip(), 2 + k) for k, ln in enumerate(d["lines"])]
     if template == "donut":
         return [(sg["label"], 2 + k) for k, sg in enumerate(d["segments"])]
@@ -568,6 +595,12 @@ def scene_item_subs(template: str, data: Dict[str, Any]) -> List[str]:
         return [" ".join(x for x in (it.get("sub"), it.get("tag"), it.get("when")) if x) for it in d[key]]
     if template == "compare":
         return [" ".join(d["left"]["points"]), " ".join(d["right"]["points"])]
+    if template == "code" and d.get("highlight") is True:
+        try:
+            from . import code_v2
+        except ImportError:
+            import code_v2
+        return code_v2.scene_item_subs(d)
     return [""] * len(scene_items(template, d))
 
 
@@ -728,6 +761,13 @@ def _quote(d):
 
 
 def _code(d):
+    if d.get("highlight") is True:
+        try:
+            from . import code_v2
+        except ImportError:
+            import code_v2
+        lang = d.get("__lang", "en")
+        return code_v2.body(d, lang=lang)
     lines = []
     for k, raw in enumerate(d["lines"]):
         stripped = raw.lstrip()
@@ -1134,7 +1174,9 @@ def build_document(
         chrome += f"<div>{int(scene_index):02d} / {int(total_scenes):02d}</div>"
     seed = zlib.crc32(f"{template}|{d.get('title') or d.get('quote') or d.get('label') or ''}".encode("utf-8"))
 
-    body = _BUILDERS[template](d)
+    # Pass lang to builder for templates that need it (v2 code needs lang for output labels)
+    d_with_lang = {**d, "__lang": lang}
+    body = _BUILDERS[template](d_with_lang)
     if scene_index == 1 and (style is None or (style.intro_mark and style.mark_png)):
         body = _with_intro_mark(template, body, style)
     if chip_list:
@@ -1167,6 +1209,14 @@ def build_document(
         extra_css = _style_css(style)
         decor_html = {"corvin": f'<div class="glow"></div><div class="ring"></div>{_stars(seed)}',
                       "minimal": '<div class="glow"></div>', "none": ""}[style.decor]
+    # V2 code scenes add derived colour CSS and layout rules (code_v2.css returns per-palette rules)
+    if template == "code" and d.get("highlight") is True:
+        try:
+            from . import code_v2
+        except ImportError:
+            import code_v2
+        v2_css = code_v2.css(tokens[theme])
+        extra_css += v2_css
     return (
         f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8">'
         f"<style>{_font_faces()}:root{{{css_vars}}}{_base_css()}{focus_css}{extra_css}</style></head>"

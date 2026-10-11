@@ -1133,9 +1133,25 @@ def _apply_web_scene_contract(scenes: List[Dict[str, Any]], strict: bool) -> Lis
         except (WebSceneError, ValueError, TypeError, OverflowError) as e:
             if strict:
                 raise ValueError(f"scene {sid}: {e}") from None
-            warnings.append(f"scene {sid}: {e} (rendered without web template)")
-            for key in ("template", "data", "theme"):
-                scene.pop(key, None)
+            # Degrade ladder (strict=False only): for code template with v2 opt-in, try to degrade to v1
+            degraded = False
+            if template == "code" and isinstance(data, dict) and data.get("highlight") is True:
+                try:
+                    from . import code_v2
+                except ImportError:
+                    import code_v2
+                v1_data = code_v2.strip_v2(data)
+                if v1_data is not None:
+                    try:
+                        scene["data"] = validate_scene_data(template, v1_data)
+                        warnings.append(f"scene {sid}: code v2 dropped ({e})")
+                        degraded = True
+                    except (WebSceneError, ValueError, TypeError, OverflowError):
+                        pass  # Degradation failed too, fall through to removal
+            if not degraded:
+                warnings.append(f"scene {sid}: {e} (rendered without web template)")
+                for key in ("template", "data", "theme"):
+                    scene.pop(key, None)
     return warnings
 
 
