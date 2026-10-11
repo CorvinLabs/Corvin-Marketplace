@@ -44,7 +44,15 @@ curl http://localhost:8765/v1/console/video/jobs/video_abc123
 
 # Download finished video
 curl -O http://localhost:8765/v1/console/video/videos/video_abc123/download
+
+# Delete a finished video and all its files (unreleased 1.5.0; a running job answers 409)
+curl -X DELETE http://localhost:8765/v1/console/video/jobs/video_abc123
 ```
+
+**Storage (unreleased 1.5.0):** each workspace's video store has a quota, `spec.video_producer.storage_quota_gb` in
+its `tenant.corvin.yaml` (default 5 GB); beyond it new videos are refused until you delete some. A GDPR erasure
+request removes every video job the person created or that names them (see CorvinOS
+`docs/skills/video-producer-guide.md`).
 
 ## Configuration & Customization
 

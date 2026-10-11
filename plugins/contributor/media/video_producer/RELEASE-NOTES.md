@@ -53,7 +53,20 @@
   signal's value, threshold, verdict and `n of N`. The console's `timing` and `runtime` checks are removed: they
   compared the storyboard estimate with the voiced length and failed on every real video; `plan_estimate_error`
   carries that number as information.
-- Honest limits: Art. 17 erasure does not stop a running job; no delete (R3), so `job_deleted` has no writer yet; the job process still inherits the console's whole environment (REVIEW-0039 F6).
+- **Data lifecycle (R3, T-0092; CorvinOS).** The console writes `owners.json` (job id -> creating principal; a
+  console job is `console-owner:<tenant>`, the console has no per-user login) next to `revisions.json`, both through
+  one locked read-modify-write (`corvin_operator/bridges/shared/video_job_store.py`). `DELETE /video/jobs/{id}`
+  removes a finished job whole - record and locks, `videos/<id>/` (scenes, audio, posters, caches, MP4, metadata,
+  `report.json`), run directory, thumbnails, sidecar entries - after recording `video_producer.job_deleted` (audit-first;
+  a running job is 409, another workspace's job 404). The erasure layer `L-video-producer` deletes whole every job
+  owned by the subject or whose record names them under an identity key, and leaves the others; a matching job that
+  is still running fails the layer instead of being deleted under it. Per-workspace storage quota
+  `spec.video_producer.storage_quota_gb` (default 5 GB, whole store): a new job is refused while the store is at or
+  above it; usage in `GET /video/overview` (`storage`) and in the panel. The panel deletes with a confirmation.
+  Plugin code is unchanged by this: the layout it writes is what the host deletes.
+- Honest limits: jobs made before 1.5.0 have no owner entry, so a per-user erasure removes them only when their
+  record names the subject (the task text is never searched); no retention period (`retention_days`) yet; the job
+  process still inherits the console's whole environment (REVIEW-0039 F6).
 
 ## Unreleased (toward 1.6.0 - ADR-2249)
 
