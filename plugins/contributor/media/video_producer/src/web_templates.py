@@ -36,7 +36,7 @@ WEB_DIR = Path(__file__).parent / "web"
 DEFAULT_TOKENS_PATH = WEB_DIR / "design_tokens.json"
 BASE_CSS_PATH = WEB_DIR / "css" / "base.css"
 
-TEMPLATES = ("hero", "content", "stat", "diagram", "chart", "compare", "quote", "code",
+TEMPLATES = ("hero", "content", "stat", "diagram", "canvas", "chart", "compare", "quote", "code",
              "line", "donut", "flow", "timeline", "cycle", "layers", "console_still")
 THEMES = ("dark", "light")
 
@@ -309,6 +309,16 @@ def validate_scene_data(template: Any, data: Any) -> Dict[str, Any]:
             nodes.append({"label": _text(n, "label", 28), "sub": _text(n, "sub", 48, False)})
         out.update(title=_text(data, "title", 80), nodes=nodes,
                    highlight=_int(data, "highlight", 0, len(nodes) - 1, None))
+    elif template == "canvas":
+        # Canvas v1: SVG drawing with pen animation and reveals
+        try:
+            from . import canvas
+        except ImportError:
+            import canvas
+        try:
+            out.update(canvas.validate(data))
+        except canvas.CanvasError as e:
+            raise WebSceneError(str(e))
     elif template == "chart":
         _unknown(data, ("eyebrow", "title", "bars", "unit", "decimals", "highlight", "locale"))
         locale = data.get("locale", "en")
