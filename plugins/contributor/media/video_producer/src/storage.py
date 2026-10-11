@@ -138,6 +138,9 @@ class VideoStorage:
         self.jobs_dir = self.base_path / "jobs"
         self.videos_dir = self.base_path / "videos"
         self.thumbnails_dir = self.base_path / "thumbnails"
+        # set by get_storage's first open, drained by the host (take_interrupted_ids)
+        self.interrupted_ids: List[str] = []
+        self._interrupted_lock = threading.Lock()
 
         for d in (self.jobs_dir, self.videos_dir, self.thumbnails_dir):
             d.mkdir(parents=True, exist_ok=True)
@@ -293,14 +296,16 @@ class VideoStorage:
             return Path(video_output.video_path)
         return None
 
-    def mark_interrupted_jobs(self) -> int:
-        """Close every non-terminal job whose process is gone. Called once, when this process
-        first opens the store. A job run by a thread of a previous console has no process left
-        and no lock: closed, as before. A job run by a job process (ProcessJobRunner) holds
+    def mark_interrupted_jobs(self) -> List[str]:
+        """Close every non-terminal job whose process is gone and return the ids THIS call closed
+        (reason ``interrupted``; a record another opener closed first is not in the list, so two
+        hosts opening one store never both report a job). Called once, when this process
+        first opens the store; the host audits the ids (``take_interrupted_ids``). A job run by
+        a thread of a previous console has no process left and no lock: closed, as before. A job run by a job process (ProcessJobRunner) holds
         ``jobs/<id>.lock`` while it lives: if the lock is free it is closed; if it is held, the
         holder is given INTERRUPT_GRACE_S to die (children die with their console) and a holder
         that is still alive then belongs to another live host and is left alone."""
-        n = 0
+        closed: List[str] = []
         deadline = time.monotonic() + INTERRUPT_GRACE_S
         for job in self._all_jobs():
             if job.status in TERMINAL_STATUSES:
@@ -314,10 +319,18 @@ class VideoStorage:
                 j.completed_at = j.completed_at or datetime.now()
 
             _, applied = self.advance_job(job.id, _close, reason="interrupted")
-            n += 1 if applied else 0
+            if applied:
+                closed.append(job.id)
             # a job process killed before it read its config leaves the task text (0600) behind
             shutil.rmtree(self.jobs_dir / f"{job.id}.run", ignore_errors=True)
-        return n
+        return closed
+
+    def take_interrupted_ids(self) -> List[str]:
+        """The ids the first open closed as ``interrupted``, handed out ONCE (then empty): the host
+        writes one lifecycle record per id (ADR-2247 R2b) and a second caller gets nothing."""
+        with self._interrupted_lock:
+            ids, self.interrupted_ids = list(self.interrupted_ids), []
+        return ids
 
 
 _stores: Dict[str, VideoStorage] = {}
@@ -334,9 +347,10 @@ def get_storage(base_path: str, *, mark_interrupted: bool = True) -> VideoStorag
         store = _stores.get(key)
         if store is None:
             store = VideoStorage(key)
-            interrupted = store.mark_interrupted_jobs() if mark_interrupted else 0
+            interrupted = store.mark_interrupted_jobs() if mark_interrupted else []
             if interrupted:
-                logger.warning("video storage: marked %d orphaned job(s) as interrupted in %s", interrupted, key)
+                store.interrupted_ids = list(interrupted)
+                logger.warning("video storage: marked %d orphaned job(s) as interrupted in %s", len(interrupted), key)
             _stores[key] = store
         return store
 

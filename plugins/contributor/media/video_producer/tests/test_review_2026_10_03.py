@@ -102,6 +102,10 @@ def test_first_open_marks_orphaned_running_jobs_as_interrupted(tmp_path):
     assert orphan.status == "error"
     assert "restarted" in orphan.error_message
     assert store.get_job("job_d0ne0001").status == "complete"
+    # the host audits exactly the ids this open closed, once (ADR-2247 R2b)
+    assert store.take_interrupted_ids() == ["job_0rphan01"]
+    assert store.take_interrupted_ids() == []
+    assert get_storage(str(tmp_path)).take_interrupted_ids() == []  # the cached store: no second report
 
 
 # ── orchestrate_video: failures always land on the stored job ───────────────

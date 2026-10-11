@@ -251,4 +251,4 @@ def test_mark_interrupted_never_touches_a_terminal_job(tmp_path):
     reset_storage()
     s = VideoStorage(str(tmp_path / "t"))
     put(s, "complete", 100)
-    assert s.mark_interrupted_jobs() == 0 and s.get_job("j1").status == "complete"
+    assert s.mark_interrupted_jobs() == [] and s.get_job("j1").status == "complete"

@@ -40,9 +40,15 @@
   they run only where the template is used; post-hoc signals register with `kind="posthoc"`. Tests:
   `tests/test_report_signals.py` (a positive control per gating signal, real ffmpeg fixtures),
   `tests/test_report_e2e.py` (a real job process writes the report). Not yet: the console's quality endpoint does
-  not read the report (R2c, T-0091), and the host does not yet audit the job lifecycle (R2b, T-0090).
-- Honest limits: Art. 17 erasure does not stop a running job; no delete (R3); the lifecycle audit events other
-  than `job_cancelled` are R2; the job process still inherits the console's whole environment (REVIEW-0039 F6).
+  not read the report (R2c, T-0091).
+- **The host audits each job's lifecycle (R2b, T-0090; CorvinOS).** The console, never the plugin, writes
+  `video_producer.job_started`, exactly one terminal `job_completed` / `job_failed` / `job_cancelled`, and
+  `job_degraded` for a completed job with degradations, into the tenant's hash-chained audit log - ids, counts,
+  durations and closed names from `report.json`, never task or narration text; best-effort (a failed chain write
+  is logged and counted, the video is unaffected). For this, `VideoStorage.mark_interrupted_jobs` returns the ids
+  it closed (was: a count) and `take_interrupted_ids()` hands them to the host once, so a console killed mid-job
+  yields exactly one `job_failed reason=interrupted`, written at the next console start.
+- Honest limits: Art. 17 erasure does not stop a running job; no delete (R3), so `job_deleted` has no writer yet; the job process still inherits the console's whole environment (REVIEW-0039 F6).
 
 ## Unreleased (toward 1.6.0 - ADR-2249)
 
