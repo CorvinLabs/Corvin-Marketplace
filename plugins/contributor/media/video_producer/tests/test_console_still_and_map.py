@@ -94,13 +94,30 @@ async def test_console_still_renders_deterministically_in_chromium(tmp_path):
 
     data = {**BASE, "callouts": [{"spot": "event_type", "label": "Ereignistyp"}],
             "zoom": {"spot": "short_hash", "scale": 1.25}}
-    digests = []
+    # Determinism here means "no state leaks between renders", not bit identity of the raster. Measured
+    # 2026-10-11 (T-0086, 4 + 6 launches, with and without --num-raster-threads=1): exactly one frame
+    # differs between launches in about 2 of 3 pairs - frame 1, the first frame of the push-in - by at
+    # most 1/255 in 11-92 pixels (Chromium's image filtering on the first scaled draw). A real state
+    # defect looks different: the rewind bug of ADR-2249 S2 changed 48 of 101 frames by up to 9 050
+    # pixels. So: every frame within 2/255 per channel, and almost all bit-identical.
+    from PIL import Image, ImageChops
+
+    runs = []
     for run in range(2):
         try:
             async with WebSlideRenderer(fps=12) as r:
                 frames = await r.render("console_still", data, 4.0, tmp_path / f"r{run}", map_focus="audit")
         except WebRenderError as e:
             pytest.skip(f"chromium unavailable: {e}")
-        digests.append([hashlib.sha256(Path(f).read_bytes()).hexdigest() for f in frames])
-    assert digests[0] == digests[1]
-    assert len(set(digests[0])) > 5  # it moves: push-in and callouts
+        runs.append(frames)
+    assert len(runs[0]) == len(runs[1])
+    exact = 0
+    for a, b in zip(*runs):
+        if Path(a).read_bytes() == Path(b).read_bytes():
+            exact += 1
+            continue
+        diff = ImageChops.difference(Image.open(a).convert("RGB"), Image.open(b).convert("RGB"))
+        assert max(hi for _, hi in diff.getextrema()) <= 2, f"{Path(a).name} differs beyond raster noise"
+    assert exact >= len(runs[0]) - 2, f"only {exact} of {len(runs[0])} frames bit-identical"
+    digests = [hashlib.sha256(Path(f).read_bytes()).hexdigest() for f in runs[0]]
+    assert len(set(digests)) > 5  # it moves: push-in and callouts

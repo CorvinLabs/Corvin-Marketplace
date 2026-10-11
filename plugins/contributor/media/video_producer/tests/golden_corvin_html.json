@@ -1,4 +1,10 @@
 {
+ "canvas|dark|1": "cece41487c1d80a2e59948471cbce0111b57e3c61bce32a229e8f89fd427062b",
+ "canvas|dark|3": "da8953c5675d29b1231b19aea70abde30c4818e16f505bbad588ce9f2d040222",
+ "canvas|dark|None": "1db87ac0028b37c0422ac764e2e3df2e63739ed729bc9d6c0defc6a335f95bbd",
+ "canvas|light|1": "99cfd1e1e769aa65ad5b1c87107d86e0ed07232dacc1cda7dbc1113ae5c71c0c",
+ "canvas|light|3": "b6f332bb081b2092541cefe016db765803d940b160f02eae43442afde3e0a6c1",
+ "canvas|light|None": "1a953d9a0ffe30821fd18193dbd0561db4d8ab51e56cfefc36993b3bb8bb62f8",
  "chart|dark|1": "3878faf0bbf16e0e0ed98f751abecc91edfcdcd47d90f16ab7634e5452a9cb42",
  "chart|dark|3": "141962cfda6494616e9b43a20e9e7b364143dd5c72f085bd49af7dc254e0604a",
  "chart|dark|None": "b024aeb24f6425df9a2fbbad04fc520e7f94ce26adb9e1d7cf261540b16642aa",

@@ -8,6 +8,7 @@ import pytest
 
 from src import web_templates as wt
 from src.web_templates import WebSceneError, build_document, load_tokens, validate_scene_data, validate_tokens
+from tests.canvas_cases import CLEAN as CANVAS_CLEAN
 
 SAMPLES = {
     "hero": {"badge": "b", "title": "Title", "accent": "Accent", "subtitle": "Sub"},
@@ -27,6 +28,7 @@ SAMPLES = {
     "layers": {"title": "T", "layers": [{"label": "a", "tag": "x"}, {"label": "b", "sub": "s"}], "highlight": 0},
     "console_still": {"title": "T", "asset": "audit_compliance", "callouts": [{"spot": "hash_chain_card", "label": "c"}],
                       "zoom": {"spot": "hash_chain_card", "scale": 1.2}},
+    "canvas": CANVAS_CLEAN,  # ADR-2249 D1: the canvas tests own its cases; here it joins the shared contract
 }
 
 
