@@ -25,6 +25,22 @@
   frames visibly differed from a fresh render, up to 9 050 pixels; in ascending order two browser launches were
   bit-identical in 101 of 101 frames. The layout is now measured on a fresh page, every frame page only moves
   forward, and a rewind raises. Existing templates were affected at the noise level only (1 of 51 frames).
+- **One Production Report per job** (`videos/<job>/report.json`, schema 1, at most 64 KB; `src/report.py`). Written
+  on completion AND on failure or in-process cancel (a failed job's report names the stage that failed and the
+  exception class, never its message). It holds stage timings, one record per scene (TTS tier, narrated seconds,
+  renderer, template, beats source), the storyboard model's token usage as the backend reported it (`llm_usage`;
+  0 calls for an operator storyboard), tool versions, and every degradation, recorded by the code that takes the
+  fallback (`web_to_pillow`, `no_template`, `template_to_quote`, `collision_replaced`/`collision_kept`,
+  `tts_tier_below` per scene, `storyboard_backend_fallback`, `grounding_lost`, `storyboard_repaired`). It never holds
+  the task or narration text: the writer refuses a report containing any 24-character window of either.
+- **Named runtime signals** (`src/signals.py`): `degradation_rate`, `layout_clean`, `fact_support`, `mux_integrity`,
+  `plan_estimate_error` (information), `beats_provenance` (information), `style_fidelity`; each record carries value,
+  unit, threshold, verdict (`pass|warn|fail|skip|info`) and its basis (`n of N`). A failing `degradation_rate` marks
+  the gated signals `valid: false`. A template registers its own signals (`register(..., templates={"canvas"})`) and
+  they run only where the template is used; post-hoc signals register with `kind="posthoc"`. Tests:
+  `tests/test_report_signals.py` (a positive control per gating signal, real ffmpeg fixtures),
+  `tests/test_report_e2e.py` (a real job process writes the report). Not yet: the console's quality endpoint does
+  not read the report (R2c, T-0091), and the host does not yet audit the job lifecycle (R2b, T-0090).
 - Honest limits: Art. 17 erasure does not stop a running job; no delete (R3); the lifecycle audit events other
   than `job_cancelled` are R2; the job process still inherits the console's whole environment (REVIEW-0039 F6).
 

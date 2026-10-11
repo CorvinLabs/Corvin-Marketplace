@@ -38,6 +38,8 @@ try:
     from .grounding import render_pack, validate_pack
     from . import grounded_storyboard as gsb
     from . import deadline as dl
+    from . import report as rp
+    from . import signals as sg
 except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
@@ -52,6 +54,8 @@ except ImportError:  # standalone script use (no package context)
     from grounding import render_pack, validate_pack
     import grounded_storyboard as gsb
     import deadline as dl
+    import report as rp
+    import signals as sg
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +133,7 @@ def _call_claude_cli(prompt: str, model: str) -> str:
     if proc.returncode != 0:
         raise RuntimeError(f"claude CLI exited {proc.returncode}")
     out = json.loads(proc.stdout)
+    rp.note_llm_usage(out.get("usage"))
     if out.get("is_error") or not isinstance(out.get("result"), str):
         raise RuntimeError(f"claude CLI reported an error ({out.get('terminal_reason') or out.get('subtype')})")
     return out["result"]
@@ -170,6 +175,9 @@ def _call_storyboard_llm(prompt: str, backend: str = "ollama", model: Optional[s
                                                messages=[{"role": "user", "content": prompt}]),
                 deadline_s=_STORYBOARD_API_TIMEOUT_S * 2 + 10, what="anthropic storyboard call")
             report["backend"] = f"anthropic:{model}"
+            u = getattr(message, "usage", None)
+            rp.note_llm_usage({k: getattr(u, k, None) for k in ("input_tokens", "output_tokens",
+                               "cache_read_input_tokens", "cache_creation_input_tokens")} if u is not None else None)
             return message.content[0].text
         except Exception as e:  # noqa: BLE001
             logger.warning("Anthropic storyboard call failed (%s), falling back to local Ollama", type(e).__name__)
@@ -184,7 +192,11 @@ def _call_storyboard_llm(prompt: str, backend: str = "ollama", model: Optional[s
         deadline_s=200, what="ollama storyboard call")
     response.raise_for_status()
     report["backend"] = f"ollama:{_OLLAMA_MODEL}"
-    return response.json()["response"]
+    if backend != "ollama":
+        rp.note_degradation("storyboard_backend_fallback", source=backend, target="ollama")
+    body = response.json()
+    rp.note_llm_usage(body)
+    return body["response"]
 
 
 _SYSTEM_KEYWORDS = ("system", "architecture", "pipeline", "flow", "layer", "chain", "stack", "kette", "architektur")
@@ -386,6 +398,7 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
                                                     didactic_strategy=didactic_strategy,
                                                     brand_neutral=brand_neutral)
             sb.grounding = {"status": "unavailable", "reason": "remote_storyboard_failed"}
+            rp.note_degradation("grounding_lost", reason="remote_storyboard_failed")
             return sb
     else:
         raw = _call_storyboard_llm(prompt, backend=backend, model=model, report=report)
@@ -417,6 +430,8 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
         template_warnings = _repair_web_scenes(storyboard_json["scenes"], report, model)
         for warning in template_warnings:
             logger.warning("storyboard web-slide warning: %s", warning)
+        if report.get("repaired"):
+            rp.note_degradation("storyboard_repaired", count=report["repaired"], reason="web_specs")
         if template_warnings:
             report["degraded_to_quote"] = _degrade_to_web_slides(storyboard_json["scenes"])
         grounding_info = (
@@ -992,6 +1007,8 @@ def _ground_storyboard(storyboard_json: Dict[str, Any], pack: Dict[str, Any], pa
             failures = gsb.check_claims(storyboard_json["scenes"], pack_text)
     unverified = gsb.summarise(failures, [str(s.get("id")) for s in storyboard_json["scenes"]])
     _drop_constant_map(storyboard_json["scenes"])
+    if repaired:
+        rp.note_degradation("storyboard_repaired", count=repaired, reason="claims")
     return {
         "status": "grounded" if not failures else "grounded_with_unverified",
         "entities": [{"id": s["id"], "title": s["title"], "truth": s["truth"]} for s in pack["sections"]],
@@ -1015,7 +1032,7 @@ def _degrade_to_web_slides(scenes: List[Dict[str, Any]]) -> int:
     (which looks nothing like the rest of the video). Returns how many."""
     n = 0
     lang = _storyboard_lang([str(s.get("narration_text") or "") for s in scenes if isinstance(s, dict)])
-    for scene in scenes:
+    for index, scene in enumerate(scenes, start=1):
         if not isinstance(scene, dict) or scene.get("template") is not None:
             continue
         text = " ".join(str(scene.get("narration_text") or "").split())
@@ -1026,6 +1043,7 @@ def _degrade_to_web_slides(scenes: List[Dict[str, Any]]) -> int:
             scene["template"], scene["data"] = trial["template"], trial["data"]
             scene.pop("beats", None)
             n += 1
+            rp.note_degradation("template_to_quote", scene=index)
     return n
 
 
@@ -1433,8 +1451,12 @@ class _WebRendererSession:
             moved.timeline, moved.template, moved.data = alt_tl, tmpl, tdata
             entry["action"] = action
             self.layout_log.append(entry)
+            if action.startswith("replaced_with_") and isinstance(kw.get("scene_index"), int):
+                rp.note_degradation("collision_replaced", scene=kw["scene_index"], reason=action)
             return moved
         self.layout_log.append(entry)
+        if isinstance(kw.get("scene_index"), int):
+            rp.note_degradation("collision_kept", scene=kw["scene_index"])
         return frames
 
     async def close(self) -> None:
@@ -1483,11 +1505,20 @@ async def orchestrate_video(
     budget = dl.JobBudget(budget_s)
     _budget_token = dl.set_current_budget(budget)
     dl.register_job_budget(job_id, budget)
+    # ADR-2247: one Production Report per job, written on completion AND on failure. Code deep in the
+    # storyboard/render path records its own fallbacks on it through rp.note_degradation.
+    report = rp.ProductionReport(job_id, configured_tts=tts_engine,
+                                 storyboard_backend="operator" if storyboard is not None else storyboard_backend,
+                                 style_id=getattr(web_style, "id", None))
+    _report_token = rp.set_current(report)
+    report_texts: List[str] = [task]  # what report.json must never contain (validated on write)
+    out_root = storage.videos_dir / job_id
 
     # Everything that can fail — including setup — runs inside the try, so the
     # stored job (what the UI polls) always ends in "error" on failure instead
     # of staying "pending" forever.
     try:
+        report.begin("setup")
         if tts_engine not in SUPPORTED_TTS_ENGINES:
             raise ValueError(f"TTS engine {tts_engine!r} is not available (supported: {', '.join(SUPPORTED_TTS_ENGINES)})")
         if not isinstance(max_duration_minutes, int) or not 1 <= max_duration_minutes <= 60:
@@ -1513,6 +1544,7 @@ async def orchestrate_video(
             write_style_snapshot(web_style, out_root / "style")  # reproducibility: the look travels with the video
 
         # Step 1: Generate Storyboard via LLM
+        report.begin("storyboard")
         _update_job_progress(storage, job, "storyboard_generating", 0, "Analyzing task...")
 
         # PLAN-0942: the host built and gated the pack; anything malformed is ignored.
@@ -1528,9 +1560,12 @@ async def orchestrate_video(
             if storyboard.grounding is None:
                 if pack is not None:  # a pack, but the backend is local
                     storyboard.grounding = {"status": "unavailable", "reason": "local_storyboard_model"}
+                    rp.note_degradation("grounding_lost", reason="local_storyboard_model")
                 elif isinstance(grounding_status, dict) and grounding_status.get("status") in ("refused", "unavailable"):
                     storyboard.grounding = {"status": grounding_status["status"],
                                             "reason": str(grounding_status.get("reason", ""))[:60]}
+                    if grounding_status["status"] == "unavailable":
+                        rp.note_degradation("grounding_lost", reason="host_pack_unavailable")
         if storyboard.grounding and storyboard.grounding.get("status") in ("grounded", "grounded_with_unverified"):
             g_info = storyboard.grounding
             note = f"Grounded in {len(g_info['entities'])} knowledge-base decisions"
@@ -1538,6 +1573,10 @@ async def orchestrate_video(
                 note += f"; {g_info['unverified']['count']} detail(s) not found in the sources"
             _update_job_progress(storage, job, "storyboard_generating", 100, note)
         job.storyboard = storyboard
+        report.storyboard_llm = storyboard.llm_backend or "operator"
+        report_texts += [t for sc in storyboard.scenes for t in (sc.narration_text, sc.visual_description) if t]
+        grounding_requested = pack is not None or (
+            isinstance(grounding_status, dict) and grounding_status.get("status") == "unavailable")
         budget.check("storyboard")
         _update_job_progress(
             storage, job, "storyboard_generating", 100,
@@ -1572,6 +1611,7 @@ async def orchestrate_video(
             )
 
         # Step 2: Real per-scene synthesis (audio + slide + clip)
+        report.begin("scenes")
         _update_job_progress(storage, job, "skills_running", 0, "Starting scene production...")
 
         total = len(storyboard.scenes)
@@ -1611,6 +1651,11 @@ async def orchestrate_video(
                     _synthesize_narration(narration, audio_path, lang)
                     tts_provider_used = "gtts"
                 audio_duration = _ffprobe_duration(audio_path)
+                configured_tier = "gtts" if tts_engine == "gtts" else "openai"  # auto aims for the chain's first tier
+                if tts_provider_used != configured_tier:
+                    rp.note_degradation("tts_tier_below", scene=i, tier=tts_provider_used)
+                report.scene(i, tts_tier=tts_provider_used, audio_s=round(audio_duration, 3),
+                             planned_s=round(scene.duration_ms / 1000.0, 3))
 
                 _update_job_progress(
                     storage, job, "skills_running", pct,
@@ -1646,6 +1691,7 @@ async def orchestrate_video(
                             "render_s": round((datetime.now() - t_render).total_seconds(), 1),
                         })
                     if frames is None and reason:
+                        rp.note_degradation("web_to_pillow", scene=i, reason=reason)
                         web_fallbacks.append({"scene": i, "reason": reason})
                         emit_feedback(job_id=job_id, event_type="web_render_fallback",
                                       metrics={"scene": i, "reason": reason})
@@ -1654,11 +1700,17 @@ async def orchestrate_video(
                             f"Scene {i}/{total}: web slide unavailable ({reason}) — using classic slide",
                             current_scene=i, total_scenes=total,
                         )
+                elif web.enabled:
+                    rp.note_degradation("no_template", scene=i)  # nothing failed, but no web slide either
                 if frames:
                     loop_start = getattr(frames, "loop_start", None)
                     shutil.copyfile(frames[loop_start - 1] if loop_start else frames[-1], image_path)
                     renderers_used.append("web")
+                    tl_src = getattr(getattr(frames, "timeline", None), "source", None)
+                    report.scene(i, renderer="web", template=getattr(frames, "template", scene.template),
+                                 beats_source=tl_src)
                 else:
+                    report.scene(i, renderer="pillow", template=None)
                     _render_slide_image(
                         scene, image_path, strategy=storyboard.didactic_strategy,
                         scene_index=i, total_scenes=total, style=web_style,
@@ -1694,6 +1746,7 @@ async def orchestrate_video(
             )
 
         # Step 3: Concat scenes
+        report.begin("assemble")
         _update_job_progress(storage, job, "skills_running", 92, "Assembling final video...")
 
         video_path = out_root / "output.mp4"
@@ -1737,6 +1790,20 @@ async def orchestrate_video(
                 "grounding": storyboard.grounding,
             },
         )
+        # ADR-2247 runtime signals over the finished files, then the report - before the job reads
+        # "complete", so a panel that sees the status also finds the report.
+        report.begin("signals")
+        report.language = video_lang
+        report.media = {"duration_s": duration_seconds, "file_size_mb": file_size_mb, "scenes": total}
+        report.tools = rp.tool_versions()
+        report.signals = sg.run(sg.SignalContext(
+            job_dir=out_root, report=report.to_dict(), metadata=video_output.metadata,
+            plan_ms=[sc.duration_ms for sc in storyboard.scenes], grounding_requested=grounding_requested,
+            style_accent=(web_style.tokens.get(web_theme, {}).get("accent") if web_style is not None else None),
+            templates={c["template"] for c in cue_log if c.get("template")},
+        ))
+        report.finish("complete")
+        video_output.metadata["report"] = rp.REPORT_NAME if _write_report(report, out_root, report_texts) else None
         storage.save_video_output(video_output)
 
         emit_feedback(
@@ -1766,6 +1833,8 @@ async def orchestrate_video(
     except dl.JobCancelled:
         # thread-mode cancel (process mode is closed `cancelled` by the host's runner after the kill)
         logger.info("[%s] cancelled", job_id)
+        report.finish("cancelled", error=dl.JobCancelled())
+        _write_report(report, out_root, report_texts)
         job.status = "cancelled"
         job.error_message = "Cancelled."
         job.completed_at = datetime.now()
@@ -1776,6 +1845,8 @@ async def orchestrate_video(
     except subprocess.CalledProcessError as e:
         error_msg = f"{e.cmd[0]} failed: {e.stderr.strip()[-500:] if e.stderr else e}"
         logger.error(f"[{job_id}] Orchestration failed: {error_msg}")
+        report.finish("error", error=e)
+        _write_report(report, out_root, report_texts)
         job.status = "error"
         job.error_message = error_msg
         job.completed_at = datetime.now()
@@ -1787,6 +1858,8 @@ async def orchestrate_video(
     except Exception as e:
         error_msg = str(e)
         logger.error(f"[{job_id}] Orchestration failed: {error_msg}", exc_info=True)
+        report.finish("error", error=e)
+        _write_report(report, out_root, report_texts)
 
         job.status = "error"
         job.error_message = error_msg
@@ -1801,6 +1874,18 @@ async def orchestrate_video(
     finally:
         dl.unregister_job_budget(job_id)
         dl.reset_current_budget(_budget_token)
+        rp.reset_current(_report_token)
+
+
+def _write_report(report: "rp.ProductionReport", job_dir: Path, forbidden: List[str]) -> bool:
+    """Write report.json; a report that breaks its contract is not written (and logged), never
+    allowed to fail or hold up the video."""
+    try:
+        report.write(job_dir, forbidden_texts=forbidden)
+        return True
+    except Exception as e:  # noqa: BLE001
+        logger.error("[%s] production report not written (%s)", report.job_id, type(e).__name__)
+        return False
 
 
 # Async orchestrator wrapper
