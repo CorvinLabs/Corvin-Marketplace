@@ -30,6 +30,16 @@
 
 ## Unreleased (toward 1.6.0 - ADR-2249)
 
+- **`canvas` template (D1, PLAN-0947 P2, T-0110).** `src/canvas.py`, registered in `web_templates` like the others
+  (no monkeypatch): 7 shapes, arrows/lines, 4 marks, freehand, labels, groups on a 12x6 semantic grid, strokes that
+  draw on, an optional pen sprite, seeded `sketch` wobble, `erase_at`. Colours only through five palette roles;
+  `validate_style` is unchanged and the other templates render byte-identically (golden tests). The validator
+  collects every error of a scene. **Render gate:** `PROBE_JS` is run in the normal capture path and its findings
+  (`cv-text-shape`, `cv-text-overflow`, `cv-text-text`, `cv-stroke-text`, `cv-stroke-shape`, `cv-detached`, `cv-oob`,
+  `cv-shape-shape`) join the layout issues. Reason (spike S1, 46 canvas scenes): the generic probe found defects in
+  2 scenes, the canvas probe in 14. Not yet: the storyboard model is not offered `canvas`; D2-D5 follow.
+  Tests: `tests/test_canvas.py` (contract), `tests/test_canvas_e2e.py` (real Chromium frames: ink drawn on, pen sprite
+  visible, narration cues, a faulty canvas failing the gate).
 - **Spike S2 (pen under time-seek): GO, with a contract.** The "no-go" of the first run measured a rewind, not
   the pen. With forward-only seeks the pen is drawn, and two independent browser launches agree bit for bit.
   Bit-identity with a *fresh* page holds for 91 of 101 frames; the other 10 differ by at most 16/255 in the

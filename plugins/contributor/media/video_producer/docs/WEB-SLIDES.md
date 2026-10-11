@@ -113,6 +113,7 @@ Every template accepts `eyebrow?` (40), a small mono label above the title.
 | `cycle` | `title` (60), `caption?` (180), `center?` (24), `steps` 3-6 of `{label (22), sub? (40)}`, `highlight?` | text left, loop right: numbered nodes pop, arcs with arrowheads draw; ambient orbit around the loop |
 | `layers` | `title` (80), `layers` 2-6 of `{label (32), sub? (64), tag? (12)}` (first = top), `highlight?` | a slightly tilted stack builds from the bottom up; ambient shine sweeps the highlighted slab |
 | `console_still` | `title` (80), `asset` (a key of `src/web/assets/console/catalog.json`), `caption?` (120), `callouts?` 0-3 of `{spot, label (32)}`, `zoom?` `{spot, scale 1-1.6}` | a real console screenshot rises, slowly pushes in toward the zoom spot, callout rings pop with labels. `spot` must be a hotspot the catalogue measured for that asset (the storyboard model never sees the image); assets without spots take no callouts or zoom |
+| `canvas` (unreleased 1.6.0) | `title` (80), `eyebrow?`, `sketch?`, `pen?`, `elements` 1-40 (see below) | a sketch board: shapes and arrows are drawn on stroke by stroke as the narration names them (`step` = one beat), an optional pen dot follows each stroke |
 
 Every web template also accepts a scene-level `map: {"focus": channels|agents|engines|compute|data|audit}`:
 a small "you are here" strip at the right edge listing Corvin's layers as the website's
@@ -245,6 +246,29 @@ Not verified live: no Figma token exists on the development host (the vault
 holds none), so the sync has only run against a local server that answers
 like the Variables API. A live run needs a token with `file_variables:read`
 on a plan that exposes the Variables REST API.
+
+### Canvas vocabulary (unreleased 1.6.0, ADR-2249 D1)
+
+Closed vocabulary, 40 elements at most, 400 characters of text in total, 12 steps at most. Anything outside it
+is an error, and **all** errors of a scene are reported at once (one repair round).
+
+- Shapes (`box`, `round`, `circle`, `diamond`, `cylinder`, `cloud`, `person`): `text?` (40), `tone?`, `emphasis?`,
+  placement by `at: {col 0-11, row 0-5, w, h}` on a 12x6 grid or by one of `right_of|left_of|below|above|inside`
+  (an element id) with `gap: s|m|l`; `size: {w, h}` in cells.
+- `label`: `text` (60), `style: title|body|note`, `font: s|m|l`, same placement. `group`: a frame around `members`.
+- Connectors `arrow`/`line`: `from`, `to` (ids), `from_anchor`/`to_anchor` (`n|e|s|w|c`), `route: straight|elbow|curved`,
+  `text?` (24). Marks `brace`, `bracket`, `underline`, `circle-highlight`: `target` (or `targets`), `side`, `text?` (30).
+  `freehand`: 2-40 `[x, y]` points in grid units.
+- Every element: `step` (1-12, default = the previous one), `erase_at` (a later step: fades the element out), `tone`
+  (`accent|accent_hi|text|muted|success`: palette roles, never a colour value).
+
+The validator proves what the data decides (grid bounds, attached arrows, shapes sharing cells, text that cannot
+fit its box at 20 px). The render gate (`canvas.PROBE_JS`, run by `web_renderer` on the settled page next to the
+generic probe) measures what only a drawn page shows: text over a foreign shape, text leaving its shape, text over
+text, strokes through text or a shape, arrows not touching their endpoints, anything outside the canvas. Each
+finding is a layout issue with the type prefix `cv-` and leads to the usual retry ladder (see Overlaps).
+Limits: the storyboard model is not offered `canvas` yet; no line groups, annotations, output block or assets
+(ADR-2249 D2-D5); `sketch` is a seeded wobble, not handwriting.
 
 ## Overlaps
 

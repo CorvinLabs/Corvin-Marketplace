@@ -26,10 +26,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 try:
+    from . import canvas
     from . import deadline as dl
     from .web_templates import FOCUS_FADE_S, WebSceneError, build_document
     from .web_layout import LAYOUT_JS, TOLERANCE_PX
 except ImportError:  # standalone script use (no package context)
+    import canvas
     import deadline as dl
     from web_templates import FOCUS_FADE_S, WebSceneError, build_document
     from web_layout import LAYOUT_JS, TOLERANCE_PX
@@ -357,7 +359,10 @@ class WebSlideRenderer:
             if missing:
                 raise WebRenderError(f"bundled fonts did not load: {missing}")
             await page.evaluate(_SEEK_JS, seek_ms)
-            return await page.evaluate(LAYOUT_JS, TOLERANCE_PX)
+            issues = await page.evaluate(LAYOUT_JS, TOLERANCE_PX)
+            if 'class="cv"' in document:  # canvas scenes: the canvas probe is part of the gate
+                issues = list(issues) + canvas.probe_issues(await page.evaluate(canvas.PROBE_JS))
+            return issues
         finally:
             await context.close()
 
