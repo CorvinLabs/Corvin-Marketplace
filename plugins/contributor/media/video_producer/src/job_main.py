@@ -1,11 +1,13 @@
-"""One video job in its own process (PLAN-0946 R1 spike).
+"""One video job in its own process (PLAN-0946 R1a, ADR-2247).
 
 Started by the host's ``ProcessJobRunner`` as ``<sys.executable> job_main.py <job_id> <config.json>``
 with ``start_new_session=True``, so the process is the leader of its own process group:
 ``ProcessJobRunner.cancel_job`` or the death of the console kills the group, and with it ffmpeg and
-any blocked network call. There is no job deadline yet and no cancel route on the host (PLAN-0946
-R1b), and the host still runs jobs on threads by default (``_JOB_RUNNER`` in the console route). The job persists its progress into the job record exactly as the thread did; the host
-polls that record.
+any blocked network call. This is the console's default execution model since the R1a go (ADR-2247
+amendment 2026-10-11, measured numbers there; ``_JOB_RUNNER = "process"`` in the console route); the
+thread runner stays as the documented fallback with "abandon" semantics. The job enforces its own budget
+(``deadline.JobBudget``), the host adds a last-resort group kill. The job persists its progress into the
+job record exactly as the thread did; the host polls that record.
 
 Security notes
 - The config file holds the task text. It is created by the host with mode 0600 inside the job's
