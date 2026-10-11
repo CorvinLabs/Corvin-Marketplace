@@ -54,6 +54,11 @@ its `tenant.corvin.yaml` (default 5 GB); beyond it new videos are refused until 
 request removes every video job the person created or that names them (see CorvinOS
 `docs/skills/video-producer-guide.md`).
 
+**Tenant isolation (unreleased 1.5.0):** the console loads this plugin only for a workspace that enabled it
+(never at console start), and no storyboard can make the plugin fetch a page - a `screenshot` scene from any
+source renders as an ordinary slide (since 1.4.1). Proofs are in CorvinOS `docs/skills/video-producer-guide.md`
+("Tenant isolation").
+
 ## Configuration & Customization
 
 ### Environment (on the host running CorvinOS)

@@ -64,6 +64,16 @@
   `spec.video_producer.storage_quota_gb` (default 5 GB, whole store): a new job is refused while the store is at or
   above it; usage in `GET /video/overview` (`storage`) and in the panel. The panel deletes with a confirmation.
   Plugin code is unchanged by this: the layout it writes is what the host deletes.
+- **Tenant isolation (R4, T-0093; CorvinOS).** F1 - the cross-tenant console capture of <= 1.4.0 (a model-written
+  `screenshot_url` opened on the console's loopback, where `local-login` hands out a `_default` owner session) - is
+  now reproduced through the real console route with two tenants and a real loopback console
+  (`core/console/tests/test_video_producer_tenant_isolation_e2e.py`): red against 1.4.0 (the job's Chromium called
+  `local-login` and got a `_default` session cookie; the URL was stored in the job record), green against this
+  plugin (no request reaches the console, no URL stored, the video completes). The fix itself shipped in 1.4.1
+  (`Scene.from_dict` drops `screenshot_url` always; no capture path). F3 - the console no longer imports plugin code
+  at start: it loads the source on the first request of a workspace that has the plugin enabled and never for one
+  that has not (`core/console/tests/test_video_producer_plugin_import_e2e.py`, including a fresh-interpreter import
+  with the plugin directory absent). Plugin code is unchanged by this.
 - Honest limits: jobs made before 1.5.0 have no owner entry, so a per-user erasure removes them only when their
   record names the subject (the task text is never searched); no retention period (`retention_days`) yet; the job
   process still inherits the console's whole environment (REVIEW-0039 F6).
