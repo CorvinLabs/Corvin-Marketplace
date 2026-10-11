@@ -19,10 +19,21 @@
 - **Cancel.** `POST /video/jobs/{id}/cancel` on the console (and so on the gateway, which mounts it); the panel
   shows **Cancel production**. Thread mode (fallback) cancels through the job's budget and abandons what cannot
   be killed.
+- **The renderer never rewinds a page** (`_ForwardClock` in `src/web_renderer.py`). The capture used to seek to the
+  END for its layout measurement and then rewind to 0 on the same page. Chromium keeps state from the first pass:
+  an animation with `fill: none` (a pen sprite) is gone on the way back. Measured on a 40-element scene: 48 of 101
+  frames visibly differed from a fresh render, up to 9 050 pixels; in ascending order two browser launches were
+  bit-identical in 101 of 101 frames. The layout is now measured on a fresh page, every frame page only moves
+  forward, and a rewind raises. Existing templates were affected at the noise level only (1 of 51 frames).
 - Honest limits: Art. 17 erasure does not stop a running job; no delete (R3); the lifecycle audit events other
   than `job_cancelled` are R2; the job process still inherits the console's whole environment (REVIEW-0039 F6).
 
 ## Unreleased (toward 1.6.0 - ADR-2249)
+
+- **Spike S2 (pen under time-seek): GO, with a contract.** The "no-go" of the first run measured a rewind, not
+  the pen. With forward-only seeks the pen is drawn, and two independent browser launches agree bit for bit.
+  Bit-identity with a *fresh* page holds for 91 of 101 frames; the other 10 differ by at most 16/255 in the
+  blur of a focus glow (raster noise, no state). Rule for every new canvas feature: time moves forward only.
 
 - **Pinned code lexer (spike S4, not wired yet).** `src/code_lexer.py` tokenizes Python, shell, JSON, YAML and plain
   text with one fixed, fragment-tolerant scanner (no Pygments, no `tokenize`, no dependence on the Python version).

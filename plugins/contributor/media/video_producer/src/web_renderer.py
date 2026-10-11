@@ -91,6 +91,26 @@ _CHROMIUM_ARGS = (
 )
 
 
+class _ForwardClock:
+    """Seeks one page through its animation timeline, and only ever forward.
+
+    Rewinding a page that already ran past an animation leaves it in a state a fresh page never
+    has: measured on a canvas scene, a seek to the end followed by 0..T lost every pen sprite
+    (48 of 101 frames visibly differed from a fresh render, up to 9 050 pixels), while the same
+    frames in ascending order were bit-identical across two browser launches. Anything that needs
+    an earlier time than the page has reached must use a fresh page (``_measure_layout``)."""
+
+    def __init__(self, page: Any):
+        self._page = page
+        self._t = float("-inf")
+
+    async def seek(self, t_ms: float) -> None:
+        if t_ms < self._t:
+            raise WebRenderError(f"refusing to rewind the page from {self._t:g} ms to {t_ms:g} ms: use a fresh page")
+        self._t = t_ms
+        await self._page.evaluate(_SEEK_JS, t_ms)
+
+
 class WebRenderError(RuntimeError):
     """Rendering failed after validation (browser unavailable, timeout, crash)."""
 
@@ -240,11 +260,10 @@ class WebSlideRenderer:
             # pads the audio instead (see skill._assemble_frames_clip).
             anim_end_ms, loop_start_ms, period_ms = (float(x) for x in await page.evaluate(_ANIM_TIMING_JS))
             if timeline is not None:
-                return await self._capture_timeline(page, cdp, out_dir, duration_s, anim_end_ms, timeline)
+                return await self._capture_timeline(page, cdp, out_dir, duration_s, anim_end_ms, timeline, document)
             n_frames = max(1, math.ceil(anim_end_ms / 1000.0 * self.fps) + 1)
             frames = FrameSequence()
-            await page.evaluate(_SEEK_JS, anim_end_ms)
-            frames.layout_issues = await page.evaluate(LAYOUT_JS, TOLERANCE_PX)
+            frames.layout_issues = await self._measure_layout(document, anim_end_ms)
             # Ambient motion: sample exactly one period after everything has started.
             # Frame loop_start + period_frames equals frame loop_start only when the
             # period is a whole number of frames — otherwise the loop would jump.
@@ -255,8 +274,9 @@ class WebSlideRenderer:
                     frames.loop_start = start
                     n_frames = start + int(round(period_frames))
             n_frames = min(MAX_FRAMES_PER_SCENE, n_frames)
+            clock = _ForwardClock(page)
             for i in range(n_frames):
-                await page.evaluate(_SEEK_JS, i * 1000.0 / self.fps)
+                await clock.seek(i * 1000.0 / self.fps)
                 frames.append(await self._shot(cdp, out_dir, i))
             return frames
         finally:
@@ -322,8 +342,27 @@ class WebSlideRenderer:
         os.replace(tmp, path)
         return path
 
+    async def _measure_layout(self, document: str, seek_ms: float) -> List[Dict[str, Any]]:
+        """Collisions at ``seek_ms``, measured on a fresh page so the page that renders the
+        frames never has to rewind (see ``_ForwardClock``)."""
+        context = await self._browser.new_context(
+            viewport=VIEWPORT, device_scale_factor=1, java_script_enabled=False,
+            reduced_motion="no-preference", service_workers="block",
+        )
+        try:
+            await context.route("**/*", lambda route: route.abort())
+            page = await context.new_page()
+            await page.set_content(document, wait_until="load")
+            missing = await page.evaluate(_LOAD_FONTS_JS)
+            if missing:
+                raise WebRenderError(f"bundled fonts did not load: {missing}")
+            await page.evaluate(_SEEK_JS, seek_ms)
+            return await page.evaluate(LAYOUT_JS, TOLERANCE_PX)
+        finally:
+            await context.close()
+
     async def _capture_timeline(self, page, cdp, out_dir: Path, duration_s: float, anim_end_ms: float,
-                                timeline: Any) -> FrameSequence:
+                                timeline: Any, document: str) -> FrameSequence:
         """Sample [0, max(narration, last animation)] at fps. A frame is captured only
         when something can have changed since the previous capture; every other
         output frame repeats it (``schedule``). Nothing past the frame budget is
@@ -346,14 +385,14 @@ class WebSlideRenderer:
             # one extra frame on both sides: the frame that shows the settled state is captured
             return any(a - step <= t <= b + step for a, b in windows)
 
-        await page.evaluate(_SEEK_JS, total_s * 1000.0)
         frames = FrameSequence()
-        frames.layout_issues = await page.evaluate(LAYOUT_JS, TOLERANCE_PX)
+        frames.layout_issues = await self._measure_layout(document, total_s * 1000.0)
         frames.schedule = []
+        clock = _ForwardClock(page)
         for i in range(n_out):
             t = i * step
             if not frames or active(t):
-                await page.evaluate(_SEEK_JS, t * 1000.0)
+                await clock.seek(t * 1000.0)
                 frames.append(await self._shot(cdp, out_dir, len(frames)))
             frames.schedule.append(len(frames) - 1)
         return frames
