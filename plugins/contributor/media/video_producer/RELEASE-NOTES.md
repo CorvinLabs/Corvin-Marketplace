@@ -39,8 +39,7 @@
   the gated signals `valid: false`. A template registers its own signals (`register(..., templates={"canvas"})`) and
   they run only where the template is used; post-hoc signals register with `kind="posthoc"`. Tests:
   `tests/test_report_signals.py` (a positive control per gating signal, real ffmpeg fixtures),
-  `tests/test_report_e2e.py` (a real job process writes the report). Not yet: the console's quality endpoint does
-  not read the report (R2c, T-0091).
+  `tests/test_report_e2e.py` (a real job process writes the report).
 - **The host audits each job's lifecycle (R2b, T-0090; CorvinOS).** The console, never the plugin, writes
   `video_producer.job_started`, exactly one terminal `job_completed` / `job_failed` / `job_cancelled`, and
   `job_degraded` for a completed job with degradations, into the tenant's hash-chained audit log - ids, counts,
@@ -48,6 +47,12 @@
   is logged and counted, the video is unaffected). For this, `VideoStorage.mark_interrupted_jobs` returns the ids
   it closed (was: a count) and `take_interrupted_ids()` hands them to the host once, so a console killed mid-job
   yields exactly one `job_failed reason=interrupted`, written at the next console start.
+- **The console reads the report (R2c, T-0091; CorvinOS).** `GET /video/jobs/{id}/quality-metrics` merges
+  `report.json` with the ffprobe facts under `report` (`state`: `present` / `missing` for jobs without one /
+  `not_written` / `unreadable`; tenant store only, symlinks not followed, 64 KB cap). The Quality tab shows each
+  signal's value, threshold, verdict and `n of N`. The console's `timing` and `runtime` checks are removed: they
+  compared the storyboard estimate with the voiced length and failed on every real video; `plan_estimate_error`
+  carries that number as information.
 - Honest limits: Art. 17 erasure does not stop a running job; no delete (R3), so `job_deleted` has no writer yet; the job process still inherits the console's whole environment (REVIEW-0039 F6).
 
 ## Unreleased (toward 1.6.0 - ADR-2249)
