@@ -1183,3 +1183,98 @@ def attach_base(data: Any, earlier: Dict[str, Dict[str, Any]], err=ValueError) -
     if not isinstance(cf, str) or cf not in earlier:
         raise err(f"continue_from {cf!r} is not an earlier canvas scene of this storyboard")
     return {"source": src, "base": carry_over(earlier[cf])}
+
+
+# ── the degrade ladder's canvas rungs (ADR-2249 D1: repair -> compact -> content slide) ──
+_STROKE_ISSUES = ("cv-stroke-shape", "cv-stroke-text", "cv-detached", "cv-oob")
+_TEXT_ISSUES = ("cv-text-shape", "cv-text-text", "cv-text-overflow", "cv-oob")
+_OPPOSITE = {"n": "s", "s": "n", "e": "w", "w": "e"}
+# measure-then-reroute: what an implicated connector is tried with, in order (route, from, to anchor)
+_REROUTES = (("straight", None, None), ("elbow", None, None), ("curved", "n", "n"), ("curved", "s", "s"))
+
+
+def _raw_slots(d: Dict[str, Any]):
+    """(source copy, base copy, per merged element index: ("base"|"own", position))."""
+    src = copy.deepcopy(d["source"])
+    base = copy.deepcopy(d.get("base") or [])
+    slots = [("base", j) for j in range(len(base))] + [("own", j) for j in range(len(src["elements"]))]
+    return src, base, slots
+
+
+def _implicated(d: Dict[str, Any], issues: List[Dict[str, Any]]) -> Tuple[set, set]:
+    """Merged indices of the connectors and marks a probe finding names (by stroke name or by text)."""
+    by_name = {f"{e['type']}{e['k']}": e for e in d["elements"] if e["type"] in CONNECTORS + MARKS}
+    by_text = {(e.get("text") or "")[:24]: e for e in d["elements"]
+               if e["type"] in CONNECTORS + MARKS and e.get("text")}
+    conn, marks = set(), set()
+    for i in issues:
+        hits = []
+        if i.get("type") in _STROKE_ISSUES:
+            hits.append(by_name.get(i.get("a", "")))
+        if i.get("type") in _TEXT_ISSUES or i.get("type") == "cv-stroke-text":
+            hits += [by_text.get(i.get("a", "")), by_text.get(i.get("b", ""))]
+        for e in hits:
+            if e is None:
+                continue
+            (conn if e["type"] in CONNECTORS else marks).add(e["k"])
+    return conn, marks
+
+
+def repair_variants(d: Dict[str, Any], issues: List[Dict[str, Any]]) -> List[Tuple[str, Dict[str, Any]]]:
+    """Rung 1 (repair): data-only fixes of what the probe measured, nothing removed - the connectors
+    it names are rerouted (``_REROUTES``), the marks it names move to the opposite side. Returns
+    candidates ``(label, data)`` to MEASURE in order; [] when no finding names a connector or mark
+    (a shape or freehand collision has no data-only repair)."""
+    conn, marks = _implicated(d, issues)
+    if not conn and not marks:
+        return []
+    out: List[Tuple[str, Dict[str, Any]]] = []
+    seen = set()
+    for n, (route, fa, ta) in enumerate(_REROUTES):
+        src, base, slots = _raw_slots(d)
+        changed = False
+        for k in sorted(conn | marks):
+            where, j = slots[k]
+            el = (base if where == "base" else src["elements"])[j]
+            if k in conn:
+                before = (el.get("route", "straight"), el.get("from_anchor"), el.get("to_anchor"))
+                el["route"] = route
+                for key, val in (("from_anchor", fa), ("to_anchor", ta)):
+                    if val is None:
+                        el.pop(key, None)
+                    else:
+                        el[key] = val
+                changed |= before != (route, fa, ta)
+            elif n % 2 == 0 and el["type"] != "underline":
+                el["side"] = _OPPOSITE[el.get("side", "e" if el["type"] in ("brace", "bracket") else "s")]
+                changed = True
+        key = repr((src, base))
+        if changed and key not in seen:
+            seen.add(key)
+            label = f"reroute_{route}{'_' + fa if fa else ''}" if conn else "move_marks"
+            out.append((label, {"source": src, "base": base or None}))
+    return out
+
+
+def compact_variant(d: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Rung 2 (compact): the floating labels of connectors and marks go (the shapes keep their own
+    text), and the hand-drawn wobble is switched off. None when that changes nothing."""
+    src, base, _ = _raw_slots(d)
+    changed = bool(src.get("sketch"))
+    src["sketch"] = False
+    for el in list(base) + list(src["elements"]):
+        if el.get("type") in CONNECTORS + MARKS and el.get("text"):
+            el.pop("text")
+            changed = True
+    return {"source": src, "base": base or None} if changed else None
+
+
+def step_bullets(d: Dict[str, Any]) -> List[str]:
+    """Rung 3 (content slide): one bullet per step, every text of that step, in drawing order."""
+    out = []
+    for s in d["steps"]:
+        texts = [e["text"] for e in d["elements"] if e["step"] == s and not e.get("base") and e.get("text")]
+        if texts:
+            line = " — ".join(texts)
+            out.append(line if len(line) <= 110 else line[:107].rstrip() + "...")
+    return out

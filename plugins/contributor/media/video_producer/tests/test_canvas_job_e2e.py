@@ -142,3 +142,57 @@ async def test_a_canvas_job_draws_with_the_pen_continues_a_board_and_reports_its
     first3 = _ink(_frame(video, s3 + 0.1, tmp_path / "f3.png"), DB_BOX)
     assert first3 > 3000, first3
     print(f"\nMEASURE canvas job e2e: {time.monotonic() - t0:.1f}s, ink scene2={seq}, scene3 first={first3}")
+
+
+# the ladder: a curved loop that leaves the frame (repair reroutes it), mark labels that cover the
+# neighbour (compact drops them), a freehand stroke through text (only the content slide helps)
+REPAIR_ME = {"title": "A loop over the top", "elements": [
+    {"type": "box", "id": "a", "text": "Client", "at": {"col": 0, "row": 0, "w": 3, "h": 1}, "step": 1},
+    {"type": "box", "id": "b", "text": "Server", "at": {"col": 8, "row": 0, "w": 3, "h": 1}, "step": 2},
+    {"type": "arrow", "from": "a", "to": "b", "route": "curved", "from_anchor": "n", "to_anchor": "n", "step": 2},
+    {"type": "label", "text": "One request, one answer", "at": {"col": 3, "row": 3, "w": 6, "h": 1}, "step": 3}]}
+COMPACT_ME = {"title": "A label in the way", "elements": [
+    {"type": "box", "id": "a", "text": "Request", "at": {"col": 0, "row": 2, "w": 3, "h": 2}, "step": 1},
+    {"type": "box", "id": "b", "text": "Answer", "at": {"col": 4, "row": 2, "w": 3, "h": 2}, "step": 2},
+    {"type": "brace", "target": "a", "side": "e", "text": "the whole request path", "step": 2},
+    {"type": "brace", "target": "b", "side": "w", "text": "the whole answer path", "step": 3}]}
+CONTENT_ME = {"title": "A scribble over the text", "elements": [
+    {"type": "box", "id": "a", "text": "Input data", "at": {"col": 1, "row": 1, "w": 4, "h": 3}, "step": 1},
+    {"type": "box", "id": "b", "text": "Output data", "at": {"col": 7, "row": 1, "w": 4, "h": 3}, "step": 2},
+    {"type": "freehand", "points": [[0.5, 2.5], [3, 2.4], [5.5, 2.6], [8, 2.4], [11.5, 2.5]], "step": 3}]}
+
+
+def _scene(sid, data, narration="First comes the input. Then comes the output. Then we draw over it."):
+    return {"id": sid, "kind": "example", "duration_ms": 8000, "narration_text": narration,
+            "visual_description": "sketch", "template": "canvas", "data": data}
+
+
+def _degr(report, scene):
+    return [d.get("reason") for d in report["degradations"] if d["kind"] == "canvas_degraded" and d.get("scene") == scene]
+
+
+async def test_a_colliding_canvas_walks_the_degrade_ladder_inside_the_job(base, tmp_path):
+    storyboard = {"id": "sb_cvx", "didactic_strategy": "rich_visual", "scenes": [
+        HERO, _scene("s2", REPAIR_ME, "The client asks. The server answers. One request, one answer."),
+        _scene("s3", COMPACT_ME, "First the request. Then the answer. Both have a path."),
+        _scene("s4", CONTENT_ME)]}
+    job_dir, rep = await _run_job(base, tmp_path, "job_cvx", storyboard)
+    video = job_dir / "output.mp4"
+    assert video.is_file() and _streams(video) == ["audio", "video"]
+
+    scenes = {s["index"]: s for s in rep["scenes"]}
+    # repair rerouted the loop; compact took the mark labels away; the scribble only left on bullets
+    assert _degr(rep, 2) == ["repaired clean"]
+    assert _degr(rep, 3) == ["repaired collided", "compact clean"]
+    assert _degr(rep, 4) == ["repaired not_applicable", "compact not_applicable", "replaced_with_content clean"]
+    assert [d.get("scene") for d in rep["degradations"] if d["kind"] == "collision_replaced"] == [4]
+    assert not [d for d in rep["degradations"] if d["kind"] in ("collision_kept", "web_to_pillow")]
+    assert scenes[2]["template"] == "canvas" and scenes[3]["template"] == "canvas"
+    assert scenes[4]["template"] == "content" and scenes[4]["renderer"] == "web"
+    sig = {s["id"]: s for s in rep["signals"]}
+    assert sig["canvas_clean"]["verdict"] == "fail" and sig["canvas_clean"]["basis"] == {"n": 0, "of": 3}
+    actions = {p["scene"]: p["action"] for p in sig["canvas_clean"]["detail"]["per_scene"]}
+    assert actions == {2: "repaired", 3: "compact", 4: "replaced_with_content"}
+    meta = get_storage(base).get_video_output("job_cvx").metadata
+    log = {e["index"]: e for e in meta["layout_collisions"]}
+    assert log[2]["measured"][0]["issues"] == 0 and log[2]["issues"]  # the probe's findings travel with it

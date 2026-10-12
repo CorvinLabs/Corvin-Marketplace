@@ -126,7 +126,13 @@
   `canvas_clean` counts the storyboard's canvas scenes by index (it used to match scene ids against indices and
   report every canvas clean); `canvas_authoring` reports the model's first-try and after-repair share (`info`;
   skipped for an operator storyboard). Tests: `tests/test_canvas_job_e2e.py` (real job process, fake storyboard
-  model, real MP4 + report), `tests/test_canvas_p2.py`. Not yet: the degrade ladder and the annotation layer.
+  model, real MP4 + report), `tests/test_canvas_p2.py`. 
+- **Canvas degrade ladder (T-0110).** A canvas that collides after layout (`LAYOUT_JS` + the canvas probe) walks, in
+  the job's render path (`_WebRendererSession._resolve_collision`): repair (reroute the connectors / move the marks
+  the probe names; each candidate measured without frames via `WebSlideRenderer.measure`), compact (no floating
+  labels, no wobble), content slide (one bullet per step), quote. Each walked rung is a `canvas_degraded`
+  degradation in `report.json`; `canvas_clean` fails a scene that needed the ladder. Test:
+  `test_a_colliding_canvas_walks_the_degrade_ladder_inside_the_job` (real job, real MP4). Not yet: the annotation layer.
 - **Spike S2 (pen under time-seek): GO, with a contract.** The "no-go" of the first run measured a rewind, not
   the pen. With forward-only seeks the pen is drawn, and two independent browser launches agree bit for bit.
   Bit-identity with a *fresh* page holds for 91 of 101 frames; the other 10 differ by at most 16/255 in the

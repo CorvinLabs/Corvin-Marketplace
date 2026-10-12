@@ -45,10 +45,11 @@ DEGRADATION_KINDS = frozenset({
     "storyboard_backend_fallback",  # the requested storyboard model failed; another one wrote it
     "grounding_lost",               # a grounded task ended without its grounding
     "storyboard_repaired",          # the model got scene specs wrong and a repair pass fixed some
+    "canvas_degraded",              # a canvas collided after layout and walked a rung of its ladder (ADR-2249 D1)
 })
 # Degradations that count against a SCENE (the others are job-level).
 SCENE_KINDS = frozenset({"web_to_pillow", "no_template", "template_to_quote", "collision_replaced",
-                         "collision_kept", "tts_tier_below"})
+                         "collision_kept", "tts_tier_below", "canvas_degraded"})
 STAGES = ("setup", "storyboard", "scenes", "assemble", "signals")
 STATUSES = frozenset({"complete", "error", "cancelled"})
 

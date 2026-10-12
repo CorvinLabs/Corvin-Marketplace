@@ -344,9 +344,30 @@ class WebSlideRenderer:
         os.replace(tmp, path)
         return path
 
-    async def _measure_layout(self, document: str, seek_ms: float) -> List[Dict[str, Any]]:
+    async def measure(self, template: str, data: Dict[str, Any], duration_s: float, *, timeline: Any = None,
+                      timeout_s: float = 30.0, **kw) -> List[Dict[str, Any]]:
+        """The render gate WITHOUT the frames: build the document exactly as ``render`` would and
+        return the collisions measured at its settled end (the time ``render`` measures at). The
+        canvas ladder uses it to measure repair candidates before paying for a full render
+        (ADR-2249 D1, measure-then-reroute). Raises WebSceneError / WebRenderError like ``render``."""
+        if self.dead:
+            raise WebRenderError(f"browser was stopped ({self.dead})")
+        if self._browser is None:
+            raise WebRenderError("renderer is not open (use 'async with WebSlideRenderer()')")
+        document = build_document(template, data, duration_s=float(duration_s), tokens=self.tokens,
+                                  timeline=timeline, style=self.style, **kw)
+        try:
+            return await dl.await_with_deadline(self._measure_layout(document, None, float(duration_s), timeline is not None),
+                                                timeout_s, what="layout measure", on_expire=self._hard_kill)
+        except dl.DeadlineExceeded:
+            raise WebRenderError(f"layout measure exceeded {timeout_s:g}s (browser stopped)") from None
+
+    async def _measure_layout(self, document: str, seek_ms: Optional[float], duration_s: float = 0.0,
+                              timed: bool = False) -> List[Dict[str, Any]]:
         """Collisions at ``seek_ms``, measured on a fresh page so the page that renders the
-        frames never has to rewind (see ``_ForwardClock``)."""
+        frames never has to rewind (see ``_ForwardClock``). ``seek_ms=None``: the time ``_capture``
+        would measure at (the end of the entrance animation; with a timeline the later of it and
+        the narration's end)."""
         context = await self._browser.new_context(
             viewport=VIEWPORT, device_scale_factor=1, java_script_enabled=False,
             reduced_motion="no-preference", service_workers="block",
@@ -358,6 +379,9 @@ class WebSlideRenderer:
             missing = await page.evaluate(_LOAD_FONTS_JS)
             if missing:
                 raise WebRenderError(f"bundled fonts did not load: {missing}")
+            if seek_ms is None:
+                anim_end_ms = float((await page.evaluate(_ANIM_TIMING_JS))[0])
+                seek_ms = max(duration_s * 1000.0, anim_end_ms) if timed else anim_end_ms
             await page.evaluate(_SEEK_JS, seek_ms)
             issues = await page.evaluate(LAYOUT_JS, TOLERANCE_PX)
             if 'class="cv"' in document:  # canvas scenes: the canvas probe is part of the gate

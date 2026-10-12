@@ -287,6 +287,14 @@ keep every item (graphs with at most 5 items), and only then as a quote of the
 narration's first sentence. Cues are rebuilt for every replacement; the job
 metadata says which one was used (`layout_collisions[].action`).
 
+A `canvas` walks ADR-2249's ladder first, every rung measured after layout: **repair** (the connectors the probe
+names are rerouted - straight, elbow, curved over the top or underneath - and the marks it names move to the
+other side; each candidate is measured on a fresh page without frames and only a clean one is rendered),
+**compact** (connector and mark labels off, no wobble), **content slide** (one bullet per step), then the quote.
+Every walked rung is a `canvas_degraded` entry in `report.json` (`reason`: rung and result - `clean`, `collided`,
+`not_applicable`, `failed`), and the layout log keeps the measured candidates (`layout_collisions[].ladder`,
+`.measured`). Nothing clean leaves the original in the video as `collision_kept`.
+
 ## Measuring how much a video stands still
 
 `scripts/measure_engagement.py <tenant>/video_producer/videos <job>...` reports

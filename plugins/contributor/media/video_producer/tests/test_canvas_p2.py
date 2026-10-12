@@ -95,3 +95,17 @@ def test_the_storyboard_contract_resolves_continue_from_in_order():
     with pytest.raises(ValueError, match="not an earlier canvas scene"):  # a forward reference is refused
         skill._apply_web_scene_contract([{"id": "s3", "template": "canvas", "data": copy.deepcopy(CONT)},
                                          {"id": "s2", "template": "canvas", "data": copy.deepcopy(CLEAN)}], strict=True)
+
+
+def test_repair_reroutes_the_connector_the_probe_named_and_compact_drops_floating_labels():
+    from tests.canvas_cases import THROUGH_A_BOX
+    d = validate_scene_data("canvas", THROUGH_A_BOX)
+    issues = [{"type": "cv-stroke-shape", "a": "arrow3", "b": "b"}]
+    variants = canvas.repair_variants(d, issues)
+    routes = [validate_scene_data("canvas", v)["elements"][3]["route"] for _, v in variants]
+    assert routes == ["elbow", "curved", "curved"]  # straight is what collided
+    assert canvas.repair_variants(d, [{"type": "cv-text-shape", "a": "Alpha", "b": "b"}]) == []  # shape text: no repair
+    c = validate_scene_data("canvas", canvas.compact_variant(d))
+    assert all(not e.get("text") for e in c["elements"] if e["type"] == "arrow")
+    assert [e["text"] for e in c["elements"] if e["type"] == "box"] == ["Alpha", "Bravo", "Charlie"]
+    assert canvas.step_bullets(d) == ["Alpha — Bravo — Charlie", "passes through"]

@@ -1388,6 +1388,14 @@ def _content_trial(template: str, data: Dict[str, Any], title_fallback: str) -> 
         items = scene_items(template, d)
     except (WebSceneError, ValueError, TypeError):
         return None
+    if template == "canvas":  # ADR-2249 D1 ladder, rung 3: one bullet per drawing step
+        bullets = canvas.step_bullets(d)
+        if not 2 <= len(bullets) <= 5:
+            return None
+        trial = {"template": "content", "data": {"title": d.get("title") or title_fallback[:80], "bullets": bullets}}
+        if d.get("eyebrow"):
+            trial["data"]["eyebrow"] = d["eyebrow"]
+        return trial
     # numbers (chart, donut, line, stat) and side-by-side points (compare) do not survive as bullets
     if not 2 <= len(items) <= 5 or template not in ("diagram", "flow", "cycle", "timeline", "layers"):
         return None
@@ -1469,6 +1477,10 @@ class _WebRendererSession:
         text = " ".join((scene.narration_text or "").split())
         tl = getattr(frames, "timeline", None)
         attempts = []
+        if template == "canvas":
+            # ADR-2249 D1: repair -> compact -> content slide (-> quote), each rung measured after
+            # layout and recorded (``canvas_degraded``), never shipped silently
+            attempts += await self._canvas_rungs(data, frames.layout_issues, duration_s, kw, cues, entry)
         if tl is not None and tl.chips:
             attempts.append(("dropped_chips", template, data, {"chips": False}, True))
         if template in _COMPACTABLE:
@@ -1481,6 +1493,9 @@ class _WebRendererSession:
             if not _apply_web_scene_contract([quote], strict=False):
                 attempts.append(("replaced_with_quote", "quote", quote["data"], {}, False))
         for action, tmpl, tdata, opts, use_beats in attempts:
+            if tmpl is None:  # a canvas rung without a candidate: ``tdata`` says why
+                self._canvas_rung(entry, kw, action, tdata)
+                continue
             alt_dir = out_dir.parent / (out_dir.name + "_alt")
             shutil.rmtree(alt_dir, ignore_errors=True)
             try:
@@ -1488,10 +1503,13 @@ class _WebRendererSession:
                 alt = await self._renderer.render(tmpl, tdata, duration_s, alt_dir, timeline=alt_tl, **opts, **kw)
             except Exception:  # noqa: BLE001 — try the next option; the original frames stay
                 shutil.rmtree(alt_dir, ignore_errors=True)
+                self._canvas_rung(entry, kw, action, "failed")
                 continue
             if alt.layout_issues:
                 shutil.rmtree(alt_dir, ignore_errors=True)
+                self._canvas_rung(entry, kw, action, "collided")
                 continue
+            self._canvas_rung(entry, kw, action, "clean")
             shutil.rmtree(out_dir, ignore_errors=True)
             alt_dir.rename(out_dir)
             moved = type(alt)(out_dir / f.name for f in alt)
@@ -1506,6 +1524,49 @@ class _WebRendererSession:
         if isinstance(kw.get("scene_index"), int):
             rp.note_degradation("collision_kept", scene=kw["scene_index"])
         return frames
+
+    @staticmethod
+    def _canvas_rung(entry: Dict[str, Any], kw: dict, action: str, result: str) -> None:
+        """Record one walked rung of a canvas scene's ladder (report + layout log)."""
+        if entry.get("template") != "canvas":
+            return
+        entry.setdefault("ladder", []).append({"rung": action, "result": result})
+        if isinstance(kw.get("scene_index"), int):
+            rp.note_degradation("canvas_degraded", scene=kw["scene_index"], reason=f"{action} {result}")
+
+    async def _canvas_rungs(self, data: Dict[str, Any], issues: List[Dict[str, Any]], duration_s: float,
+                            kw: dict, cues: Optional["_SceneCues"], entry: Dict[str, Any]) -> list:
+        """The canvas rungs before the generic ones: (1) repair - the connectors/marks the probe named
+        are rerouted, each candidate MEASURED on a fresh page (no frames) and only a clean one is
+        rendered; (2) compact - floating labels off, no wobble. Content and quote follow generically."""
+        out: list = []
+        try:
+            d = validate_scene_data("canvas", data)
+        except (WebSceneError, ValueError, TypeError):
+            return out
+        variants = canvas.repair_variants(d, issues)
+        for label, cand in variants:
+            try:
+                cd = validate_scene_data("canvas", cand)
+                ctl = cues.timeline("canvas", cd) if cues is not None else None
+                found = await self._renderer.measure("canvas", cd, duration_s, timeline=ctl, **kw)
+            except dl.JobCancelled:
+                raise
+            except Exception:  # noqa: BLE001 — a candidate that does not even build is not a repair
+                continue
+            entry.setdefault("measured", []).append({"candidate": label, "issues": len(found)})
+            if not found:
+                out.append(("repaired", "canvas", cd, {}, True))
+                break
+        if not out:  # a rung with nothing to render is still walked, and recorded when it is reached
+            out.append(("repaired", None, "collided" if variants else "not_applicable", None, None))
+        compact = canvas.compact_variant(d)
+        try:
+            out.append(("compact", "canvas", validate_scene_data("canvas", compact), {}, True) if compact is not None
+                       else ("compact", None, "not_applicable", None, None))
+        except (WebSceneError, ValueError, TypeError):
+            out.append(("compact", None, "failed", None, None))
+        return out
 
     async def close(self) -> None:
         if self._renderer is not None:
