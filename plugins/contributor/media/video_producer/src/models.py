@@ -186,6 +186,9 @@ class Storyboard:
     template_warnings: List[str] = field(default_factory=list)
     # PLAN-0942: grounding record (status, entities, counts) — job metadata, never pack text.
     grounding: Optional[Dict[str, Any]] = None
+    # ADR-2249 D5 canvas_authoring: {total, first_try, after_repair} over the scenes the model wrote
+    # as "canvas"; None when it wrote none (or the storyboard was the operator's). Job metadata only.
+    canvas_authoring: Optional[Dict[str, int]] = None
 
     def to_json(self) -> str:
         return json.dumps({

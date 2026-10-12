@@ -76,86 +76,66 @@ def test_canvas_three_group_reveal_sequence():
     assert wt.reveal_steps("canvas", d) == 3
 
 
-# ── Test 4: canvas_clean signal is registered ────────────────────────────────────────
+# ── Test 4/5: the signals are registered ────────────────────────────────────────
 def test_canvas_clean_signal_registered():
-    """T-0110: The canvas_clean signal must be registered and run only for canvas templates."""
     specs = sg.registered("runtime")
-    canvas_clean_spec = next((s for s in specs if s.id == "canvas_clean"), None)
-    assert canvas_clean_spec is not None, "canvas_clean signal must be registered"
-    assert canvas_clean_spec.templates == frozenset({"canvas"})
-    assert canvas_clean_spec.unit == "scenes with zero layout issues"
-    assert canvas_clean_spec.gated is True
+    spec = next((s for s in specs if s.id == "canvas_clean"), None)
+    assert spec is not None and spec.templates == frozenset({"canvas"}) and spec.gated is True
 
 
-# ── Test 5: canvas_authoring signal is registered ────────────────────────────────────
 def test_canvas_authoring_signal_registered():
-    """T-0110: The canvas_authoring signal must be registered and run only for canvas templates."""
     specs = sg.registered("runtime")
-    authoring_spec = next((s for s in specs if s.id == "canvas_authoring"), None)
-    assert authoring_spec is not None, "canvas_authoring signal must be registered"
-    assert authoring_spec.templates == frozenset({"canvas"})
-    assert authoring_spec.unit == "scenes passing first-try validation"
-    assert authoring_spec.gated is False  # informational, not gated
+    spec = next((s for s in specs if s.id == "canvas_authoring"), None)
+    assert spec is not None and spec.templates == frozenset({"canvas"}) and spec.gated is False
 
 
-# ── Test 6: canvas_clean signal skips without canvas template ────────────────────────
 def test_canvas_clean_skips_without_canvas():
-    """T-0110: canvas_clean should skip (not run) when no canvas is in the video."""
-    # Hero template, no canvas
-    ctx = sg.SignalContext(
-        job_dir=Path("."),
-        report={"scenes": [{"index": 1, "template": "hero"}]},
-        templates={"hero"}
-    )
+    ctx = sg.SignalContext(job_dir=Path("."), report={"scenes": [{"index": 1, "template": "hero"}]}, templates={"hero"})
     result = sg.run(ctx, only=["canvas_clean"])
-    assert len(result) == 1
-    assert result[0]["verdict"] == "skip"
-    # Signal skips with reason about template
+    assert len(result) == 1 and result[0]["verdict"] == "skip"
     assert result[0]["reason"] is not None and "template" in result[0]["reason"]
 
 
-# ── Test 7: canvas_clean signal passes when canvas is clean ────────────────────────
+def _canvas_ctx(collisions, rendered=("canvas", "canvas", "canvas")):
+    return sg.SignalContext(
+        job_dir=Path("."),
+        report={"scenes": [{"index": i, "renderer": "web", "template": t} for i, t in enumerate(rendered, start=1)]},
+        templates={"canvas"},
+        storyboard_scenes=[{"template": "canvas"} for _ in rendered],
+        metadata={"layout_collisions": collisions},
+    )
+
+
 def test_canvas_clean_passes_with_clean_canvas():
-    """T-0110: canvas_clean passes when canvas scenes have no layout issues."""
-    ctx = sg.SignalContext(
-        job_dir=Path("."),
-        report={"scenes": [
-            {"index": 1, "template": "canvas"},
-            {"index": 2, "template": "canvas"},
-        ]},
-        templates={"canvas"},
-        metadata={"layout_collisions": []}  # empty = all clean
-    )
-    result = sg.run(ctx, only=["canvas_clean"])
-    assert len(result) == 1
-    assert result[0]["verdict"] == "pass"
-    # Check if n/of are present and correct
-    if "n" in result[0]:
-        assert result[0]["n"] == 2 and result[0]["of"] == 2
+    rec = sg.run(_canvas_ctx([]), only=["canvas_clean"])[0]
+    assert rec["verdict"] == "pass" and rec["basis"] == {"n": 3, "of": 3}
 
 
-# ── Test 8: canvas_authoring signal records modeling accuracy ────────────────────────
+def test_a_canvas_that_walked_its_ladder_is_not_clean():
+    """The layout log names the scene by index; the old signal matched it against the scene id and
+    so reported every canvas clean. A canvas replaced by a content slide still counts as a canvas."""
+    log = [{"scene": "s2", "index": 2, "template": "canvas", "action": "repaired",
+            "ladder": [{"rung": "repaired", "result": "clean"}]}]
+    rec = sg.run(_canvas_ctx(log, rendered=("canvas", "canvas", "content")), only=["canvas_clean"])[0]
+    assert rec["verdict"] == "fail" and rec["basis"] == {"n": 1, "of": 3}
+    per = {p["scene"]: p for p in rec["detail"]["per_scene"]}
+    assert per[2]["action"] == "repaired" and per[2]["ladder"] == ["repaired"]
+    assert per[3]["action"] == "not_rendered_as_canvas"
+
+
 def test_canvas_authoring_records_accuracy():
-    """T-0110: canvas_authoring records the model's first-try accuracy."""
-    ctx = sg.SignalContext(
-        job_dir=Path("."),
-        report={"scenes": [
-            {"index": 1, "template": "canvas"},
-            {"index": 2, "template": "canvas"},
-            {"index": 3, "template": "canvas"},
-        ]},
-        templates={"canvas"},
-        metadata={
-            "canvas_authoring_first_try": 2,  # 2 out of 3 validated first try
-            "canvas_authoring_total": 3,
-        }
-    )
-    result = sg.run(ctx, only=["canvas_authoring"])
-    assert len(result) == 1
-    assert result[0]["verdict"] == "info"  # not gated, informational
-    # Check if n/of are present and correct
-    if "n" in result[0]:
-        assert result[0]["n"] == 2 and result[0]["of"] == 3
+    ctx = _canvas_ctx([])
+    ctx.metadata["canvas_authoring"] = {"total": 3, "first_try": 2, "after_repair": 3}
+    rec = sg.run(ctx, only=["canvas_authoring"])[0]
+    assert rec["verdict"] == "info" and rec["value"] == round(2 / 3, 3) and rec["basis"] == {"n": 2, "of": 3}
+    assert rec["detail"] == {"after_repair": 3, "after_repair_share": 1.0}
+
+
+def test_canvas_authoring_skips_an_operator_storyboard():
+    ctx = _canvas_ctx([])
+    ctx.metadata["storyboard_llm"] = "operator"
+    rec = sg.run(ctx, only=["canvas_authoring"])[0]
+    assert rec["verdict"] == "skip" and "operator" in rec["reason"]
 
 
 # ── Test 9: continue_from chains scenes correctly ─────────────────────────────────────

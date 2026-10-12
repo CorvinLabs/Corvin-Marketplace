@@ -1254,7 +1254,7 @@ def build_document(
             from . import canvas
         except ImportError:
             import canvas
-        extra_css += canvas.css()
+        extra_css += canvas.css(d)
     return (
         f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8">'
         f"<style>{_font_faces()}:root{{{css_vars}}}{_base_css()}{focus_css}{extra_css}</style></head>"

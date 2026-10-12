@@ -94,7 +94,7 @@ A *style* — palette, fonts, logo, wordmark, decoration — is a validated, per
 
 ### Web Slide Templates
 
-The plugin ships with **15 built-in templates** (hero, content, line chart, donut, flow graph, timeline, cycle, layers, stat, diagram, compare, quote, code, chart, console still). Each item of a slide appears when the narration names it and is highlighted while it is explained — see [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md) for details. The storyboard LLM automatically picks templates based on the scene content; you don't need to specify them. Unreleased (1.6.0): a `canvas` template (hand-drawn sketch board, see [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md)) is implemented and render-gated but not yet offered to the storyboard model.
+The plugin ships with **15 built-in templates** (hero, content, line chart, donut, flow graph, timeline, cycle, layers, stat, diagram, compare, quote, code, chart, console still). Each item of a slide appears when the narration names it and is highlighted while it is explained — see [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md) for details. The storyboard LLM automatically picks templates based on the scene content; you don't need to specify them. Unreleased (1.6.0): a `canvas` template (hand-drawn sketch board, see [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md)) is offered to the storyboard model for what no other template can show, and a scene can continue the board of an earlier one.
 
 ## Testing
 

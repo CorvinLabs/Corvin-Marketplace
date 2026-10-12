@@ -770,47 +770,54 @@ def _cue_alignment(ctx: SignalContext) -> SignalValue:
                        detail={"p90_s": p90, "coverage": coverage, "per_scene": per_scene[:40]})
 
 
-# ── canvas signals (ADR-2249 D1, T-0110) ────────────────────────────────────────────────────
-@register("canvas_clean", unit="scenes with zero layout issues", templates={"canvas"},
-          description="Canvas probe (PROBE_JS) in the render gate: zero out-of-bounds, unattached arrows, "
-                      "measured collisions after layout (ADR-2249 P2)")
+# ── canvas signals (ADR-2249 D1/D5, T-0110) ─────────────────────────────────────────────────
+def _canvas_indices(ctx: SignalContext) -> List[int]:
+    """1-based indices of the scenes the storyboard asked to draw as a canvas (whatever the ladder
+    later made of them)."""
+    return [i for i, s in enumerate(ctx.storyboard_scenes, start=1) if s.get("template") == "canvas"]
+
+
+@register("canvas_clean", unit="canvas scenes clean after layout", templates={"canvas"},
+          description="Canvas scenes whose first render passed the render gate (LAYOUT_JS + the canvas "
+                      "probe: no collision, nothing out of the area, no detached arrow); a scene that "
+                      "needed its degrade ladder or fell back is not clean (ADR-2249 D5)")
 def _canvas_clean(ctx: SignalContext) -> SignalValue:
-    threshold = {"max_issues": 0}
-    canvas_scenes = [s for s in ctx.scenes if s.get("template") == "canvas"]
-    if not canvas_scenes:
-        return SignalValue(None, "skip", threshold=threshold, reason="no canvas in this video")
+    idx = _canvas_indices(ctx)
+    if not idx:
+        return SignalValue(None, "skip", threshold=0, reason="no canvas in this video")
+    collided = {e.get("index"): e for e in (ctx.metadata.get("layout_collisions") or [])
+                if isinstance(e, dict) and e.get("template") == "canvas"}
+    by_index = {s.get("index"): s for s in ctx.scenes}
+    per_scene = []
+    for i in idx:
+        rec = by_index.get(i) or {}
+        if i in collided:
+            per_scene.append({"scene": i, "clean": False, "action": collided[i].get("action"),
+                              "ladder": [r.get("rung") for r in collided[i].get("ladder") or []][:6]})
+        elif rec.get("renderer") != "web" or rec.get("template") != "canvas":
+            per_scene.append({"scene": i, "clean": False, "action": "not_rendered_as_canvas"})
+        else:
+            per_scene.append({"scene": i, "clean": True})
+    clean = sum(1 for p in per_scene if p["clean"])
+    return SignalValue(clean, "pass" if clean == len(idx) else "fail", n=clean, of=len(idx), threshold=0,
+                       reason=None if clean == len(idx) else f"{len(idx) - clean} canvas scene(s) not clean",
+                       detail={"per_scene": per_scene[:40]})
 
-    # Count canvas scenes with zero issues from metadata layout_collisions
-    # (populated by web_renderer via PROBE_JS + probe_issues)
-    issues_per_scene = ctx.metadata.get("layout_collisions", [])
-    clean_scenes = sum(1 for s_idx in range(len(canvas_scenes)) if not any(
-        ic.get("scene") == canvas_scenes[s_idx].get("index") for ic in issues_per_scene))
-    total = len(canvas_scenes)
-    ok = clean_scenes == total
 
-    return SignalValue(clean_scenes, "pass" if ok else "fail", n=clean_scenes, of=total,
-                      threshold=threshold,
-                      reason=None if ok else f"{total - clean_scenes} canvas scene(s) with layout issues")
-
-
-@register("canvas_authoring", unit="scenes passing first-try validation", templates={"canvas"},
-          gated=False, description="Canvas authoring accuracy: first-try validation rate; measured "
-                                   "in the storyboard generation gate (ADR-2249 P2, S1 spike)")
+@register("canvas_authoring", unit="model canvases valid on the first try", templates={"canvas"},
+          gated=False, description="Share of the canvases the storyboard model wrote that validated on "
+                                   "the first try, and after the one repair round (ADR-2249 D5; the "
+                                   "S1 gate: 70 % / 90 % over a corpus - one video is a small sample)")
 def _canvas_authoring(ctx: SignalContext) -> SignalValue:
     threshold = {"first_try_min": 0.70, "after_repair_min": 0.90}
-    canvas_scenes = [s for s in ctx.scenes if s.get("template") == "canvas"]
-    if not canvas_scenes:
-        return SignalValue(None, "skip", threshold=threshold, reason="no canvas in this video")
-
-    # This signal measures the MODEL's accuracy, not the template's. It's recorded when the model
-    # writes canvas specs. For now, record as info (no gate) until the spike's blind rating is done.
-    # Metadata would need: canvas_authoring_first_try, canvas_authoring_after_repair counts.
-    first_try = ctx.metadata.get("canvas_authoring_first_try", 0)
-    total = ctx.metadata.get("canvas_authoring_total", len(canvas_scenes))
-
-    return SignalValue(first_try / total if total else None, "info", n=first_try, of=total,
-                      threshold=threshold,
-                      reason=None if total else "authoring accuracy not measured in this run")
+    a = ctx.metadata.get("canvas_authoring")
+    if not isinstance(a, dict) or not a.get("total"):
+        why = ("operator storyboard: no model wrote it" if ctx.metadata.get("storyboard_llm") == "operator"
+               else "the model wrote no canvas")
+        return SignalValue(None, "skip", threshold=threshold, reason=why)
+    total, first, after = int(a["total"]), int(a.get("first_try", 0)), int(a.get("after_repair", 0))
+    return SignalValue(round(first / total, 3), "info", n=first, of=total, threshold=threshold,
+                       detail={"after_repair": after, "after_repair_share": round(after / total, 3)})
 
 
 # ── post-hoc run on a finished job (the host calls this after its gates; T-0094) ────────────────

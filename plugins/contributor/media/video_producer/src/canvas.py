@@ -24,6 +24,7 @@ Data in, SVG/HTML out. Built from the measured S1/S2 spike prototype; registered
 
 from __future__ import annotations
 
+import copy
 import html
 import math
 import random
@@ -144,11 +145,29 @@ def fit_font(text: str, avail_w: float, avail_h: float, steps=_FONT_STEPS) -> Op
 
 
 # ── validation + layout ─────────────────────────────────────────────────────
-def validate_canvas(data: Any) -> Dict[str, Any]:
-    """Normalised canvas data (with resolved cell boxes) or CanvasError(all errors)."""
+_NORM_KEYS = frozenset({"eyebrow", "title", "sketch", "pen", "continue_from", "elements", "steps", "source", "base"})
+_BASE_KEYS = frozenset({"_seed0", "_sid", "_sketch"})  # carried-over elements only (``carry_over``)
+
+
+def validate_canvas(data: Any, base: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    """Normalised canvas data (with resolved cell boxes) or CanvasError(all errors).
+
+    The result keeps the spec it came from (``source``) and the carried-over board (``base``), and
+    validating a result again validates that spec again - every caller in the render path
+    (timeline, document, ladder) re-validates, so the normalised form must be accepted, and nothing
+    derived (boxes, font sizes, steps) is ever trusted from the input.
+
+    ``base``: the settled board of the scene this one continues from (``carry_over``), drawn already
+    at the first frame; its elements are on the same board as the scene's own (ids, placement,
+    overlap, the 40-element and 400-character limits count both) but take no step."""
+    if isinstance(data, dict) and isinstance(data.get("source"), dict) and set(data) <= _NORM_KEYS:
+        return validate_canvas(data["source"], base=data.get("base") if base is None else base)
     errs: List[str] = []
     if not isinstance(data, dict):
         raise CanvasError(["canvas data must be a JSON object"])
+    if base is not None and (not isinstance(base, list) or not all(isinstance(b, dict) for b in base)):
+        raise CanvasError(["the carried-over board must be a list of elements"])
+    nb = len(base or [])
     allowed = {"eyebrow", "title", "sketch", "pen", "elements", "continue_from"}
     extra = sorted(set(data) - allowed)
     if extra:
@@ -177,16 +196,20 @@ def validate_canvas(data: Any) -> Dict[str, Any]:
     if not isinstance(els, list) or not els:
         errs.append("elements must be a non-empty list")
         raise CanvasError(errs)
-    if len(els) > MAX_ELEMENTS:
-        errs.append(f"{len(els)} elements, limit {MAX_ELEMENTS} (split the explanation into two scenes)")
-        els = els[:MAX_ELEMENTS]
+    if len(els) + nb > MAX_ELEMENTS:
+        errs.append(f"{len(els)} elements, limit {MAX_ELEMENTS} (split the explanation into two scenes)" if not nb else
+                    f"{len(els)} elements plus {nb} carried over by continue_from, limit {MAX_ELEMENTS} on one board "
+                    f"(erase elements in the earlier scene or start a new canvas)")
+        els = els[:max(MAX_ELEMENTS - nb, 0)]
+    els = list(base or []) + list(els)
 
     norm: List[Dict[str, Any]] = []
     ids: Dict[str, int] = {}
     text_total = 0
     prev_step = 1
     for k, el in enumerate(els):
-        where = f"elements[{k}]"
+        is_base = k < nb
+        where = f"continue_from[{k}]" if is_base else f"elements[{k - nb}]"
         if not isinstance(el, dict):
             errs.append(f"{where}: must be an object")
             continue
@@ -209,7 +232,7 @@ def validate_canvas(data: Any) -> Dict[str, Any]:
             "underline": {"target"},
             "circle-highlight": {"target", "side"},
         }[t]
-        bad = sorted(set(el) - common - per)
+        bad = sorted(set(el) - common - per - (_BASE_KEYS if is_base else frozenset()))
         if bad:
             errs.append(f"{where}: unknown field(s) {bad} for type {t} (allowed: {sorted(common | per)})")
         n: Dict[str, Any] = {"type": t, "k": k}
@@ -224,13 +247,22 @@ def validate_canvas(data: Any) -> Dict[str, Any]:
         elif t in SHAPES or t in ("label", "group"):
             n["id"] = f"_e{k}"
             ids[n["id"]] = len(norm)
-        step = el.get("step", prev_step)
-        if not _int_in(step, 1, MAX_STEP):
-            errs.append(f"{where}: step must be an integer 1-{MAX_STEP}")
-            step = prev_step
-        n["step"] = step
-        prev_step = step
-        if el.get("erase_at") is not None:
+        if is_base:
+            # already on the board when the scene starts: no step, no beat, never erased here
+            n["step"], n["base"] = 0, True
+            if el.get("step") is not None or el.get("erase_at") is not None:
+                errs.append(f"{where}: a carried-over element has no step")
+            n["_seed0"] = el.get("_seed0") if _int_in(el.get("_seed0"), 0, 0xFFFFFFFF) else 0
+            n["_sid"] = str(el.get("_sid", ""))[:20]
+            n["_sketch"] = el.get("_sketch") is True
+        else:
+            step = el.get("step", prev_step)
+            if not _int_in(step, 1, MAX_STEP):
+                errs.append(f"{where}: step must be an integer 1-{MAX_STEP}")
+                step = prev_step
+            n["step"] = step
+            prev_step = step
+        if not is_base and el.get("erase_at") is not None:
             ea = el["erase_at"]
             if not _int_in(ea, 2, MAX_STEP) or ea <= step:
                 errs.append(f"{where}: erase_at must be a step after the element's own step (<= {MAX_STEP})")
@@ -323,7 +355,9 @@ def validate_canvas(data: Any) -> Dict[str, Any]:
     if errs:
         raise CanvasError(errs)
     out["elements"] = norm
-    out["steps"] = sorted({e["step"] for e in norm} | {e["erase_at"] for e in norm if e.get("erase_at")})
+    out["steps"] = sorted({e["step"] for e in norm if not e.get("base")} | {e["erase_at"] for e in norm if e.get("erase_at")})
+    out["source"] = copy.deepcopy(data)
+    out["base"] = copy.deepcopy(base) if base else None
     return out
 
 
@@ -789,8 +823,12 @@ def build_canvas(d: Dict[str, Any]) -> str:
 
     def stroke_set(e, strokes: List[List[Pt]], stroke_col: str, wrap_i: int, extra_cls="", fill_pts=None,
                    head: Optional[List[Pt]] = None) -> Tuple[str, float]:
-        """One <g> per element; strokes share the element's pen window, split by length."""
-        if d["sketch"]:
+        """One <g> per element; strokes share the element's pen window, split by length. A carried-over
+        element (continue_from) keeps the wobble it had in its own scene and is drawn already."""
+        if e.get("base"):
+            if e["_sketch"]:
+                strokes = [_wobble(s, e["_seed0"] ^ zlib.crc32(f"{e['_sid']}/{j}".encode())) for j, s in enumerate(strokes)]
+        elif d["sketch"]:
             strokes = [_wobble(s, seed0 ^ zlib.crc32(f"{e.get('id', e['k'])}/{j}".encode())) for j, s in enumerate(strokes)]
         lens = [_poly_len(s) for s in strokes]
         total = pen_duration(sum(lens))
@@ -804,7 +842,7 @@ def build_canvas(d: Dict[str, Any]) -> str:
             pd = f"--pt:calc(var(--at) + {acc:.3f}s);--pd:{dur:.3f}s"
             dpath = _path(s)
             parts.append(f'<path class="st{extra_cls}" pathLength="1" stroke="{stroke_col}" style="{pd}" d="{dpath}"/>')
-            if d["pen"]:
+            if d["pen"] and not e.get("base"):
                 pens.append(f'<i class="pen" style="--i:{wrap_i};--nofocus:1;{pd};'
                             f'offset-path:path(\'{dpath}\')"></i>')
             acc += dur
@@ -812,19 +850,23 @@ def build_canvas(d: Dict[str, Any]) -> str:
             parts.append(f'<path class="hd" fill="{stroke_col}" style="--ft:calc(var(--at) + {total:.3f}s)" d="{_path(head, True)}"/>')
         er = ""
         kind = "shape" if e["type"] in SHAPES else e["type"]
-        g = (f'<g data-cv="{kind}" data-type="{e["type"]}" data-k="{e["k"]}" data-id="{_e(e.get("id", ""))}" style="--i:{wrap_i}"{er}>'
+        cue = ' class="base"' if e.get("base") else f' style="--i:{wrap_i}"'
+        g = (f'<g data-cv="{kind}" data-type="{e["type"]}" data-k="{e["k"]}" data-id="{_e(e.get("id", ""))}"{cue}{er}>'
              f'{"".join(parts)}</g>')
         return g, total
 
     def text_div(e, x, y, w, h, fs, wrap_i, delay, cls="", owner=None):
         card = ' data-incard="1"' if e["type"] in SHAPES and e["type"] != "person" and owner is None else ""
-        return (f'<div class="t {cls}"{card} data-owner="{_e(owner or e.get("id", ""))}" style="--i:{wrap_i};'
-                f'--ft:calc(var(--at) + {delay:.3f}s);left:{x:.1f}px;top:{y:.1f}px;width:{w:.1f}px;height:{h:.1f}px;'
+        cue = "" if e.get("base") else f"--i:{wrap_i};--ft:calc(var(--at) + {delay:.3f}s);"
+        if e.get("base"):
+            cls = (cls + " base").strip()
+        return (f'<div class="t {cls}"{card} data-owner="{_e(owner or e.get("id", ""))}" style="{cue}'
+                f'left:{x:.1f}px;top:{y:.1f}px;width:{w:.1f}px;height:{h:.1f}px;'
                 f'font-size:{fs}px">{"<span>" + _e(e["text"]) + "</span>" if "pill" in cls else _e(e["text"])}</div>')
 
     for e in els:
         n_svg, n_div = len(svg), len(divs)
-        wi = 2 + step_index[e["step"]]
+        wi = 0 if e.get("base") else 2 + step_index[e["step"]]
         col = _TONE_VAR[e["tone"]] if e["type"] not in SHAPES else ("var(--accent)" if e["emphasis"] else
                                                                     (_TONE_VAR[e["tone"]] if e["tone"] != "text" else "var(--text-muted)"))
         em = " em" if e["emphasis"] else ""
@@ -927,8 +969,18 @@ def reveal_steps(d: Dict[str, Any]) -> int:
     return len(d["steps"])
 
 
-def css() -> str:
+def css(d: Optional[Dict[str, Any]] = None) -> str:
+    """The canvas rules; a board with carried-over elements adds the rules that show them at once
+    (only then, so every other canvas document keeps its bytes)."""
+    if d and any(e.get("base") for e in d.get("elements") or []):
+        return CANVAS_CSS + BASE_CSS
     return CANVAS_CSS
+
+
+BASE_CSS = """
+.cv .base .st { animation: none; stroke-dashoffset: 0; }
+.cv .base .fl, .cv .base .hd, .cv .t.base { animation: none; opacity: 1; }
+"""
 
 
 def body(d: Dict[str, Any]) -> str:
@@ -1040,3 +1092,94 @@ def probe_issues(result: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
             seen.add(key)
             out.append({"type": "cv-" + key[0], "a": key[1], "b": key[2]})
     return out
+
+
+# ── continue_from: the previous canvas is the base (ADR-2249 D1) ─────────────
+def carry_over(d: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """The settled board of a validated canvas as the base of a scene that continues from it.
+
+    What is on screen at the END of that scene is carried: erased elements are not, and neither is
+    anything that pointed at one (a connector, a mark, an element placed inside it). Every element
+    keeps its resolved cell box (``at``) and the wobble of its own scene (``_seed0``/``_sid``/
+    ``_sketch``), so the first frame of the continuation is the last frame of the scene before it.
+    Auto ids are renamed ``_b<n>`` so they cannot clash with the new scene's own auto ids."""
+    seed0 = zlib.crc32((d.get("title") or "").encode("utf-8"))
+    els = [e for e in d["elements"] if not e.get("erase_at")]
+    ids = {e["id"] for e in els if "id" in e}
+    changed = True
+    while changed:
+        changed, keep = False, []
+        for e in els:
+            refs = [e["from"], e["to"]] if e["type"] in CONNECTORS else list(e.get("targets") or [])
+            inside = (e.get("box") or {}).get("inside")
+            if any(r not in ids for r in refs) or (inside and inside not in ids):
+                ids.discard(e.get("id"))
+                changed = True
+                continue
+            keep.append(e)
+        els = keep
+    rename = {e["id"]: f"_b{j}" for j, e in enumerate(els) if str(e.get("id", "")).startswith("_")}
+    rid = lambda x: rename.get(x, x)  # noqa: E731
+    out: List[Dict[str, Any]] = []
+    for e in els:
+        t = e["type"]
+        r: Dict[str, Any] = {"type": t, "tone": e["tone"]}
+        if "id" in e:
+            r["id"] = rid(e["id"])
+        if e.get("text"):
+            r["text"] = e["text"]
+        if e.get("emphasis"):
+            r["emphasis"] = True
+        if t == "label":
+            r["style"], r["font"] = e["style"], e["font"]
+        if t in CONNECTORS:
+            r.update({"from": rid(e["from"]), "to": rid(e["to"]), "route": e["route"]})
+            for key in ("from_anchor", "to_anchor"):
+                if e.get(key):
+                    r[key] = e[key]
+        if t == "freehand":
+            r["points"] = [list(p) for p in e["points"]]
+            if e.get("closed"):
+                r["closed"] = True
+        if t in MARKS:
+            if t in ("brace", "bracket"):
+                r["targets"] = [rid(x) for x in e["targets"]]
+            else:
+                r["target"] = rid(e["targets"][0])
+            if t != "underline":
+                r["side"] = e["side"]
+        if "box" in e:
+            b = e["box"]
+            if b.get("inside"):
+                r["inside"] = rid(b["inside"])
+                r["size"] = {"w": b["w"], "h": b["h"]}
+            else:
+                r["at"] = {"col": b["col"], "row": b["row"], "w": b["w"], "h": b["h"]}
+        if e.get("base"):
+            r.update({"_seed0": e["_seed0"], "_sid": e["_sid"], "_sketch": e["_sketch"]})
+        else:
+            r.update({"_seed0": seed0, "_sid": str(e.get("id", e["k"])), "_sketch": bool(d["sketch"])})
+        out.append(r)
+    return out
+
+
+def spec_of(data: Any) -> Any:
+    """The authored spec behind canvas data (normalised or not)."""
+    if isinstance(data, dict) and isinstance(data.get("source"), dict) and set(data) <= _NORM_KEYS:
+        return data["source"]
+    return data
+
+
+def attach_base(data: Any, earlier: Dict[str, Dict[str, Any]], err=ValueError) -> Any:
+    """Resolve ``continue_from`` against the canvas scenes before this one (``earlier``: scene id ->
+    validated data) and return the data to validate. A base handed in with the data is never
+    trusted: it is always recomputed from the scene it names."""
+    src = spec_of(data)
+    if not isinstance(src, dict):
+        return data
+    cf = src.get("continue_from")
+    if cf is None:
+        return {"source": src}
+    if not isinstance(cf, str) or cf not in earlier:
+        raise err(f"continue_from {cf!r} is not an earlier canvas scene of this storyboard")
+    return {"source": src, "base": carry_over(earlier[cf])}

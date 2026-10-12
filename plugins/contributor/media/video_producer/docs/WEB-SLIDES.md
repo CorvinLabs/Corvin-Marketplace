@@ -113,7 +113,7 @@ Every template accepts `eyebrow?` (40), a small mono label above the title.
 | `cycle` | `title` (60), `caption?` (180), `center?` (24), `steps` 3-6 of `{label (22), sub? (40)}`, `highlight?` | text left, loop right: numbered nodes pop, arcs with arrowheads draw; ambient orbit around the loop |
 | `layers` | `title` (80), `layers` 2-6 of `{label (32), sub? (64), tag? (12)}` (first = top), `highlight?` | a slightly tilted stack builds from the bottom up; ambient shine sweeps the highlighted slab |
 | `console_still` | `title` (80), `asset` (a key of `src/web/assets/console/catalog.json`), `caption?` (120), `callouts?` 0-3 of `{spot, label (32)}`, `zoom?` `{spot, scale 1-1.6}` | a real console screenshot rises, slowly pushes in toward the zoom spot, callout rings pop with labels. `spot` must be a hotspot the catalogue measured for that asset (the storyboard model never sees the image); assets without spots take no callouts or zoom |
-| `canvas` (unreleased 1.6.0) | `title` (80), `eyebrow?`, `sketch?`, `pen?`, `elements` 1-40 (see below) | a sketch board: shapes and arrows are drawn on stroke by stroke as the narration names them (`step` = one beat), an optional pen dot follows each stroke |
+| `canvas` (unreleased 1.6.0) | `title` (80), `eyebrow?`, `sketch?`, `pen?`, `continue_from?` (an earlier canvas scene id), `elements` 1-40 (see below) | a sketch board: shapes and arrows are drawn on stroke by stroke as the narration names them (`step` = one beat), an optional pen dot follows each stroke |
 
 Every web template also accepts a scene-level `map: {"focus": channels|agents|engines|compute|data|audit}`:
 a small "you are here" strip at the right edge listing Corvin's layers as the website's
@@ -267,8 +267,15 @@ fit its box at 20 px). The render gate (`canvas.PROBE_JS`, run by `web_renderer`
 generic probe) measures what only a drawn page shows: text over a foreign shape, text leaving its shape, text over
 text, strokes through text or a shape, arrows not touching their endpoints, anything outside the canvas. Each
 finding is a layout issue with the type prefix `cv-` and leads to the usual retry ladder (see Overlaps).
-Limits: the storyboard model is not offered `canvas` yet; no line groups, annotations, output block or assets
-(ADR-2249 D2-D5); `sketch` is a seeded wobble, not handwriting.
+
+**`continue_from`** names an EARLIER canvas scene of the same storyboard. What is on that board when its scene
+ends (erased elements and anything pointing at them excluded) is already drawn at the first frame of this scene,
+with its own wobble; this scene's elements are drawn on top at their steps and may use the earlier ids (arrows,
+marks, relative placement). Board and scene share the limits: 40 elements and 400 characters in total, no shared
+grid cells, no duplicate ids. A `continue_from` that names no earlier canvas is refused like any other error.
+
+The storyboard model is offered `canvas` (one entry in the template guide: only for what no other template can
+show). `sketch` is a seeded wobble, not handwriting.
 
 ## Overlaps
 

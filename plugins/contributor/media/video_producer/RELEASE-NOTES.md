@@ -114,9 +114,19 @@
   collects every error of a scene. **Render gate:** `PROBE_JS` is run in the normal capture path and its findings
   (`cv-text-shape`, `cv-text-overflow`, `cv-text-text`, `cv-stroke-text`, `cv-stroke-shape`, `cv-detached`, `cv-oob`,
   `cv-shape-shape`) join the layout issues. Reason (spike S1, 46 canvas scenes): the generic probe found defects in
-  2 scenes, the canvas probe in 14. Not yet: the storyboard model is not offered `canvas`; D2-D5 follow.
+  2 scenes, the canvas probe in 14.
   Tests: `tests/test_canvas.py` (contract), `tests/test_canvas_e2e.py` (real Chromium frames: ink drawn on, pen sprite
   visible, narration cues, a faulty canvas failing the gate).
+- **Canvas through the job, `continue_from`, signals (T-0110).** Until now no canvas reached a video: the storyboard
+  contract stored the validated form, every later step validated it again and refused it, and the scene fell back to
+  the classic slide. The validated form now keeps its source spec and is re-validated from it (nothing derived is
+  trusted). The storyboard model is offered `canvas` (only for what no other template shows). **`continue_from`**: a
+  scene continues the board of an earlier canvas scene - drawn at its first frame with its own wobble, same ids,
+  shared 40-element / 400-character limits; erased elements and what pointed at them are not carried. **Signals:**
+  `canvas_clean` counts the storyboard's canvas scenes by index (it used to match scene ids against indices and
+  report every canvas clean); `canvas_authoring` reports the model's first-try and after-repair share (`info`;
+  skipped for an operator storyboard). Tests: `tests/test_canvas_job_e2e.py` (real job process, fake storyboard
+  model, real MP4 + report), `tests/test_canvas_p2.py`. Not yet: the degrade ladder and the annotation layer.
 - **Spike S2 (pen under time-seek): GO, with a contract.** The "no-go" of the first run measured a rewind, not
   the pen. With forward-only seeks the pen is drawn, and two independent browser launches agree bit for bit.
   Bit-identity with a *fresh* page holds for 91 of 101 frames; the other 10 differ by at most 16/255 in the

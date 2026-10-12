@@ -40,6 +40,7 @@ try:
     from . import deadline as dl
     from . import report as rp
     from . import signals as sg
+    from . import canvas
 except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
@@ -56,6 +57,7 @@ except ImportError:  # standalone script use (no package context)
     import deadline as dl
     import report as rp
     import signals as sg
+    import canvas
 
 logger = logging.getLogger(__name__)
 
@@ -249,13 +251,22 @@ Templates and their data (plain text only, never HTML; keep texts short):
               "unit"?, "decimals"?, "highlight"?: index, "locale"?}  (a trend; only with real numbers from the task)
 - "donut":   {"eyebrow"?, "title", "segments": [2-6 {"label", "value": number >= 0}], "center_value"?, "center_label"?,
               "unit"?, "decimals"?, "highlight"?: index, "locale"?}  (shares of a whole; only real numbers)
+- "canvas":  {"eyebrow"?, "title", "sketch"?: true|false, "continue_from"?: id of an EARLIER canvas scene,
+              "elements": [1-40 elements]}  (a whiteboard drawn with a pen; ONLY for what no template above can show)
+             grid of 12 columns x 6 rows; every element: "type", "id"?: "a-z0-9_", "step": 1-12 (what appears together),
+             "tone"?: "accent"|"accent_hi"|"text"|"muted"|"success";
+             shapes "box"|"round"|"circle"|"diamond"|"cylinder"|"cloud"|"person": "text"?, and "at": {"col", "row", "w", "h"}
+             or one of "right_of"|"left_of"|"below"|"above"|"inside": id; "label": "text", "at";
+             "arrow"|"line": "from": id, "to": id, "text"?; "brace"|"bracket"|"underline"|"circle-highlight": "target": id, "text"?;
+             "freehand": "points": [2-40 [x, y] in grid units]. Shapes never share grid cells; at most 400 characters of text.
+             "continue_from" keeps that canvas on the board and draws this scene's elements on top (they may use its ids).
 Limits: title 70-80 chars (cycle 60), bullet 110, node label 28 (flow 24), bar label 24, layer label 32.
 Optional per scene: "theme": "dark" (default) or "light".
 
 BEATS (recommended for every web scene): "beats" = one entry per sentence of narration_text,
 in order, telling the slide what to show while that sentence is spoken:
 - an integer k = this sentence is about item k of the data (bullet, node, bar, segment, step,
-  layer, event, flow node in "nodes" order; compare: 0 = left, 1 = right): it appears now
+  layer, event, flow node in "nodes" order; compare: 0 = left, 1 = right; canvas: the k-th step): it appears now
   and the eye is led to it;
 - a string = for "hero", "quote", "stat" only: 1-3 words copied verbatim from that sentence,
   shown as a keyword chip while it is said;
@@ -270,6 +281,8 @@ CHOOSING A VISUAL — pick the template that SHOWS the idea instead of listing i
 - feedback loop / iteration -> "cycle"; layered architecture / tiers -> "layers"; history / roadmap -> "timeline"
 - a trend over time -> "line"; parts of a whole -> "donut"; quantities side by side -> "chart"; one key number -> "stat"
 - before/after or option A vs. B -> "compare"; a command or config -> "code"; one memorable sentence -> "quote"
+- a metaphor, an annotated sketch, a whiteboard that builds up over several scenes -> "canvas" (never for what a
+  flow, diagram, cycle or layers slide already shows: their layout is computed, a canvas is placed by you)
 - "content" (bullets) only when nothing above fits — at most once per video; "hero" for the title scene. Scene 1 MUST be the "hero" scene: the CorvinOS mark is shown large on it at the start of every video.
 - Never invent numbers: "line", "donut", "chart" and "stat" only with figures stated in the task.
 - Write template text in the same language as the narration ("locale": "de" for German numbers).
@@ -450,6 +463,7 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
             template_warnings=template_warnings,
             template_repairs=report.get("repaired", 0),
             grounding=grounding_info,
+            canvas_authoring=report.get("canvas_authoring"),
         )
 
     except json.JSONDecodeError as e:
@@ -992,7 +1006,8 @@ def _ground_storyboard(storyboard_json: Dict[str, Any], pack: Dict[str, Any], pa
         backend, _, used_model = used.partition(":")
 
         def _scene_ok(scene: Dict[str, Any]) -> bool:
-            return not _apply_web_scene_contract([copy.deepcopy(scene)], strict=False)
+            return not _apply_web_scene_contract([copy.deepcopy(scene)], strict=False,
+                                                 canvases=_canvas_context(scenes, before=scene.get("id")))
 
         repaired = gsb.repair_grounded_scenes(
             storyboard_json, failures, pack_text, console_assets(),
@@ -1066,7 +1081,11 @@ def _repair_web_scenes(scenes: List[Dict[str, Any]], report: Dict[str, Any], mod
     same contract, may only touch the failed scenes' template/data, and any
     failure of the repair call leaves those scenes on the classic slide."""
     originals = {s.get("id"): (s.get("template"), s.get("data")) for s in scenes if isinstance(s, dict)}
+    canvas_ids = [sid for sid, (t, _) in originals.items() if t == "canvas"]
     warnings = _apply_web_scene_contract(scenes, strict=False)
+    if canvas_ids:  # canvas_authoring (ADR-2249 D5): how the model's canvases fared, first try
+        report["canvas_authoring"] = {"total": len(canvas_ids), "first_try": _canvas_count(scenes, canvas_ids),
+                                      "after_repair": _canvas_count(scenes, canvas_ids)}
     used = str(report.get("backend", ""))
     if not warnings or not used.startswith(("claude_cli:", "anthropic:")):
         return warnings
@@ -1101,22 +1120,47 @@ def _repair_web_scenes(scenes: List[Dict[str, Any]], report: Dict[str, Any], mod
         if not fix or s.get("template") is not None or s.get("id") not in {f["id"] for f in failed}:
             continue
         trial = {"id": s["id"], "template": fix.get("template"), "data": fix.get("data")}
-        if not _apply_web_scene_contract([trial], strict=False):
+        if not _apply_web_scene_contract([trial], strict=False, canvases=_canvas_context(scenes, before=s["id"])):
             s["template"], s["data"] = trial["template"], trial["data"]
             remaining = [w for w in remaining if not w.startswith(f"scene {s['id']}: ")]
             report["repaired"] = report.get("repaired", 0) + 1
+    if canvas_ids:
+        report["canvas_authoring"]["after_repair"] = _canvas_count(scenes, canvas_ids)
     return remaining
 
 
-def _apply_web_scene_contract(scenes: List[Dict[str, Any]], strict: bool) -> List[str]:
+def _canvas_count(scenes: List[Dict[str, Any]], ids: List[Any]) -> int:
+    """How many of the scenes the model wrote as ``canvas`` are a valid canvas now."""
+    return sum(1 for s in scenes if isinstance(s, dict) and s.get("id") in ids and s.get("template") == "canvas")
+
+
+def _canvas_context(scenes: List[Dict[str, Any]], before: Any = None) -> Dict[str, Dict[str, Any]]:
+    """Scene id -> validated data of the canvas scenes (in storyboard order, up to ``before``): what
+    a ``continue_from`` may name (ADR-2249 D1)."""
+    out: Dict[str, Dict[str, Any]] = {}
+    for s in scenes:
+        if not isinstance(s, dict) or (before is not None and s.get("id") == before):
+            break
+        if s.get("template") == "canvas" and isinstance(s.get("data"), dict) and "steps" in s["data"]:
+            out[s.get("id")] = s["data"]
+    return out
+
+
+def _apply_web_scene_contract(scenes: List[Dict[str, Any]], strict: bool,
+                              canvases: Optional[Dict[str, Dict[str, Any]]] = None) -> List[str]:
     """Validate each scene's web-slide fields (template/data/theme) in place.
 
     strict=True (operator-supplied storyboard): the first violation raises
     ValueError before any work starts. strict=False (LLM output): an invalid
     spec is removed from the scene, which then renders on the Pillow path;
     the returned warnings say what was dropped and why.
+
+    A canvas scene's ``continue_from`` is resolved here, against the canvas scenes validated
+    before it (``canvases`` seeds that for a caller validating single scenes): the settled board
+    of the named scene becomes the base of this one (``canvas.attach_base``).
     """
     warnings: List[str] = []
+    canvases = dict(canvases or {})
     for scene in scenes:
         if not isinstance(scene, dict):
             continue
@@ -1147,7 +1191,11 @@ def _apply_web_scene_contract(scenes: List[Dict[str, Any]], strict: bool) -> Lis
                 if data is not None:
                     raise WebSceneError("'data' given without a 'template'")
                 continue
+            if template == "canvas":
+                data = canvas.attach_base(data, canvases, err=WebSceneError)
             scene["data"] = validate_scene_data(template, data if data is not None else {})
+            if template == "canvas":
+                canvases[sid] = scene["data"]
         except (WebSceneError, ValueError, TypeError, OverflowError) as e:
             if strict:
                 raise ValueError(f"scene {sid}: {e}") from None
@@ -1416,8 +1464,8 @@ class _WebRendererSession:
         the items as bullets, and only then a quote of the narration's first sentence.
         Cues are rebuilt for every replacement. Nothing clean = keep the original, say so."""
         template, data = scene.template, scene.data or {}
-        entry = {"scene": scene.id, "template": template, "issues": format_issues(frames.layout_issues)[:6],
-                 "action": "kept"}
+        entry = {"scene": scene.id, "index": kw.get("scene_index"), "template": template,
+                 "issues": format_issues(frames.layout_issues)[:6], "action": "kept"}
         text = " ".join((scene.narration_text or "").split())
         tl = getattr(frames, "timeline", None)
         attempts = []
@@ -1790,6 +1838,7 @@ async def orchestrate_video(
                 "storyboard_template_repairs": storyboard.template_repairs,
                 "storyboard_template_warnings": storyboard.template_warnings,
                 "grounding": storyboard.grounding,
+                "canvas_authoring": storyboard.canvas_authoring,
             },
         )
         # ADR-2247 runtime signals over the finished files, then the report - before the job reads
@@ -1802,7 +1851,10 @@ async def orchestrate_video(
             job_dir=out_root, report=report.to_dict(), metadata=video_output.metadata,
             plan_ms=[sc.duration_ms for sc in storyboard.scenes], grounding_requested=grounding_requested,
             style_accent=(web_style.tokens.get(web_theme, {}).get("accent") if web_style is not None else None),
-            templates={c["template"] for c in cue_log if c.get("template")},
+            # what was rendered AND what the storyboard asked for: a canvas replaced by a content slide
+            # is still a canvas scene its signals must count (ADR-2249 D5)
+            templates={c["template"] for c in cue_log if c.get("template")}
+            | {sc.template for sc in storyboard.scenes if sc.template},
             storyboard_scenes=sg.storyboard_scene_dicts(storyboard),
             narrations=[sc.narration_text or "" for sc in storyboard.scenes],
             # a revision: the host hands over the base video's narrations (revision_locality, information)
