@@ -10,6 +10,8 @@ import json
 import subprocess
 import sys
 import threading
+import time
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -30,6 +32,7 @@ class Stub:
         self.attempts = {}
         self.measured = []
         self.lock = threading.Lock()
+        self.slow_tasks = set()         # POST answers after the job was created, slower than the client waits
 
     def finish(self, job_id):
         j = self.jobs[job_id]
@@ -76,6 +79,10 @@ def make_handler(stub: Stub):
             if p == "/v1/console/video/settings":
                 return self._send(200, {"tts_engine": "openai", "max_duration_minutes": 60,
                                         "output_folder": str(stub.videos)})
+            if p.startswith("/v1/console/video/jobs?"):
+                with stub.lock:
+                    return self._send(200, {"jobs": [{"id": k, "task": v["task"], "status": v["shown"],
+                                                      "created_at": v["created_at"]} for k, v in stub.jobs.items()]})
             if p.startswith("/v1/console/video/jobs/"):
                 jid = p.rsplit("/", 1)[1]
                 with stub.lock:
@@ -104,7 +111,10 @@ def make_handler(stub: Stub):
                     stub.attempts[task] = stub.attempts.get(task, 0) + 1
                     status, kinds = stub.outcome(task, stub.attempts[task])
                     jid = f"job_{len(stub.jobs):08x}"
-                    stub.jobs[jid] = {"status": status, "kinds": kinds, "shown": "pending"}
+                    stub.jobs[jid] = {"status": status, "kinds": kinds, "shown": "pending", "task": task,
+                                      "created_at": datetime.now().isoformat()}
+                if task in stub.slow_tasks:
+                    time.sleep(2.0)
                 return self._send(200, {"job_id": jid, "status": "pending"})
             if self.path.endswith("/measure"):
                 jid = self.path.split("/")[-2]
@@ -200,3 +210,22 @@ def test_refuses_non_empty_output_and_unreachable_console(console, tmp_path):
     (out / "stale").mkdir()
     assert run(url, bl, out).returncode == 2
     assert run("http://127.0.0.1:9", bl, tmp_path / "other").returncode == 2
+
+
+def test_lost_post_answer_adopts_the_created_job_and_adopt_skips_submission(console, tmp_path):
+    stub, url = console(lambda task, attempt: ("complete", []))
+    stub.slow_tasks.add("task number 0")
+    bl, _ = baseline(tmp_path, 2)
+    # a finished job of an earlier, interrupted client run for vid_1
+    stub.jobs["job_000000aa"] = {"status": "complete", "kinds": [], "shown": "complete", "task": "task number 1",
+                                 "created_at": datetime.now().isoformat()}
+    stub.finish("job_000000aa")
+    out = tmp_path / "corpus"
+    p = run(url, bl, out, "--post-timeout", "0.5", "--adopt", "vid_1=job_000000aa")
+    assert p.returncode == 0, p.stdout + p.stderr
+    man = json.loads((out / "manifest.json").read_text())
+    assert len(stub.posts) == 1                           # vid_0 once (answer lost, job adopted), vid_1 never
+    assert man["jobs"]["vid_0"]["recovered_after_transport_error"]
+    assert man["jobs"]["vid_0"]["status"] == "complete"
+    assert man["jobs"]["vid_1"]["job_id"] == "job_000000aa" and man["jobs"]["vid_1"]["adopted"]
+    assert (out / "vid_1" / "report.json").read_bytes() == (stub.videos / "job_000000aa" / "report.json").read_bytes()

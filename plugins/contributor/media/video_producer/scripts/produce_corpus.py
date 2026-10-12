@@ -14,6 +14,10 @@ Rules (these are the point of the script, not conveniences):
   * At most ONE repeat of the WHOLE run, and only when the run was invalidated by a TTS fallback
     (a ``tts_tier_below`` degradation - ready_gate's ``run_validity``). The invalid run is kept beside
     the output as ``<out>.run1-invalid`` and both runs are named in the manifest.
+  * A POST that times out on the client is NOT resubmitted: the job the console created for it is found
+    by its task text and creation time and adopted (the route can take minutes before it answers).
+  * ``--adopt BASELINE_ID=JOB_ID`` takes an already running/finished console job instead of submitting
+    one (e.g. after the client was stopped mid-run) - also never a second job for the same entry.
   * ``--with-alignment`` calls ``POST /jobs/{id}/measure`` (whisper-1, costs money) on every completed job
     BEFORE the copy, so the copied report carries ``cue_alignment``.
 
@@ -24,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import http.cookiejar
+import socket
 import json
 import shutil
 import sys
@@ -51,7 +56,7 @@ def now() -> str:
 class Console:
     """A browser-shaped client: local-login cookie, CSRF token from whoami on every mutation."""
 
-    def __init__(self, base: str, timeout: float = 120.0):
+    def __init__(self, base: str, timeout: float = 900.0):
         self.base = base.rstrip("/")
         self.timeout = timeout
         self.jar = http.cookiejar.CookieJar()
@@ -72,7 +77,7 @@ class Console:
         if method != "GET" and self.csrf:
             r.add_header("x-csrf-token", self.csrf)
         try:
-            with self.opener.open(r, timeout=self.timeout) as resp:
+            with self.opener.open(r, timeout=self.timeout if method != "GET" else 120.0) as resp:
                 raw = resp.read()
                 return resp.status, (json.loads(raw) if raw else None)
         except urllib.error.HTTPError as e:
@@ -81,6 +86,8 @@ class Console:
                 return e.code, json.loads(raw) if raw else None
             except ValueError:
                 return e.code, {"detail": raw[:300].decode("utf-8", "replace")}
+        except (urllib.error.URLError, socket.timeout, TimeoutError, ConnectionError) as e:
+            return 0, {"detail": f"transport: {type(e).__name__}: {e}"}
 
     def login(self) -> None:
         code, _ = self._req("GET", "/v1/console/auth/local-login")
@@ -92,12 +99,26 @@ class Console:
         self.csrf = who["csrf_token"]
 
     def call(self, method: str, path: str, body: Optional[dict] = None) -> tuple:
-        with self.lock:
-            code, data = self._req(method, path, body)
-            if code == 401:  # session expired during a long run: log in again, once
+        code, data = self._req(method, path, body)  # no lock around the request: a slow POST must not stall polls
+        if code == 401:  # session expired during a long run: log in again, once
+            with self.lock:
                 self.login()
-                code, data = self._req(method, path, body)
-            return code, data
+            code, data = self._req(method, path, body)
+        return code, data
+
+    def find_created(self, task: str, after: datetime) -> Optional[str]:
+        """The job the console created for ``task`` at or after ``after`` (a POST whose answer was lost)."""
+        code, data = self.call("GET", f"{API}/jobs?limit=50")
+        if code != 200:
+            return None
+        for j in (data or {}).get("jobs") or []:
+            try:
+                created = datetime.fromisoformat(j["created_at"]).astimezone(timezone.utc)
+            except (KeyError, ValueError):
+                continue
+            if j.get("task") == task.strip() and created >= after.replace(microsecond=0):
+                return j["id"]
+        return None
 
 
 def load_baseline(path: Path, only: Optional[List[str]]) -> List[Dict[str, str]]:
@@ -125,26 +146,59 @@ def summarize_report(rep: Optional[dict]) -> Dict[str, Any]:
                               "p90_s": (ca.get("detail") or {}).get("p90_s")} if ca else None}
 
 
+def _console_wall_s(job: Dict[str, Any]) -> Optional[float]:
+    try:
+        a = datetime.fromisoformat(job["created_at"])
+        b = datetime.fromisoformat(job["completed_at"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return round((b - a).total_seconds(), 1)
+
+
 def run_one(con: Console, entry: Dict[str, str], out: Path, videos_dir: Path, args, sem: threading.Semaphore,
             log) -> Dict[str, Any]:
+    try:
+        return _run_one(con, entry, out, videos_dir, args, sem, log)
+    except Exception as e:  # noqa: BLE001 - a client error is recorded, never swallowed, never a resubmit
+        log(f"{entry['id']}: client error {type(e).__name__}: {e}")
+        return {"baseline_id": entry["id"], "language": entry["language"], "status": "client_error",
+                "detail": f"{type(e).__name__}: {e}"}
+
+
+def _run_one(con: Console, entry: Dict[str, str], out: Path, videos_dir: Path, args, sem: threading.Semaphore,
+             log) -> Dict[str, Any]:
     rec: Dict[str, Any] = {"baseline_id": entry["id"], "language": entry["language"]}
     with sem:
+        adopted = (args.adopt or {}).get(entry["id"])
+        if adopted:
+            job_id = adopted
+            rec.update(job_id=job_id, adopted=True)
+            log(f"{entry['id']}: adopted {job_id}")
+        else:
+            t0 = time.monotonic()
+            deadline_submit = t0 + args.submit_wait
+            while True:
+                sent = datetime.now(timezone.utc)
+                code, data = con.call("POST", f"{API}/jobs", {"task": entry["task"]})
+                if code == 429 and time.monotonic() < deadline_submit:  # host cap busy - wait, not a retry
+                    time.sleep(args.poll)
+                    continue
+                break
+            job_id = (data or {}).get("job_id") if code == 200 else None
+            if code == 0:  # the answer was lost, the job may exist: adopt it, never submit a second one
+                for _ in range(int(args.submit_wait // max(args.poll, 1)) + 1):
+                    job_id = con.find_created(entry["task"], sent)
+                    if job_id:
+                        rec["recovered_after_transport_error"] = (data or {}).get("detail")
+                        break
+                    time.sleep(args.poll)
+            if not job_id:
+                rec.update(status="submit_failed", http=code, detail=(data or {}).get("detail"), wall_s=0)
+                log(f"{entry['id']}: submit failed {code} {rec['detail']}")
+                return rec
+            rec.update(job_id=job_id, submitted_at=sent.isoformat(timespec="seconds"))
+            log(f"{entry['id']}: submitted as {job_id}")
         t0 = time.monotonic()
-        deadline_submit = t0 + args.submit_wait
-        while True:
-            code, data = con.call("POST", f"{API}/jobs", {"task": entry["task"]})
-            if code == 429 and time.monotonic() < deadline_submit:  # host cap busy (another job) - wait, not a retry
-                time.sleep(args.poll)
-                continue
-            break
-        if code != 200 or not (data or {}).get("job_id"):
-            rec.update(status="submit_failed", http=code, detail=(data or {}).get("detail"), wall_s=0)
-            log(f"{entry['id']}: submit failed {code} {rec['detail']}")
-            return rec
-        job_id = data["job_id"]
-        rec.update(job_id=job_id, submitted_at=now())
-        t0 = time.monotonic()
-        log(f"{entry['id']}: submitted as {job_id}")
         status, job = "pending", {}
         while True:
             code, job = con.call("GET", f"{API}/jobs/{job_id}")
@@ -156,10 +210,20 @@ def run_one(con: Console, entry: Dict[str, str], out: Path, videos_dir: Path, ar
                 status = "timeout"
                 break
             time.sleep(args.poll)
-        rec.update(status=status, wall_s=round(time.monotonic() - t0, 1), finished_at=now(),
-                   error_message=(job or {}).get("error_message"))
+        # wall time = the console's own created -> completed (also right for an adopted job)
+        rec.update(status=status, wall_s=_console_wall_s(job or {}) or round(time.monotonic() - t0, 1),
+                   finished_at=now(), error_message=(job or {}).get("error_message"))
     log(f"{entry['id']}: {job_id} -> {status} in {rec['wall_s']} s")
-    if status == "complete" and args.with_alignment:
+    already = False
+    try:
+        src_rep = json.loads((videos_dir / job_id / "report.json").read_text(encoding="utf-8"))
+        already = any(s.get("id") == "cue_alignment" and s.get("value") is not None
+                      for s in src_rep.get("signals") or [] if isinstance(s, dict))
+    except (OSError, ValueError):
+        pass
+    if status == "complete" and args.with_alignment and already:
+        rec["measure"] = {"skipped": "report already carries cue_alignment (measured earlier for this job)"}
+    elif status == "complete" and args.with_alignment:
         code, m = con.call("POST", f"{API}/jobs/{job_id}/measure")
         rec["measure"] = {"http": code, "measured": (m or {}).get("measured"), "stored": (m or {}).get("stored"),
                           "refusal": (m or {}).get("refusal"), "detail": (m or {}).get("detail")}
@@ -219,10 +283,18 @@ def main(argv=None) -> int:
     ap.add_argument("--job-timeout", type=float, default=2400.0, help="seconds per job before it is cancelled")
     ap.add_argument("--submit-wait", type=float, default=3600.0, help="how long to wait on a busy host (429)")
     ap.add_argument("--poll", type=float, default=10.0)
+    ap.add_argument("--post-timeout", type=float, default=900.0, help="client timeout of one POST (the route is slow)")
     ap.add_argument("--videos-dir", type=Path, help="job store videos dir (default: the console's settings)")
     ap.add_argument("--only", nargs="*")
+    ap.add_argument("--adopt", nargs="*", default=[], metavar="BASELINE_ID=JOB_ID",
+                    help="use an existing console job for this entry instead of submitting one")
     ap.add_argument("--no-retry", action="store_true", help="never repeat a TTS-fallback-invalidated run")
     args = ap.parse_args(argv)
+    try:
+        args.adopt = dict(a.split("=", 1) for a in args.adopt)
+    except ValueError:
+        print("produce_corpus: --adopt takes BASELINE_ID=JOB_ID", file=sys.stderr)
+        return 2
 
     def log(msg: str) -> None:
         print(f"[{now()}] {msg}", flush=True)
@@ -231,7 +303,7 @@ def main(argv=None) -> int:
     if not entries:
         print("produce_corpus: no baseline entries", file=sys.stderr)
         return 2
-    con = Console(args.base_url)
+    con = Console(args.base_url, timeout=args.post_timeout)
     try:
         con.login()
         code, settings = con.call("GET", f"{API}/settings")
@@ -247,7 +319,7 @@ def main(argv=None) -> int:
         print(f"produce_corpus: {out} is not empty; refusing to mix runs", file=sys.stderr)
         return 2
     manifest: Dict[str, Any] = {"schema": 1, "started_at": now(), "base_url": args.base_url,
-                                "with_alignment": args.with_alignment, "settings": {
+                                "with_alignment": args.with_alignment, "adopted": dict(args.adopt), "settings": {
                                     k: settings.get(k) for k in ("tts_engine", "max_duration_minutes")},
                                 "baseline": str(args.baseline), "runs": []}
     log(f"{len(entries)} jobs, videos at {videos_dir}, concurrency {min(args.concurrency, HOST_CAP)}")
@@ -260,6 +332,7 @@ def main(argv=None) -> int:
                                                         "totals": totals(records)}, indent=2) + "\n")
         manifest["runs"][0]["out"] = str(kept)
         log(f"run 1 invalidated by a TTS fallback; kept at {kept}; repeating the whole run once")
+        args.adopt = {}  # the repeat produces new jobs for every entry
         records = run_corpus(con, entries, out, videos_dir, args, log)
         manifest["runs"].append({"run": 2, "out": str(out), "invalid_tts_fallback": tts_fallback(records)})
     manifest.update(finished_at=now(), jobs={r["baseline_id"]: r for r in records}, totals=totals(records))
