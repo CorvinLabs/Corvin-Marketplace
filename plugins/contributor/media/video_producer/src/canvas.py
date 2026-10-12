@@ -149,7 +149,7 @@ def validate_canvas(data: Any) -> Dict[str, Any]:
     errs: List[str] = []
     if not isinstance(data, dict):
         raise CanvasError(["canvas data must be a JSON object"])
-    allowed = {"eyebrow", "title", "sketch", "pen", "elements"}
+    allowed = {"eyebrow", "title", "sketch", "pen", "elements", "continue_from"}
     extra = sorted(set(data) - allowed)
     if extra:
         errs.append(f"unknown scene field(s) {extra} (allowed: {sorted(allowed)})")
@@ -164,6 +164,15 @@ def validate_canvas(data: Any) -> Dict[str, Any]:
     for flag in ("sketch", "pen"):
         if flag in data and not isinstance(data[flag], bool):
             errs.append(f"{flag} must be true or false")
+    # continue_from: optional scene id for revisions (previous canvas becomes base)
+    cf = data.get("continue_from")
+    if cf is not None:
+        if not isinstance(cf, str) or not re.match(r"^[a-z][a-z0-9_]*$", cf):
+            errs.append(f"continue_from must be a valid scene id (got {cf!r})")
+            cf = None
+        out["continue_from"] = cf
+    else:
+        out["continue_from"] = None
     els = data.get("elements")
     if not isinstance(els, list) or not els:
         errs.append("elements must be a non-empty list")

@@ -770,6 +770,49 @@ def _cue_alignment(ctx: SignalContext) -> SignalValue:
                        detail={"p90_s": p90, "coverage": coverage, "per_scene": per_scene[:40]})
 
 
+# ── canvas signals (ADR-2249 D1, T-0110) ────────────────────────────────────────────────────
+@register("canvas_clean", unit="scenes with zero layout issues", templates={"canvas"},
+          description="Canvas probe (PROBE_JS) in the render gate: zero out-of-bounds, unattached arrows, "
+                      "measured collisions after layout (ADR-2249 P2)")
+def _canvas_clean(ctx: SignalContext) -> SignalValue:
+    threshold = {"max_issues": 0}
+    canvas_scenes = [s for s in ctx.scenes if s.get("template") == "canvas"]
+    if not canvas_scenes:
+        return SignalValue(None, "skip", threshold=threshold, reason="no canvas in this video")
+
+    # Count canvas scenes with zero issues from metadata layout_collisions
+    # (populated by web_renderer via PROBE_JS + probe_issues)
+    issues_per_scene = ctx.metadata.get("layout_collisions", [])
+    clean_scenes = sum(1 for s_idx in range(len(canvas_scenes)) if not any(
+        ic.get("scene") == canvas_scenes[s_idx].get("index") for ic in issues_per_scene))
+    total = len(canvas_scenes)
+    ok = clean_scenes == total
+
+    return SignalValue(clean_scenes, "pass" if ok else "fail", n=clean_scenes, of=total,
+                      threshold=threshold,
+                      reason=None if ok else f"{total - clean_scenes} canvas scene(s) with layout issues")
+
+
+@register("canvas_authoring", unit="scenes passing first-try validation", templates={"canvas"},
+          gated=False, description="Canvas authoring accuracy: first-try validation rate; measured "
+                                   "in the storyboard generation gate (ADR-2249 P2, S1 spike)")
+def _canvas_authoring(ctx: SignalContext) -> SignalValue:
+    threshold = {"first_try_min": 0.70, "after_repair_min": 0.90}
+    canvas_scenes = [s for s in ctx.scenes if s.get("template") == "canvas"]
+    if not canvas_scenes:
+        return SignalValue(None, "skip", threshold=threshold, reason="no canvas in this video")
+
+    # This signal measures the MODEL's accuracy, not the template's. It's recorded when the model
+    # writes canvas specs. For now, record as info (no gate) until the spike's blind rating is done.
+    # Metadata would need: canvas_authoring_first_try, canvas_authoring_after_repair counts.
+    first_try = ctx.metadata.get("canvas_authoring_first_try", 0)
+    total = ctx.metadata.get("canvas_authoring_total", len(canvas_scenes))
+
+    return SignalValue(first_try / total if total else None, "info", n=first_try, of=total,
+                      threshold=threshold,
+                      reason=None if total else "authoring accuracy not measured in this run")
+
+
 # ── post-hoc run on a finished job (the host calls this after its gates; T-0094) ────────────────
 
 def storyboard_scene_dicts(storyboard: Any) -> List[Dict[str, Any]]:
