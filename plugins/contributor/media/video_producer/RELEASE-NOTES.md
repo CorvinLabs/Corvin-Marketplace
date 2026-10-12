@@ -2,6 +2,7 @@
 
 ## Unreleased (toward 1.5.0 - ADR-2247 / PLAN-0946; not released, no readiness claim)
 
+- **`scripts/ready_gate.py` computes the readiness verdict** (A operations as pytest runs in a sandbox, B quality from the `report.json` of a produced corpus with a 90 % cluster bootstrap, C hygiene). It exits 1 on any miss; `skip`, `not_assessed` and `not_demonstrated` are misses, a TTS fallback makes a run `invalid`, and without `--with-alignment` the verdict never carries the words "production ready". `tests/test_ready_gate.py` covers the verdict logic and the exit codes. No corpus has been produced and no verdict has been attached yet: 1.5.0 stays unreleased.
 - **Every job runs in its own process** (host default since R1a go; `ProcessJobRunner`, `src/job_main.py`). The
   console kills the job's process group on cancel, on budget expiry and when the console dies. Measured on the
   spike tests: first progress after 0.54 s, cap of 3 with a FIFO queue, 0 zombies after 20 jobs, a killed console
