@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import html
 import math
+import random
 import re
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -36,6 +37,7 @@ MAX_LINES = 24
 MAX_LINE_CHARS = 150  # Accommodate long hostile/test payloads; actual fit is computed per-scene
 MAX_GROUPS = 8
 MAX_ANNOTATIONS = 4
+PEN_MARKS = ("underline", "circle")  # closed set: the canvas pen vocabulary that fits a run of code columns
 MAX_OUTPUT_LINES = 6
 MIN_FONT_PX = 16
 MAX_FONT_PX = 30
@@ -118,7 +120,7 @@ def validate(data: Dict[str, Any], *, text: Callable, code_line: Callable, lst: 
         for an in lst(data, "annotations", 1, MAX_ANNOTATIONS):
             if not isinstance(an, dict):
                 raise err("annotations entries must be objects")
-            unknown(an, ("line", "cols", "label"))
+            unknown(an, ("line", "cols", "label", "mark"))
             ln = an.get("line")
             if isinstance(ln, bool) or not isinstance(ln, int) or not 1 <= ln <= n:
                 raise err(f"annotation 'line' must be a line number in 1..{n}")
@@ -131,7 +133,16 @@ def validate(data: Dict[str, Any], *, text: Callable, code_line: Callable, lst: 
                 if not 1 <= cols[0] <= cols[1] <= len(body):
                     raise err(f"annotation cols {cols} outside line {ln} (1..{len(body)})")
                 cols = [cols[0], cols[1]]
-            annotations.append({"line": ln, "cols": cols, "label": text(an, "label", 36)})
+            mark = an.get("mark")
+            if mark is not None:
+                if not isinstance(mark, str) or mark not in PEN_MARKS:
+                    raise err(f"annotation 'mark' must be one of {', '.join(PEN_MARKS)}")
+                if cols is None:
+                    raise err("annotation with a 'mark' needs 'cols' (the columns the pen draws on)")
+            entry = {"line": ln, "cols": cols, "label": text(an, "label", 36)}
+            if mark is not None:
+                entry["mark"] = mark
+            annotations.append(entry)
 
     output = None
     if data.get("output") is not None:
@@ -344,6 +355,13 @@ def css(palette: Dict[str, Any]) -> str:
         f".cv2 .anno{{position:absolute;left:36px;right:0;min-height:{NOTE_H - 8}px;padding:10px 18px;"
         "border-left:4px solid var(--accent);border-radius:10px;background:var(--bg-card);"
         "font-family:var(--font-body);font-size:24px;line-height:1.25;color:var(--text);display:flex;align-items:center}"
+        ".cv2 .cd{position:relative}"
+        ".cv2 .pen{position:absolute;left:calc(var(--c0) * 1ch);width:calc(var(--n) * 1ch);top:-.15em;"
+        "height:1.3em;overflow:visible;pointer-events:none}"
+        ".cv2 .pen path{fill:none;stroke:var(--accent);stroke-width:1.15;stroke-linecap:round;"
+        "stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;"
+        "animation:pen-draw 650ms ease-out both;animation-delay:var(--at)}"
+        "@keyframes pen-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}"
         ".cv2 .rail svg{position:absolute;left:0;top:0;overflow:visible}"
         ".cv2 .rail path{fill:none;stroke:var(--accent);stroke-width:2;opacity:0;"
         "animation:fade 300ms ease-out both;animation-delay:var(--at)}"
@@ -391,6 +409,32 @@ def _line_html(tokens: List[code_lexer.Token], marks: List[Tuple[int, int, int]]
     return "".join(out) or "&#8203;"
 
 
+PEN_CELL_W, PEN_CELL_H = 6.0, 13.0  # one code column in the pen's viewBox: the 0.6em x 1.3em aspect of a monospace cell
+
+
+def _pen(line_idx: int, c0: int, c1: int, step: int, kind: str) -> str:
+    """A hand-drawn mark over columns c0..c1 (0-based) of a code line. Anchored in ``ch`` units to the
+    code's own monospace run, so it needs no pixel measurement; the wobble is seeded by position (two
+    renders are bit-identical, ADR-2249 S2 contract); the stroke draws on at the annotation's beat."""
+    n = c1 - c0 + 1
+    w, h = n * PEN_CELL_W, PEN_CELL_H
+    rnd = random.Random(line_idx * 1009 + c0 * 31 + c1)
+    j = lambda amp: rnd.uniform(-amp, amp)  # noqa: E731
+    if kind == "underline":
+        y = h - 0.55
+        d = (f"M {0.4:.2f} {y + j(.3):.2f} Q {w * .3:.2f} {y + .9 + j(.3):.2f} {w * .55:.2f} {y + j(.3):.2f} "
+             f"T {w - 0.4:.2f} {y + .5 + j(.3):.2f}")
+    else:
+        cx, cy, rx, ry = w / 2, h / 2, w / 2 + 2.2, h / 2 + 0.9
+        pts = []
+        for k in range(41):  # 365 degrees: the pen overshoots where it started, like a hand
+            a = math.radians(-155 + 365 * k / 40)
+            pts.append((cx + (rx + j(.25)) * math.cos(a), cy + (ry + j(.25)) * math.sin(a)))
+        d = "M " + " L ".join(f"{x:.2f} {y:.2f}" for x, y in pts)
+    return (f'<svg class="pen" style="--i:{step};--nofocus:1;--c0:{c0};--n:{n}" viewBox="0 0 {w:g} {h:g}" '
+            f'preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="{d}"/></svg>')
+
+
 def _fvar(step: int, default: int) -> str:
     return f"var(--f{step},{default})"
 
@@ -412,8 +456,11 @@ def body(d: Dict[str, Any], lang: str = "en") -> str:
     annos = d.get("annotations") or []
     marks_by_line: Dict[int, List[Tuple[int, int, int]]] = {}
     anno_by_line: Dict[int, List[int]] = {}
+    pens_by_line: Dict[int, List[Tuple[int, int, int, str]]] = {}
     for an, s in zip(annos, st["annotations"]):
-        if an.get("cols"):
+        if an.get("mark"):
+            pens_by_line.setdefault(an["line"] - 1, []).append((an["cols"][0] - 1, an["cols"][1] - 1, s, an["mark"]))
+        elif an.get("cols"):
             marks_by_line.setdefault(an["line"] - 1, []).append((an["cols"][0] - 1, an["cols"][1] - 1, s))
         anno_by_line.setdefault(an["line"] - 1, []).append(s)
 
@@ -429,6 +476,7 @@ def body(d: Dict[str, Any], lang: str = "en") -> str:
         if d.get("diff"):
             gutter += f'<span class="mk">{_e(mk or " ")}</span> '
         code = _line_html(rows[i], marks_by_line.get(i, []))
+        code += "".join(_pen(i, a, b, s2, kind) for a, b, s2, kind in pens_by_line.get(i, []))
         return f'<span class="ln2{cls}" style="--k:{k_in_unit}">{gutter}<span class="cd">{code}</span></span>'
 
     unit_steps = st["units"]

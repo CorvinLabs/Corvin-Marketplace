@@ -275,3 +275,35 @@ def test_code_fidelity_over_stdlib_fragments_is_100_percent():
 
 def test_summary_without_v2_scenes_is_none_not_a_pass():
     assert code_v2.summarize([]) is None
+
+
+# ── pen-drawn annotation marks (ADR-2249 D1 "annotation layer", T-0110) ─────
+
+def _marked(mark, cols=(10, 19)):
+    d = copy.deepcopy(V2)
+    d["annotations"] = [{"line": 4, "cols": list(cols), "label": "closes the file for us", "mark": mark}]
+    return d
+
+
+def test_a_pen_mark_is_a_closed_set_and_needs_columns():
+    ok = validate_scene_data("code", _marked("circle"))
+    assert ok["annotations"][0]["mark"] == "circle"
+    assert validate_scene_data("code", _marked("underline"))["annotations"][0]["mark"] == "underline"
+    for bad in ("scribble", "<svg onload=x>", 3, ""):
+        with pytest.raises(WebSceneError, match="mark"):
+            validate_scene_data("code", _marked(bad))
+    no_cols = copy.deepcopy(V2)
+    no_cols["annotations"] = [{"line": 4, "label": "x", "mark": "circle"}]
+    with pytest.raises(WebSceneError, match="needs 'cols'"):
+        validate_scene_data("code", no_cols)
+
+
+def test_a_pen_mark_is_drawn_at_the_annotations_beat_and_leaves_unmarked_scenes_alone():
+    plain = build_document("code", validate_scene_data("code", V2), duration_s=8)
+    assert 'class="pen' not in plain
+    for kind in ("circle", "underline"):
+        doc = build_document("code", validate_scene_data("code", _marked(kind)), duration_s=8)
+        assert doc.count('<svg class="pen"') == 1 and 'pathLength="1"' in doc
+        beat = code_v2.steps(validate_scene_data("code", _marked(kind)))["annotations"][0]
+        assert f'<svg class="pen" style="--i:{beat};' in doc
+        assert doc == build_document("code", validate_scene_data("code", _marked(kind)), duration_s=8)  # seeded, not random

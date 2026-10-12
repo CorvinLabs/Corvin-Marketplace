@@ -132,7 +132,13 @@
   the probe names; each candidate measured without frames via `WebSlideRenderer.measure`), compact (no floating
   labels, no wobble), content slide (one bullet per step), quote. Each walked rung is a `canvas_degraded`
   degradation in `report.json`; `canvas_clean` fails a scene that needed the ladder. Test:
-  `test_a_colliding_canvas_walks_the_degrade_ladder_inside_the_job` (real job, real MP4). Not yet: the annotation layer.
+  `test_a_colliding_canvas_walks_the_degrade_ladder_inside_the_job` (real job, real MP4).
+- **Pen-drawn code annotations (T-0110 annotation layer).** A Code v2 annotation may carry `mark: "underline"|"circle"`:
+  a seeded hand-drawn stroke (no render-time randomness) draws on over exactly its `cols`, anchored in `ch` units to the
+  code's own monospace run, at the annotation's beat; an annotation without `mark` renders as before. The storyboard prompt
+  now offers Code v2 (`highlight`, `groups`, `diff`, `annotations`, `output`), which a model could not request before.
+  Test: `tests/test_code_pen_job_e2e.py` (real job, real MP4: the frames differ exactly at the stroke, only after its
+  beat; red on the previous `code_v2.py`). Not yet: the same layer over a `still` scene (needs T-0111 assets/hotspots).
 - **Spike S2 (pen under time-seek): GO, with a contract.** The "no-go" of the first run measured a rewind, not
   the pen. With forward-only seeks the pen is drawn, and two independent browser launches agree bit for bit.
   Bit-identity with a *fresh* page holds for 91 of 101 frames; the other 10 differ by at most 16/255 in the

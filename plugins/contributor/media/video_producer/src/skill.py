@@ -237,6 +237,11 @@ Templates and their data (plain text only, never HTML; keep texts short):
 - "compare": {"eyebrow"?, "title", "left": {"title", "points": [1-4]}, "right": {"title", "points": [1-4]}}
 - "quote":   {"eyebrow"?, "quote", "attribution"?, "locale"?}
 - "code":    {"eyebrow"?, "title", "language"?, "lines": [1-12 strings]}
+             Code v2, only when you explain code line by line: add "highlight": true (then up to 24 "lines");
+             "groups"?: [{"lines": [first, last], "label"?}] (one narrated sentence = one group, in order, no overlap);
+             "diff"?: true (every line then starts with "+", "-" or a space); "annotations"?: [1-4 {"line", "cols"?: [first, last],
+             "label", "mark"?: "underline"|"circle"}] (a note beside the line; "mark" needs "cols" and a pen draws it on those
+             columns); "output"?: {"lines": [text YOU write, it is never executed]}.
 - "flow":    {"eyebrow"?, "title", "nodes": [2-8 {"id": "a-z0-9_", "label", "sub"?}],
               "edges": [1-12 {"from": id, "to": id, "label"?}], "highlight"?: id}
              (a graph with branches/merges, laid out left to right; no cycles; at most 5 columns
