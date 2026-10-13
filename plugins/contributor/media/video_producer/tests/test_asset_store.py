@@ -219,3 +219,12 @@ def test_a_tenant_without_assets_gets_no_directory_and_the_binding_is_scoped(tmp
     assert A.current() is None
     with A.bound(None) as s:
         assert s is None and A.current() is None
+
+
+def test_before_commit_sees_the_final_record_and_a_refusal_stores_nothing(store):
+    seen = []
+    rec = add(store, before_commit=lambda doc: seen.append(doc) or True)
+    assert seen[0]["id"] == rec["id"] and seen[0]["bytes"] == rec["bytes"]
+    with pytest.raises(A.AssetNotRecorded):
+        add(store, before_commit=lambda doc: False)
+    assert store.ids() == [rec["id"]] and [p.name for p in store.root.iterdir() if p.name.startswith(".new")] == []

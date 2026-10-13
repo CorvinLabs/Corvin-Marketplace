@@ -27,7 +27,7 @@ import tempfile
 import time
 import unicodedata
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Callable, Dict, Iterator, List, Optional
 from urllib.parse import urlsplit
 
 ID_RE = re.compile(r"ast_[0-9a-f]{8}")
@@ -56,6 +56,10 @@ class AssetNotFound(KeyError):
 
 
 class AssetQuotaExceeded(AssetError):
+    pass
+
+
+class AssetNotRecorded(AssetError):
     pass
 
 
@@ -238,7 +242,10 @@ class AssetStore:
                 return aid
 
     def add(self, png_bytes: bytes, *, caption: Any, uploaded_by: Any, source: Any = None,
-            hotspots: Any = None) -> Dict[str, Any]:
+            hotspots: Any = None, before_commit: Optional[Callable[[Dict[str, Any]], bool]] = None) -> Dict[str, Any]:
+        """Store one image. ``before_commit(doc)`` runs after validation, quota and id allocation and
+        BEFORE the asset becomes visible; a falsy return (the host's audit record did not commit)
+        aborts the upload with nothing stored - the audit-first order of ADR-2249 invariant 6."""
         if not isinstance(uploaded_by, str) or not USER_RE.fullmatch(uploaded_by):
             raise AssetError("an asset needs the uploading user's id")
         img = reencode_png(png_bytes)
@@ -255,6 +262,8 @@ class AssetStore:
                 if len(self.ids()) >= MAX_ASSETS:
                     raise AssetQuotaExceeded(f"at most {MAX_ASSETS} images per workspace; delete one first")
                 doc["id"] = self._new_id()
+                if before_commit is not None and not before_commit(dict(doc)):
+                    raise AssetNotRecorded("the upload could not be recorded; nothing was stored")
                 _atomic_write(staging / "asset.json", json.dumps(doc, indent=2, sort_keys=True).encode())
                 os.rename(staging, self.root / doc["id"])
         except BaseException:
