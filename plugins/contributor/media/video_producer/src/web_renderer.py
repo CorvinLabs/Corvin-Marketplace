@@ -336,6 +336,36 @@ class WebSlideRenderer:
         except Exception as e:  # noqa: BLE001
             raise WebRenderError(f"still render failed: {type(e).__name__}: {e}") from None
 
+    async def render_html_png(self, document: str, width: int, height: int, *, timeout_s: float = 30.0) -> bytes:
+        """One PNG of a self-contained HTML document (an imported design): JavaScript off, every
+        request aborted. The caller builds ``document`` from typed fields only."""
+        if self.dead:
+            raise WebRenderError(f"browser was stopped ({self.dead})")
+        if self._browser is None:
+            raise WebRenderError("renderer is not open (use 'async with WebSlideRenderer()')")
+
+        async def _go() -> bytes:
+            context = await self._browser.new_context(
+                viewport={"width": int(width), "height": int(height)}, device_scale_factor=1,
+                java_script_enabled=False, service_workers="block",
+            )
+            try:
+                await context.route("**/*", lambda route: route.abort())
+                page = await context.new_page()
+                await page.set_content(document, wait_until="load")
+                return await page.screenshot(type="png", full_page=False)
+            finally:
+                await context.close()
+
+        try:
+            return await dl.await_with_deadline(_go(), timeout_s, what="design render", on_expire=self._hard_kill)
+        except dl.DeadlineExceeded:
+            raise WebRenderError(f"design render exceeded {timeout_s:g}s (browser stopped)") from None
+        except WebRenderError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            raise WebRenderError(f"design render failed: {type(e).__name__}: {e}") from None
+
     async def _shot(self, cdp, out_dir: Path, index: int) -> Path:
         path = out_dir / f"{index:05d}.png"
         tmp = path.with_suffix(".png.tmp")

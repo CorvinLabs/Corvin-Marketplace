@@ -248,7 +248,7 @@ def decode_b64_png(value: Any, what: str, *, max_px: int = 4096) -> Optional[byt
 
 # ── wire format: what the import preview shows and the commit step sends back ──
 
-SOURCE_KINDS = ("pptx", "potx", "tokens")
+SOURCE_KINDS = ("pptx", "potx", "penpot", "tokens")
 ASPECTS = ("16:9", "4:3", "other")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
