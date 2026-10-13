@@ -230,3 +230,38 @@ def test_before_commit_sees_the_final_record_and_a_refusal_stores_nothing(store)
     with pytest.raises(A.AssetNotRecorded):
         add(store, before_commit=lambda doc: False)
     assert store.ids() == [rec["id"]] and [p.name for p in store.root.iterdir() if p.name.startswith(".new")] == []
+
+
+# ── update / validate_meta / has_room (T-0194: hotspots placed after a capture, checks before a fetch) ──
+
+def test_update_changes_caption_and_hotspots_only_after_the_record_commits(tmp_path):
+    st = A.AssetStore(str(tmp_path))
+    doc = st.add(png(), caption="first", uploaded_by="u1")
+    with pytest.raises(A.AssetNotRecorded):
+        st.update(doc["id"], hotspots=[{"name": "logo", "x": 0.1, "y": 0.2, "description": ""}],
+                  before_commit=lambda d: False)
+    assert st.public(doc["id"])["hotspots"] == []
+    seen = {}
+    new = st.update(doc["id"], caption="  the  pricing page ",
+                    hotspots=[{"name": "logo", "x": 0.1, "y": 0.2, "description": "top left"}],
+                    before_commit=lambda d: seen.update(d) or True)
+    assert seen["hotspots"][0]["name"] == "logo"
+    assert new["caption"] == "the pricing page" and st.public(doc["id"]) == new
+    assert st.get(doc["id"])["png"] == st.get(doc["id"])["png"]  # the image is untouched and readable
+    with pytest.raises(A.AssetError):
+        st.update(doc["id"], hotspots=[{"name": "X!", "x": 0, "y": 0}])
+    with pytest.raises(A.AssetNotFound):
+        st.update("ast_00000000", caption="x")
+
+
+def test_validate_meta_and_has_room_answer_before_anything_is_fetched(tmp_path, monkeypatch):
+    assert A.validate_meta(" a  b ", None) == {"caption": "a b", "hotspots": []}
+    with pytest.raises(A.AssetError):
+        A.validate_meta("", None)
+    with pytest.raises(A.AssetError):
+        A.validate_meta("ok", [{"name": f"s{i}x", "x": 0, "y": 0} for i in range(A.MAX_SPOTS + 1)])
+    st = A.AssetStore(str(tmp_path))
+    monkeypatch.setattr(A, "MAX_ASSETS", 1)
+    assert st.has_room()
+    st.add(png(), caption="one", uploaded_by="u1")
+    assert not st.has_room()

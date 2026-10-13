@@ -35,7 +35,7 @@ SPOT_RE = re.compile(r"[a-z0-9_]{2,32}")
 USER_RE = re.compile(r"[A-Za-z0-9_.@:+\-]{1,128}")
 
 MAX_ASSETS = 50
-MAX_IMAGE_BYTES = 2 * 1024 * 1024
+MAX_IMAGE_BYTES = 4 * 1024 * 1024   # re-encoded; a 1920x1080 photo-heavy page is ~2 MB (measured 2026-10-13)
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 MAX_DIM = 4096
 MIN_DIM = 16
@@ -122,6 +122,12 @@ def _validate_hotspots(value: Any) -> List[Dict[str, Any]]:
         out.append({"name": name, "x": xy[0], "y": xy[1],
                     "description": _clean_text(h.get("description"), MAX_SPOT_DESC, "a hotspot description", False)})
     return out
+
+
+def validate_meta(caption: Any, hotspots: Any) -> Dict[str, Any]:
+    """The caption and hotspots exactly as ``add`` would store them, or AssetError - so a caller can
+    refuse bad input BEFORE it spends a fetch or a render on the image."""
+    return {"caption": _clean_text(caption, MAX_CAPTION, "the caption"), "hotspots": _validate_hotspots(hotspots)}
 
 
 def reencode_png(data: bytes) -> Dict[str, Any]:
@@ -270,6 +276,27 @@ class AssetStore:
             shutil.rmtree(staging, ignore_errors=True)
             raise
         return dict(doc)
+
+    def has_room(self) -> bool:
+        """Whether one more asset fits the quota now - for a caller about to spend a fetch on it. ``add``
+        re-checks under the store lock, so a race still ends in AssetQuotaExceeded, never over quota."""
+        return len(self.ids()) < MAX_ASSETS
+
+    def update(self, asset_id: str, *, caption: Any = None, hotspots: Any = None,
+               before_commit: Optional[Callable[[Dict[str, Any]], bool]] = None) -> Dict[str, Any]:
+        """Change an asset's caption and/or hotspots (the image never changes). ``None`` keeps a field.
+        ``before_commit(doc)`` runs with the new document before it is written; falsy = nothing changes."""
+        with _exclusive(self.root / ".lock"):
+            doc = self.get(asset_id, with_png=False)
+            new = dict(doc)
+            if caption is not None:
+                new["caption"] = _clean_text(caption, MAX_CAPTION, "the caption")
+            if hotspots is not None:
+                new["hotspots"] = _validate_hotspots(hotspots)
+            if before_commit is not None and not before_commit(dict(new)):
+                raise AssetNotRecorded("the change could not be recorded; nothing was changed")
+            _atomic_write(self._dir(asset_id) / "asset.json", json.dumps(new, indent=2, sort_keys=True).encode())
+        return new
 
     def get(self, asset_id: str, *, with_png: bool = True) -> Dict[str, Any]:
         d = self._dir(asset_id)
