@@ -29,6 +29,10 @@ SAMPLES = {
     "console_still": {"title": "T", "asset": "audit_compliance", "callouts": [{"spot": "hash_chain_card", "label": "c"}],
                       "zoom": {"spot": "hash_chain_card", "scale": 1.2}},
     "canvas": CANVAS_CLEAN,  # ADR-2249 D1: the canvas tests own its cases; here it joins the shared contract
+    # ADR-2249 D3: an uploaded image of the committed fixture tenant (bound by conftest)
+    "still": {"title": "T", "asset": "ast_5ee1ab1e", "caption": "c",
+              "callouts": [{"spot": "save_button", "label": "save", "tone": "success"}, {"spot": "header", "label": "h"}],
+              "zoom": {"spot": "save_button", "scale": 1.2}},
 }
 
 

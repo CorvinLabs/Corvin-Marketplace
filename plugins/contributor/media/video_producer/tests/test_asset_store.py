@@ -213,12 +213,14 @@ def test_hygiene_is_clean_for_a_stored_asset_and_names_every_defect(store):
 
 
 def test_a_tenant_without_assets_gets_no_directory_and_the_binding_is_scoped(tmp_path):
+    outer = A.current()  # conftest binds the fixture tenant
     base = str(tmp_path / "t")
     with A.bound(base) as s:
         assert A.current() is s and not (tmp_path / "t" / "assets").exists()
-    assert A.current() is None
+    assert A.current() is outer
     with A.bound(None) as s:
         assert s is None and A.current() is None
+    assert A.current() is outer
 
 
 def test_before_commit_sees_the_final_record_and_a_refusal_stores_nothing(store):

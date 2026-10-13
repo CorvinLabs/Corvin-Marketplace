@@ -491,6 +491,44 @@ def _still_time(ctx: SignalContext) -> SignalValue:
                                              for r in rows][:40]})
 
 
+# ── asset_hygiene (ADR-2249 D5) ─────────────────────────────────────────────────────────────
+
+def _asset_store_mod():
+    try:
+        from . import asset_store
+    except ImportError:  # pragma: no cover - script use
+        import asset_store
+    return asset_store
+
+
+@register("asset_hygiene", unit="uploaded images that are clean", templates={"still"}, gated=False,
+          description="no metadata chunk (EXIF, text, ICC, trailing bytes) survives in a published image, "
+                      "size and dimension caps hold, no query/fragment/userinfo in a provenance (ADR-2249 D5)")
+def _asset_hygiene(ctx: SignalContext) -> SignalValue:
+    am = _asset_store_mod()
+    threshold = {"findings_max": 0, "allowed_chunks": sorted(am.PNG_ALLOWED_CHUNKS)}
+    folder = ctx.job_dir / "source" / "assets"
+    docs = sorted(folder.glob("ast_*.json")) if folder.is_dir() else []
+    if not docs:
+        return SignalValue(None, "skip", threshold=threshold, reason="no uploaded image in this video")
+    per, clean = [], 0
+    for jf in docs:
+        aid = jf.stem
+        try:
+            doc = json.loads(jf.read_text(encoding="utf-8"))
+            png = (folder / f"{aid}.png").read_bytes()
+        except (OSError, ValueError):
+            per.append({"asset": aid, "findings": ["unreadable"]})
+            continue
+        found = am.hygiene_findings(png, doc if isinstance(doc, dict) else {})
+        clean += not found
+        per.append({"asset": aid, "findings": found})
+    bad = len(per) - clean
+    return SignalValue(bad, "fail" if bad else "pass", n=clean, of=len(per), threshold=threshold,
+                       reason=f"{bad} image(s) carry metadata or break a cap" if bad else None,
+                       detail={"per_asset": per[:50]})
+
+
 # ── revision_locality (ADR-2247: information) ───────────────────────────────────────────────
 
 def _words(text: Any) -> List[str]:

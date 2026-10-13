@@ -11,6 +11,24 @@ collect_ignore_glob = ["fixtures/*"]
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+FIXTURE_ASSETS_BASE = str(Path(__file__).parent / "fixtures" / "assets_tenant")
+
+
+@pytest.fixture(autouse=True)
+def _fixture_asset_store():
+    """Every test sees the committed fixture tenant's uploaded image (ADR-2249 D3) through the same
+    binding a job uses, so the shared template contract (SAMPLES, goldens) covers `still`. Both import
+    spellings of the module are bound (``src.asset_store`` and ``asset_store``)."""
+    import importlib
+
+    tokens = []
+    for name in ("src.asset_store", "asset_store"):
+        mod = importlib.import_module(name)
+        tokens.append((mod, mod._BOUND.set(mod.AssetStore(FIXTURE_ASSETS_BASE))))
+    yield
+    for mod, tok in reversed(tokens):
+        mod._BOUND.reset(tok)
+
 
 @pytest.fixture
 def mock_fastapi_app():

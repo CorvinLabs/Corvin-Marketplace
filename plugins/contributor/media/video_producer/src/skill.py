@@ -33,7 +33,8 @@ try:
     from .style_pack import Style, validate_style
     from .style_store import write_style_snapshot
     from .web_layout import format_issues
-    from .web_templates import MAP_LAYERS, console_assets, scene_item_subs, scene_items
+    from .web_templates import MAP_LAYERS, console_assets, scene_item_subs, scene_items, user_assets
+    from . import asset_store
     from .web_timeline import AudioPauses, build_timeline, detect_pauses, split_sentences
     from .grounding import render_pack, validate_pack
     from . import grounded_storyboard as gsb
@@ -50,7 +51,8 @@ except ImportError:  # standalone script use (no package context)
     from style_pack import Style, validate_style
     from style_store import write_style_snapshot
     from web_layout import format_issues
-    from web_templates import MAP_LAYERS, console_assets, scene_item_subs, scene_items
+    from web_templates import MAP_LAYERS, console_assets, scene_item_subs, scene_items, user_assets
+    import asset_store
     from web_timeline import AudioPauses, build_timeline, detect_pauses, split_sentences
     from grounding import render_pack, validate_pack
     import grounded_storyboard as gsb
@@ -294,6 +296,23 @@ CHOOSING A VISUAL — pick the template that SHOWS the idea instead of listing i
 """
 
 
+def _still_guide() -> str:
+    """The `still` template, offered only when the tenant has uploaded images (ADR-2249 D3). The
+    catalogue is what the user typed and clicked - captions and hotspot names - never image content."""
+    assets = user_assets()
+    if not assets:
+        return ""
+    listing = "\n".join(f"  {k}: {v}" for k, v in assets.items())
+    return (
+        '- "still":   {"eyebrow"?, "title", "asset", "caption"?, "callouts"?: [0-4 {"spot", "label", "mark"?, "tone"?}],\n'
+        '              "zoom"?: {"spot", "scale": 1-1.6}}  (an image the user uploaded; you cannot see it. "asset" is one\n'
+        '              of the ids below; callouts and zoom may only name a listed spot of that asset; "label" max 32\n'
+        '              characters; "mark": "circle"|"underline" lets a pen draw on the spot; "tone": "accent"|"accent_hi"|\n'
+        '              "success"|"text". Use it when the task is about what one of these images shows.)\n'
+        "  Uploaded images (id: caption - spots):\n" + listing + "\n"
+    )
+
+
 _NEUTRAL_SWAPS = (
     ("the CorvinOS mark is shown large on it at the start of every video", "the brand mark is shown large on it at the start of the video"),
     ('"narration_text": "Welcome to Corvin"', '"narration_text": "Welcome"'),
@@ -369,7 +388,7 @@ DESIGN RULES (measured from real didactic videos, apply them):
   "shield icon" for security, "chain with four links" for a 4-step process),
   not a vague mood description.
 
-{_TEMPLATE_GUIDE}
+{_TEMPLATE_GUIDE}{_still_guide()}
 
 CONSTRAINTS (MUST ENFORCE):
 - Total duration ≤ {max_duration_minutes * 60000} ms
@@ -1197,7 +1216,7 @@ def _repair_web_scenes(scenes: List[Dict[str, Any]], report: Dict[str, Any], mod
         "Some web-slide specs in a video storyboard failed validation. Fix ONLY these scenes: keep "
         "their meaning and language, satisfy the contract below exactly (field names, list sizes, "
         "character limits), or switch to a template that fits better. Never invent numbers.\n\n"
-        + _TEMPLATE_GUIDE
+        + _TEMPLATE_GUIDE + _still_guide()
         + "\nFAILED SCENES (JSON):\n" + json.dumps(failed, ensure_ascii=False)
         + '\n\nReturn ONLY JSON: {"scenes": [{"id": "...", "template": "...", "data": {...}}]}'
     )
@@ -1816,6 +1835,7 @@ async def orchestrate_video(
                 "; ".join(f"{w.scene_id}:{w.rule}" for w in didactic_validation.warnings),
             )
 
+        _snapshot_assets(storyboard, out_root)
         # Step 2: Real per-scene synthesis (audio + slide + clip)
         report.begin("scenes")
         _update_job_progress(storage, job, "skills_running", 0, "Starting scene production...")
@@ -2104,12 +2124,43 @@ def _write_report(report: "rp.ProductionReport", job_dir: Path, forbidden: List[
 
 
 # Async orchestrator wrapper
+def _snapshot_assets(storyboard, out_root: Path) -> List[str]:
+    """Copy every uploaded image a `still` scene uses into ``<video>/source/assets/`` (image + its
+    public record, never ``uploaded_by``): the video keeps what it showed even when the asset is
+    deleted later, and the asset_hygiene signal measures exactly these files. A missing asset is not
+    copied - its scene fails validation/render and walks the degrade ladder like any other."""
+    store = asset_store.current()
+    used = sorted({sc.data.get("asset") for sc in storyboard.scenes
+                   if sc.template == "still" and isinstance(sc.data, dict) and isinstance(sc.data.get("asset"), str)})
+    if store is None or not used:
+        return []
+    dest = out_root / "source" / "assets"
+    copied = []
+    for aid in used:
+        try:
+            doc = store.get(aid)
+        except (KeyError, ValueError):
+            continue
+        dest.mkdir(parents=True, exist_ok=True)
+        (dest / f"{aid}.png").write_bytes(doc["png"])
+        public = {k: doc[k] for k in ("id", "caption", "source", "hotspots", "width", "height", "bytes", "created")}
+        (dest / f"{aid}.json").write_text(json.dumps(public, indent=2, sort_keys=True), encoding="utf-8")
+        copied.append(aid)
+    return copied
+
+
 async def start_video_production(
     job_id: str,
     task: str,
     config: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Wrapper for async orchestration."""
+    """Wrapper for async orchestration. The tenant's asset store is bound for the whole job: `still`
+    scenes resolve their image through it, and nothing else can (ADR-2249 D3)."""
+    with asset_store.bound(config["storage_base"]):
+        return await _orchestrate_from_config(job_id, task, config)
+
+
+async def _orchestrate_from_config(job_id: str, task: str, config: Dict[str, Any]) -> Dict[str, Any]:
     return await orchestrate_video(
         job_id=job_id,
         task=task,

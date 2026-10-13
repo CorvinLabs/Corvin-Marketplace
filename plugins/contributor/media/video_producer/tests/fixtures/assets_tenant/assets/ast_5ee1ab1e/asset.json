@@ -1,0 +1,24 @@
+{
+  "bytes": 2027,
+  "caption": "The settings page of an example app",
+  "created": "2026-10-13T00:00:00Z",
+  "height": 500,
+  "hotspots": [
+    {
+      "description": "the green save button",
+      "name": "save_button",
+      "x": 0.81,
+      "y": 0.86
+    },
+    {
+      "description": "the page header",
+      "name": "header",
+      "x": 0.5,
+      "y": 0.15
+    }
+  ],
+  "id": "ast_5ee1ab1e",
+  "source": "",
+  "uploaded_by": "fixture",
+  "width": 800
+}

@@ -37,7 +37,7 @@ DEFAULT_TOKENS_PATH = WEB_DIR / "design_tokens.json"
 BASE_CSS_PATH = WEB_DIR / "css" / "base.css"
 
 TEMPLATES = ("hero", "content", "stat", "diagram", "chart", "compare", "quote", "code",
-             "line", "donut", "flow", "timeline", "cycle", "layers", "console_still", "canvas")
+             "line", "donut", "flow", "timeline", "cycle", "layers", "console_still", "canvas", "still")
 THEMES = ("dark", "light")
 
 # The "you are here" strip (PLAN-0942 D11): Corvin's layers as the website's
@@ -80,6 +80,52 @@ def console_assets() -> Dict[str, str]:
         spots = "; ".join(f"{n} = {s['description']}" for n, s in v["spots"].items())
         out[k] = v["caption"] + (f" — spots: {spots}" if spots else " — no spots (no callouts or zoom)")
     return out
+
+
+def _asset_store_mod():
+    try:
+        from . import asset_store
+    except ImportError:
+        import asset_store
+    return asset_store
+
+
+def _user_catalog() -> Dict[str, Dict[str, Any]]:
+    """The tenant's uploaded images (ADR-2249 D3) as the job bound them; unbound = none."""
+    store = _asset_store_mod().current()
+    return store.catalogue() if store is not None else {}
+
+
+def user_assets() -> Dict[str, str]:
+    """asset id -> caption (+ its named hotspots), for the storyboard prompt. Every word of it was
+    typed by the user (caption, hotspot names and descriptions); nothing is read off the image."""
+    out = {}
+    for k, v in _user_catalog().items():
+        spots = "; ".join(f"{n} = {s['description'] or n}" for n, s in v["spots"].items())
+        out[k] = v["caption"] + (f" — spots: {spots}" if spots else " — no spots (no callouts or zoom)")
+    return out
+
+
+STILL_TONES = ("accent", "accent_hi", "success", "text")
+_STILL_TONE_VAR = {"accent": "var(--accent)", "accent_hi": "var(--accent-hi)", "success": "var(--success)",
+                   "text": "var(--text)"}
+MAX_STILL_CALLOUTS = 4
+
+# ADR-2249 D1 annotation layer: a pen-drawn mark (circle | underline) around the hotspot instead of the
+# ring, drawn on at the callout's beat; 30x13 pen cells at 8 px each, centred on the spot. Scene CSS,
+# not base.css: it is added only to a scene that uses it, so every other scene stays byte-identical.
+STILL_PEN_CSS = (
+    ".callout .pen { position: absolute; left: -120px; top: -52px; width: 240px; height: 104px; overflow: visible; }"
+    ".callout .pen path { fill: none; stroke: var(--co, var(--accent)); stroke-width: .55; stroke-linecap: round;"
+    " stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: still-pen 650ms ease-out both;"
+    " animation-delay: var(--at); }"
+    ".callout.marked span { left: 150px; }"
+    ".callout.marked.left span { left: auto; right: 150px; }"
+    "@keyframes still-pen { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }"
+)
+# `still` (uploaded image): a callout's colour is a style role (--co), never a hex
+STILL_TONE_CSS = (".frame.still-u .callout i { border-color: var(--co); }"
+                  ".frame.still-u .callout span { background: var(--co); }")
 
 
 def _corvinOS_symbol_svg(size: int = 48) -> str:
@@ -478,39 +524,57 @@ def validate_scene_data(template: Any, data: Any) -> Dict[str, Any]:
         asset = data.get("asset")
         if asset not in _console_catalog():
             raise WebSceneError(f"unknown console asset {asset!r} (allowed: {', '.join(_console_catalog())})")
-        spots = _console_catalog()[asset]["spots"]
-
-        def spot(obj: dict) -> Dict[str, str]:
-            name = obj.get("spot")
-            if name not in spots:
-                raise WebSceneError(f"unknown spot {name!r} for asset {asset!r} (allowed: {', '.join(spots) or 'none'})")
-            return {"spot": name}  # coordinates are resolved at build time: validation stays idempotent
-
-        callouts = []
-        for c in (_list(data, "callouts", 0, 3) if "callouts" in data else []):
-            if not isinstance(c, dict):
-                raise WebSceneError("callouts entries must be objects")
-            _unknown(c, ("spot", "label", "mark"))
-            entry = {**spot(c), "label": _text(c, "label", 32)}
-            if c.get("mark") is not None:  # ADR-2249 D1 annotation layer: the pen draws on the hotspot
-                pen_marks = _code_v2().PEN_MARKS
-                if not isinstance(c["mark"], str) or c["mark"] not in pen_marks:
-                    raise WebSceneError(f"callout 'mark' must be one of {', '.join(pen_marks)}")
-                entry["mark"] = c["mark"]
-            callouts.append(entry)
-        zoom = None
-        if data.get("zoom") is not None:
-            z = data["zoom"]
-            if not isinstance(z, dict):
-                raise WebSceneError("zoom must be an object")
-            _unknown(z, ("spot", "scale"))
-            scale = _number(z, "scale")
-            if not 1.0 <= scale <= 1.6:
-                raise WebSceneError("zoom.scale must be between 1 and 1.6")
-            zoom = {**spot(z), "scale": scale}
-        out.update(title=_text(data, "title", 80), asset=asset, caption=_text(data, "caption", 120, False),
-                   callouts=callouts, zoom=zoom)
+        out.update(_still_fields(data, asset, _console_catalog()[asset]["spots"], max_callouts=3, tones=False))
+    elif template == "still":
+        _unknown(data, ("eyebrow", "title", "asset", "caption", "callouts", "zoom"))
+        catalog = _user_catalog()
+        asset = data.get("asset")
+        if not catalog:
+            raise WebSceneError("no uploaded images are available for 'still'")
+        if not isinstance(asset, str) or asset not in catalog:
+            raise WebSceneError(f"unknown image asset {asset!r} (allowed: {', '.join(catalog)})")
+        out.update(_still_fields(data, asset, catalog[asset]["spots"], max_callouts=MAX_STILL_CALLOUTS, tones=True))
     return out
+
+
+def _still_fields(data: Dict[str, Any], asset: str, spots: Dict[str, Any], *, max_callouts: int,
+                  tones: bool) -> Dict[str, Any]:
+    """Callouts and zoom of a still: each names a HOTSPOT of the asset (placed by a person - for an
+    upload, by the user clicking in the preview), never a model coordinate."""
+    def spot(obj: dict) -> Dict[str, str]:
+        name = obj.get("spot")
+        if name not in spots:
+            raise WebSceneError(f"unknown spot {name!r} for asset {asset!r} (allowed: {', '.join(spots) or 'none'})")
+        return {"spot": name}  # coordinates are resolved at build time: validation stays idempotent
+
+    callouts = []
+    for c in (_list(data, "callouts", 0, max_callouts) if "callouts" in data else []):
+        if not isinstance(c, dict):
+            raise WebSceneError("callouts entries must be objects")
+        _unknown(c, ("spot", "label", "mark", "tone") if tones else ("spot", "label", "mark"))
+        entry = {**spot(c), "label": _text(c, "label", 32)}
+        if c.get("mark") is not None:  # ADR-2249 D1 annotation layer: the pen draws on the hotspot
+            pen_marks = _code_v2().PEN_MARKS
+            if not isinstance(c["mark"], str) or c["mark"] not in pen_marks:
+                raise WebSceneError(f"callout 'mark' must be one of {', '.join(pen_marks)}")
+            entry["mark"] = c["mark"]
+        if tones and c.get("tone") is not None:
+            if c["tone"] not in STILL_TONES:
+                raise WebSceneError(f"callout 'tone' must be one of {', '.join(STILL_TONES)}")
+            entry["tone"] = c["tone"]
+        callouts.append(entry)
+    zoom = None
+    if data.get("zoom") is not None:
+        z = data["zoom"]
+        if not isinstance(z, dict):
+            raise WebSceneError("zoom must be an object")
+        _unknown(z, ("spot", "scale"))
+        scale = _number(z, "scale")
+        if not 1.0 <= scale <= 1.6:
+            raise WebSceneError("zoom.scale must be between 1 and 1.6")
+        zoom = {**spot(z), "scale": scale}
+    return {"title": _text(data, "title", 80), "asset": asset, "caption": _text(data, "caption", 120, False),
+            "callouts": callouts, "zoom": zoom}
 
 
 _ID = re.compile(r"[a-z0-9_]{1,16}")
@@ -565,6 +629,7 @@ def reveal_steps(template: str, data: Dict[str, Any]) -> int:
         "cycle": len(data.get("steps") or []),
         "layers": len(data.get("layers") or []),
         "console_still": 1 + len(data.get("callouts") or []),
+        "still": 1 + len(data.get("callouts") or []),
     }[template]
 
 
@@ -606,7 +671,7 @@ def scene_items(template: str, data: Dict[str, Any]) -> List[Tuple[str, int]]:
     if template == "layers":
         n = len(d["layers"])
         return [(it["label"], 2 + (n - 1 - k)) for k, it in enumerate(d["layers"])]
-    if template == "console_still":
+    if template in ("console_still", "still"):
         return [(c["label"], 3 + k) for k, c in enumerate(d.get("callouts") or [])]
     return []  # hero, quote, stat, line: one statement, no items to walk through
 
@@ -1101,13 +1166,30 @@ def _still_pen(kind: str, key: str) -> str:
 
 def _console_still(d):
     entry = _console_catalog()[d["asset"]]
-    data = base64.b64encode(entry["file"].read_bytes()).decode("ascii")
+    return _still_html(d, base64.b64encode(entry["file"].read_bytes()).decode("ascii"), "image/jpeg",
+                       entry["w"], entry["h"], entry["spots"], user=False)
+
+
+def _user_still(d):
+    """`still` over an uploaded image (ADR-2249 D3): the PNG comes from the job's bound tenant store,
+    re-validated on read; it is embedded as a data URI, so the renderer never opens a file or a URL."""
+    store = _asset_store_mod().current()
+    if store is None:
+        raise WebSceneError("no uploaded images are available for 'still'")
+    try:
+        doc = store.get(d["asset"])
+    except (KeyError, ValueError):
+        raise WebSceneError(f"image asset {d['asset']!r} is not available") from None
+    spots = {h["name"]: {"x": h["x"], "y": h["y"]} for h in doc["hotspots"]}
+    return _still_html(d, base64.b64encode(doc["png"]).decode("ascii"), "image/png",
+                       int(doc["width"]), int(doc["height"]), spots, user=True)
+
+
+def _still_html(d, data_b64: str, mime: str, w: int, h: int, spots: Dict[str, Any], *, user: bool) -> str:
     # fit the image into the content box keeping its aspect ratio; callouts sit in
     # that box in percent, so they stay on target while it zooms
-    w, h = entry["w"], entry["h"]
     scale = min(1480 / w, 640 / h)
     bw, bh = round(w * scale), round(h * scale)
-    spots = entry["spots"]
     z = dict(d.get("zoom") or {"scale": 1.0})
     z.update(spots.get(z.get("spot"), {"x": 0.5, "y": 0.5}))
     marks = []
@@ -1119,13 +1201,14 @@ def _console_still(d):
             side += " marked"
         else:
             ring = "<i></i>"
-        marks.append(f'<div class="callout{side}" style="--i:{3 + k};left:{c["x"] * 100:.2f}%;top:{c["y"] * 100:.2f}%">'
+        tone = f';--co:{_STILL_TONE_VAR[c.get("tone") or "accent"]}' if user else ""
+        marks.append(f'<div class="callout{side}" style="--i:{3 + k};left:{c["x"] * 100:.2f}%;top:{c["y"] * 100:.2f}%{tone}">'
                      f'{ring}<span>{_e(c["label"])}</span></div>')
     cap = f'<div class="still-cap r" style="--i:{3 + len(marks)}">{_e(d["caption"])}</div>' if d.get("caption") else ""
-    return (f'<div class="frame still">{_header(d)}'
+    return (f'<div class="frame still{" still-u" if user else ""}">{_header(d)}'
             f'<div class="still-box r" style="--i:2;width:{bw}px;height:{bh}px">'
             f'<div class="still-zoom" style="transform-origin:{z["x"] * 100:.2f}% {z["y"] * 100:.2f}%;--zs:{z["scale"]:.3f}">'
-            f'<img alt="" src="data:image/jpeg;base64,{data}">{"".join(marks)}</div></div>{cap}</div>')
+            f'<img alt="" src="data:{mime};base64,{data_b64}">{"".join(marks)}</div></div>{cap}</div>')
 
 
 def _map_strip(focus: str) -> str:
@@ -1137,7 +1220,7 @@ def _map_strip(focus: str) -> str:
 _BUILDERS = {"hero": _hero, "content": _content, "stat": _stat, "diagram": _diagram,
              "chart": _chart, "compare": _compare, "quote": _quote, "code": _code,
              "line": _line, "donut": _donut, "flow": _flow, "timeline": _timeline, "cycle": _cycle,
-             "console_still": _console_still, "canvas": _canvas,
+             "console_still": _console_still, "still": _user_still, "canvas": _canvas,
              "layers": _layers}
 
 
@@ -1286,6 +1369,10 @@ def build_document(
         except ImportError:
             import canvas
         extra_css += canvas.css(d)
+    if template in ("console_still", "still") and any(c.get("mark") for c in d.get("callouts") or []):
+        extra_css += STILL_PEN_CSS
+    if template == "still":
+        extra_css += STILL_TONE_CSS
     return (
         f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8">'
         f"<style>{_font_faces()}:root{{{css_vars}}}{_base_css()}{focus_css}{extra_css}</style></head>"
