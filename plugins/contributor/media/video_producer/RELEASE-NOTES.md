@@ -1,5 +1,9 @@
 # Video Producer Plugin — Release Notes
 
+## Unreleased — Website capture, part 1 (ADR-2249 D4, T-0113; not in any release)
+
+**Capture module (`src/capture.py`):** the S3 spike's policy and proxy moved into product code. The host calls `capture_url()`; one worker process (`python -I capture.py --worker`, own session, killed as a group at the deadline via `deadline.run_process`) runs a Corvin-owned forward proxy that allows ONLY the host the user named and its ports, plus headless Chrome pinned to it (`--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1`, QUIC off, WebRTC limited to proxied UDP, background networking off). Allow-by-global address policy, one resolution per name, pinned connect, every failure the same 502 at `t0 + 2.0 s`. Output is a viewport screenshot (desktop 1920x1080 or mobile 412x915 @2x); full-page captures are not built. The hostile corpus runs against this module: `tests/test_capture_policy.py`. Not built yet: the panel action, URL suggestion in the composer, hotspots by click, the own adversarial review.
+
 ## 1.6.0 — Expressive Scenes (ADR-2249 / PLAN-0947; release candidate)
 
 **Canvas Template (ADR-2249 D1, T-0110):** Storyboard can now render bounded-vocabulary hand-drawn diagrams with pen sprites, degrade ladder for collision recovery, and pen-drawn annotation marks. Canvas validate blocks overfull, circles over id references, and measures collisions post-layout. Reveals follow narration beats; wobble is seeded for determinism. Tests: 15 E2E across collision, degrade, and real-video rendering.
