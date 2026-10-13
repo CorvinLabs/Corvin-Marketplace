@@ -100,6 +100,15 @@ def sanitise_provenance(value: Any) -> str:
     return out[:200]
 
 
+def _encode_record(doc: Dict[str, Any]) -> bytes:
+    """The bytes written for a record. A write larger than ``MAX_JSON_BYTES`` would be refused by every later
+    read (the asset becomes unreadable yet still counts toward the quota), so it is refused here."""
+    raw = json.dumps(doc, indent=2, sort_keys=True).encode()
+    if len(raw) > MAX_JSON_BYTES:
+        raise AssetError("the asset record is too large (shorten the caption, the hotspot descriptions or the source)")
+    return raw
+
+
 def _validate_hotspots(value: Any) -> List[Dict[str, Any]]:
     if value is None:
         return []
@@ -272,7 +281,7 @@ class AssetStore:
                 doc["id"] = self._new_id()
                 if before_commit is not None and not before_commit(dict(doc)):
                     raise AssetNotRecorded("the upload could not be recorded; nothing was stored")
-                _atomic_write(staging / "asset.json", json.dumps(doc, indent=2, sort_keys=True).encode())
+                _atomic_write(staging / "asset.json", _encode_record(doc))
                 os.rename(staging, self.root / doc["id"])
         except BaseException:
             shutil.rmtree(staging, ignore_errors=True)
@@ -297,7 +306,7 @@ class AssetStore:
                 new["hotspots"] = _validate_hotspots(hotspots)
             if before_commit is not None and not before_commit(dict(new)):
                 raise AssetNotRecorded("the change could not be recorded; nothing was changed")
-            _atomic_write(self._dir(asset_id) / "asset.json", json.dumps(new, indent=2, sort_keys=True).encode())
+            _atomic_write(self._dir(asset_id) / "asset.json", _encode_record(new))
         return new
 
     def get(self, asset_id: str, *, with_png: bool = True) -> Dict[str, Any]:

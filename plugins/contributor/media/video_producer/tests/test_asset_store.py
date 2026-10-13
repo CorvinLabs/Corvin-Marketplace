@@ -362,3 +362,22 @@ def test_the_recorded_byte_count_must_match_the_stored_image(store):
     _edit(store, rec, lambda d: d.update(bytes=d["bytes"] + 1))
     with pytest.raises(A.AssetError):
         store.get(rec["id"])
+
+
+# REVIEW-0047 round 1: a write must not exceed what a read accepts
+
+def _heavy_hotspots():
+    return [{"name": f"spot{i}", "x": .5, "y": .5, "description": "\U0001F600" * 120} for i in range(8)]
+
+
+def test_add_refuses_a_record_larger_than_the_read_cap_and_uses_no_quota(store):
+    with pytest.raises(A.AssetError):
+        add(store, caption="\U0001F600" * 160, hotspots=_heavy_hotspots(), source="https://a/" + "\U0001F600" * 190)
+    assert store.ids() == []
+
+
+def test_update_refuses_a_write_that_would_make_the_record_unreadable(store):
+    rec = add(store, caption="fine", source="https://a/" + "\U0001F600" * 190)   # the source already costs ~2.3 KB of escapes
+    with pytest.raises(A.AssetError):
+        store.update(rec["id"], caption="\U0001F600" * 160, hotspots=_heavy_hotspots())
+    assert store.get(rec["id"])["caption"] == "fine"
