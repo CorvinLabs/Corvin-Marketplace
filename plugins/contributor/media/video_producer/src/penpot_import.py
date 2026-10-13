@@ -46,6 +46,8 @@ MAX_ASPECT = 32.0
 MIN_DIM, MAX_DIM = 16.0, 20_000.0
 MAX_COORD = 1e6
 MAX_SECONDS = 5.0
+MAX_GRADIENTS = 64
+MIN_STOPS, MAX_STOPS = 2, 8
 RENDER_BOX = (1920.0, 1080.0)
 
 _SKIP = frozenset({"defs", "pattern", "clipPath", "mask", "filter", "style", "linearGradient", "radialGradient",
@@ -59,13 +61,26 @@ _CTRL = re.compile("[\x00-\x08\x0b-\x1f\x7f‪-‮⁦-⁩‎‏]")
 _BASELINES = frozenset({"alphabetic", "ideographic", "hanging", "middle", "central", "text-before-edge",
                         "text-after-edge", "auto"})
 _IDENT = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+_URL = re.compile(r"url\(\s*#([A-Za-z0-9_.:\-]{1,64})\s*\)(?:\s+(\S.*))?", re.DOTALL)
+_GRAD_ID = re.compile(r"[A-Za-z0-9_.:\-]{1,64}")
+_GRAD_TAGS = {"linearGradient": "linear", "radialGradient": "radial"}
 _ANCHORS = frozenset({"start", "middle", "end"})
-NOT_IMPORTED = ("An SVG export does not carry components, constraints, auto-layout or animations; "
-                "they were not imported. Gradients, images, shadows and blurs are dropped.")
+NOT_IMPORTED = ("An SVG export has no components, constraints, auto-layout or animations. Fill gradients are kept; "
+                "gradient strokes, images, shadows, blurs, filters and style sheets are dropped.")
 
 
 class PenpotImportError(StyleError):
     """The file cannot be imported; the message is safe to show the user."""
+
+
+@dataclass(frozen=True)
+class Gradient:
+    """A linear or radial fill gradient: typed numbers and ``#rrggbb`` stops only (ADR-2260 decision 7)."""
+    kind: str  # linear | radial
+    coords: Tuple[float, float, float, float]  # linear: x1 y1 x2 y2; radial: cx cy r 0
+    units: str  # bbox | user
+    stops: Tuple[Tuple[float, str, float], ...]  # (offset, #rrggbb, opacity)
+    matrix: Tuple[float, float, float, float, float, float] = _IDENT
 
 
 @dataclass(frozen=True)
@@ -91,6 +106,8 @@ class Shape:
     baseline: str = "alphabetic"
     anchor: str = "start"
     matrix: Tuple[float, float, float, float, float, float] = _IDENT
+    group: int = 0  # ordinal of the top-level element of the root this shape came from
+    fill_gradient: Optional[Gradient] = None  # when set, ``fill`` holds its first stop as the flat fallback
 
 
 @dataclass
@@ -170,8 +187,8 @@ def _unit(v: Optional[str], default: float = 1.0) -> float:
         return default
 
 
-def _matrix(el: ET.Element, tally: Dict[str, int]) -> Tuple[float, ...]:
-    raw = el.get("transform")
+def _matrix(el: ET.Element, tally: Dict[str, int], attr: str = "transform") -> Tuple[float, ...]:
+    raw = el.get(attr)
     if not raw:
         return _IDENT
     m = _MATRIX.fullmatch(raw.strip())
@@ -208,6 +225,172 @@ def _radii(el: ET.Element) -> Tuple[float, float]:
     return (ry if rx is None else rx), (rx if ry is None else ry)
 
 
+def _gcoord(el: ET.Element, name: str, default: Optional[float], bbox: bool) -> float:
+    v = el.get(name)
+    if v is None:
+        if default is None:
+            raise ValueError("missing coordinate")
+        return default
+    s = v.strip()
+    if s.endswith("%"):
+        if not bbox:
+            raise ValueError("percent in user units")
+        f = float(s[:-1]) / 100.0
+        if not math.isfinite(f) or abs(f) > MAX_COORD:
+            raise ValueError("coordinate out of range")
+        return f
+    return _num(s, None, -MAX_COORD, MAX_COORD)
+
+
+def _offset(v: Optional[str]) -> float:
+    s = (v or "0").strip()
+    f = float(s[:-1]) / 100.0 if s.endswith("%") else float(s)
+    if not math.isfinite(f) or f < 0.0 or f > 1.0:
+        raise ValueError("offset out of range")
+    return f
+
+
+def _stop_colour(el: ET.Element) -> str:
+    st = _style(el)
+    raw = st.get("stop-color", el.get("stop-color"))
+    c = "#000000" if raw is None else _color(raw)
+    if c is _UNSET or c is None:
+        raise ValueError("stop colour is not a plain colour")
+    return c
+
+
+def _parse_gradient(el: ET.Element, tally: Dict[str, int]) -> Gradient:
+    """One gradient element -> Gradient, or ValueError when any bound or grammar rule is broken."""
+    if el.get("href") is not None or any(_local(k) == "href" for k in el.attrib):
+        raise ValueError("gradient references another gradient")
+    kind = _GRAD_TAGS[_local(el.tag)]
+    units_raw = el.get("gradientUnits", "objectBoundingBox")
+    if units_raw not in ("objectBoundingBox", "userSpaceOnUse"):
+        raise ValueError("unknown gradient units")
+    bbox = units_raw == "objectBoundingBox"
+    if kind == "linear":
+        d = (0.0, 0.0, 1.0, 0.0) if bbox else (None, None, None, None)
+        coords = (_gcoord(el, "x1", d[0], bbox), _gcoord(el, "y1", d[1], bbox),
+                  _gcoord(el, "x2", d[2], bbox), _gcoord(el, "y2", d[3], bbox))
+    else:
+        d = (0.5, 0.5, 0.5) if bbox else (None, None, None)
+        cx, cy, r = _gcoord(el, "cx", d[0], bbox), _gcoord(el, "cy", d[1], bbox), _gcoord(el, "r", d[2], bbox)
+        if r < 0:
+            raise ValueError("negative radius")
+        coords = (cx, cy, r, 0.0)
+        for name, centre in (("fx", cx), ("fy", cy)):
+            if el.get(name) is not None and abs(_gcoord(el, name, None, bbox) - centre) > 1e-6:
+                _bump(tally, "gradient_focal")
+    if el.get("spreadMethod") not in (None, "pad"):
+        _bump(tally, "gradient_spread")
+    raw_matrix = el.get("gradientTransform")
+    matrix = _IDENT
+    if raw_matrix:
+        mt = _MATRIX.fullmatch(raw_matrix.strip())
+        vals = [_num(x, None, -MAX_COORD, MAX_COORD) for x in re.split(r"[\s,]+", mt.group(1).strip())] if mt else []
+        if len(vals) != 6:
+            raise ValueError("unsupported gradient transform")
+        matrix = tuple(vals)
+    stops = []
+    last = 0.0
+    for child in el:
+        if _local(child.tag) != "stop":
+            continue
+        off = _offset(child.get("offset"))
+        if off < last:
+            raise ValueError("stop offsets decrease")
+        last = off
+        stops.append((off, _stop_colour(child), _unit(_style(child).get("stop-opacity", child.get("stop-opacity")), 1.0)))
+    if not MIN_STOPS <= len(stops) <= MAX_STOPS:
+        raise ValueError("a gradient has 2 to 8 stops")
+    return Gradient(kind, coords, "bbox" if bbox else "user", tuple(stops), matrix)
+
+
+def _first_stop_colour(el: ET.Element) -> Optional[str]:
+    for child in el:
+        if _local(child.tag) == "stop":
+            try:
+                return _stop_colour(child)
+            except ValueError:
+                return None
+    return None
+
+
+def _collect_gradients(root: ET.Element, tally: Dict[str, int]) -> Dict[str, Tuple[Optional[Gradient], Optional[str]]]:
+    """id -> (Gradient or None when dropped, flat fallback colour). Dropped definitions are counted."""
+    out: Dict[str, Tuple[Optional[Gradient], Optional[str]]] = {}
+    for el in root.iter():
+        if _local(el.tag) not in _GRAD_TAGS:
+            continue
+        gid = el.get("id") or ""
+        if not _GRAD_ID.fullmatch(gid) or gid in out:
+            _bump(tally, "gradient")
+            continue
+        if len(out) >= MAX_GRADIENTS:
+            _bump(tally, "gradient_limit")
+            out[gid] = (None, _first_stop_colour(el))
+            continue
+        try:
+            out[gid] = (_parse_gradient(el, tally), None)
+        except (ValueError, KeyError):
+            _bump(tally, "gradient")
+            out[gid] = (None, _first_stop_colour(el))
+    for gid, (g, fb) in list(out.items()):
+        if g is not None:
+            out[gid] = (g, g.stops[0][1])
+    return out
+
+
+_CSS_RULE = re.compile(r"([^{}]+)\{([^{}]*)\}")
+_CSS_PAINT = re.compile(r"(?:^|;)\s*(?:fill|stroke)\s*:", re.I)
+
+
+def _stylesheet_paint(root: ET.Element, tally: Dict[str, int]) -> Tuple[frozenset, bool]:
+    """Style sheets are not imported. Only a sheet that can PAINT (a fill/stroke rule or an @import) is counted: a real
+    Penpot export carries one for @font-face and structural classes, which lose nothing. Returns the class names a
+    painting rule selects and whether a painting rule selects by anything else (tag, id, universal)."""
+    classes, everything = set(), False
+    for el in root.iter():
+        if _local(el.tag) != "style":
+            continue
+        css = re.sub(r"@font-face\s*\{[^{}]*\}", "", "".join(el.itertext()), flags=re.I)
+        painting = bool(re.search(r"@import", css, re.I))
+        for selector, body in _CSS_RULE.findall(css):
+            if _CSS_PAINT.search(body.strip()):
+                painting = True
+                found = re.findall(r"\.([A-Za-z0-9_\-]+)", selector)
+                classes.update(found)
+                if not found or re.search(r"(?:^|[\s,>+~])[A-Za-z*#\[]", selector.strip()):
+                    everything = True
+        if painting:
+            _bump(tally, "stylesheet")
+    return frozenset(classes), everything
+
+
+def _paint(value: Optional[str], grads: Dict[str, Tuple[Optional[Gradient], Optional[str]]],
+           tally: Dict[str, int], stroke: bool = False) -> Tuple[Optional[str], Optional[Gradient]]:
+    """One paint value -> (flat colour or None, typed gradient or None). An unreadable paint is counted."""
+    s = (value or "").strip()
+    m = _URL.fullmatch(s)
+    if m:
+        g, fb = grads.get(m.group(1), (None, None))
+        if m.group(1) not in grads:
+            _bump(tally, "paint")
+            alt = _color(m.group(2)) if m.group(2) else None
+            return (alt if isinstance(alt, str) else None), None
+        if g is None:
+            return fb, None
+        if stroke:
+            _bump(tally, "gradient_stroke")
+            return g.stops[0][1], None
+        return g.stops[0][1], g
+    c = _color(s)
+    if c is _UNSET:
+        _bump(tally, "paint")
+        return None, None
+    return c, None
+
+
 def _stroke_width(el: ET.Element, st: Dict[str, str], default: float) -> float:
     try:
         return _num(_attr(el, st, "stroke-width"), default, 0.0, 1000.0)
@@ -216,16 +399,12 @@ def _stroke_width(el: ET.Element, st: Dict[str, str], default: float) -> float:
 
 
 def _shape(tag: str, el: ET.Element, st: Dict[str, str], m: Tuple[float, ...], inh: Dict[str, Any],
-           tally: Dict[str, int]) -> Optional[Shape]:
-    fill = _color(_attr(el, st, "fill")) if _attr(el, st, "fill") is not None else inh["fill"]
-    stroke = _color(_attr(el, st, "stroke")) if _attr(el, st, "stroke") is not None else inh["stroke"]
-    if fill is _UNSET:
-        _bump(tally, "paint")
-        fill = None
-    if stroke is _UNSET:
-        _bump(tally, "paint")
-        stroke = None
-    common = dict(fill=fill, fill_opacity=_unit(_attr(el, st, "fill-opacity"), inh["fill_opacity"]), stroke=stroke,
+           tally: Dict[str, int], state: Dict[str, Any]) -> Optional[Shape]:
+    grads = state["grads"]
+    own_fill, own_stroke = _attr(el, st, "fill"), _attr(el, st, "stroke")
+    fill, fill_g = _paint(own_fill, grads, tally) if own_fill is not None else (inh["fill"], inh["fill_g"])
+    stroke = _paint(own_stroke, grads, tally, stroke=True)[0] if own_stroke is not None else inh["stroke"]
+    common = dict(group=state["group"], fill_gradient=fill_g if fill else None, fill=fill, fill_opacity=_unit(_attr(el, st, "fill-opacity"), inh["fill_opacity"]), stroke=stroke,
                   stroke_width=_stroke_width(el, st, inh["stroke_width"]) if stroke else 0.0,
                   opacity=inh["opacity"] * _unit(_attr(el, st, "opacity")), matrix=m)
     if tag == "rect":
@@ -244,6 +423,12 @@ def _shape(tag: str, el: ET.Element, st: Dict[str, str], m: Tuple[float, ...], i
     text = _CTRL.sub("", "".join(el.itertext()))
     if not text.strip():
         return None
+    for sub in el.iter():
+        if sub is not el and _local(sub.tag) == "tspan":
+            sst = _style(sub)
+            if _attr(sub, sst, "fill") is not None or _attr(sub, sst, "stroke") is not None:
+                _bump(tally, "tspan_paint")
+                break
     if len(text) > MAX_TEXT:
         text = text[:MAX_TEXT]
         _bump(tally, "text_truncated")
@@ -260,7 +445,7 @@ def _shape(tag: str, el: ET.Element, st: Dict[str, str], m: Tuple[float, ...], i
 
 
 def _walk(node: ET.Element, m: Tuple[float, ...], inh: Dict[str, Any], design: Design, tally: Dict[str, int],
-          state: Dict[str, Any]) -> None:
+          state: Dict[str, Any], top: bool = False) -> None:
     for el in node:
         if time.monotonic() > state["deadline"]:
             raise PenpotImportError("The design is too complex to read.")
@@ -274,28 +459,33 @@ def _walk(node: ET.Element, m: Tuple[float, ...], inh: Dict[str, Any], design: D
         if st.get("display") == "none" or st.get("visibility") == "hidden":
             continue
         cm = _mul(m, _matrix(el, tally))
+        if top and tag in ("g", "svg", "rect", "ellipse", "circle", "path", "text"):
+            state["group"] += 1
         if tag in ("g", "svg"):
             sub = dict(inh)
             sub["opacity"] = inh["opacity"] * _unit(_attr(el, st, "opacity"))
             sub["fill_opacity"] = _unit(_attr(el, st, "fill-opacity"), inh["fill_opacity"])
             sub["stroke_width"] = _stroke_width(el, st, inh["stroke_width"])
             for key in ("fill", "stroke"):
-                if _attr(el, st, key) is not None:
-                    c = _color(_attr(el, st, key))
-                    sub[key] = None if c is _UNSET else c
+                raw = _attr(el, st, key)
+                if raw is not None:
+                    sub[key], g = _paint(raw, state["grads"], tally, stroke=key == "stroke")
+                    sub[key + "_g"] = g if key == "fill" else None
             _walk(el, cm, sub, design, tally, state)
             continue
         if tag not in ("rect", "ellipse", "circle", "path", "text"):
             _bump(tally, "other")
             continue
+        if state["paint_all"] or (state["paint_classes"] and state["paint_classes"] & set((el.get("class") or "").split())):
+            _bump(tally, "class_paint")
         try:
-            shape = _shape(tag, el, st, cm, inh, tally)
+            shape = _shape(tag, el, st, cm, inh, tally, state)
         except ValueError:
             _bump(tally, "malformed")
             continue
         if shape is None:
             continue
-        if (tag == "rect" and not design.shapes and design.background is None and shape.fill and cm == _IDENT
+        if (tag == "rect" and not design.shapes and design.background is None and shape.fill and shape.fill_gradient is None and cm == _IDENT
                 and shape.fill_opacity == 1.0 and shape.opacity == 1.0 and shape.x <= design.ox + 0.5
                 and shape.y <= design.oy + 0.5 and shape.w >= design.width - 1 and shape.h >= design.height - 1):
             design.background = shape.fill  # the first full-canvas solid rectangle is the page, not a shape
@@ -336,11 +526,15 @@ def parse_design(data: bytes) -> Design:
     if max(width, height) / min(width, height) > MAX_ASPECT:
         raise PenpotImportError("The SVG proportions are too extreme to render.")
     design = Design(width=width, height=height, background=None, ox=ox, oy=oy)
-    root_fill = _color(_attr(root, _style(root), "fill"))
-    inh = {"fill": "#000000" if root_fill is _UNSET else root_fill, "stroke": None, "opacity": 1.0,
+    grads = _collect_gradients(root, design.dropped)
+    paint_classes, paint_all = _stylesheet_paint(root, design.dropped)
+    raw_root_fill = _attr(root, _style(root), "fill")
+    root_fill, root_g = ("#000000", None) if raw_root_fill is None else _paint(raw_root_fill, grads, design.dropped)
+    inh = {"fill": root_fill, "fill_g": root_g, "stroke": None, "stroke_g": None, "opacity": 1.0,
            "fill_opacity": 1.0, "stroke_width": 1.0}
-    state = {"deadline": time.monotonic() + MAX_SECONDS, "text_total": 0}
-    _walk(root, _IDENT, inh, design, design.dropped, state)
+    state = {"deadline": time.monotonic() + MAX_SECONDS, "text_total": 0, "grads": grads, "group": -1,
+             "paint_classes": paint_classes, "paint_all": paint_all}
+    _walk(root, _IDENT, inh, design, design.dropped, state, top=True)
     if not design.shapes and design.background is None:
         raise PenpotImportError("No shapes could be read. Export a board from Penpot as SVG.")
     return design
@@ -350,15 +544,35 @@ def _n(v: float) -> str:
     return f"{v:.4f}".rstrip("0").rstrip(".") or "0"
 
 
+def _gradient_svg(g: Gradient, index: int) -> str:
+    units = "objectBoundingBox" if g.units == "bbox" else "userSpaceOnUse"
+    if g.kind == "linear":
+        geo = f'x1="{_n(g.coords[0])}" y1="{_n(g.coords[1])}" x2="{_n(g.coords[2])}" y2="{_n(g.coords[3])}"'
+        tag = "linearGradient"
+    else:
+        geo = f'cx="{_n(g.coords[0])}" cy="{_n(g.coords[1])}" r="{_n(g.coords[2])}"'
+        tag = "radialGradient"
+    tr = ' gradientTransform="matrix(%s)"' % " ".join(_n(v) for v in g.matrix) if g.matrix != _IDENT else ""
+    stops = "".join(f'<stop offset="{_n(o)}" stop-color="{c}" stop-opacity="{_n(a)}"/>' for o, c, a in g.stops)
+    return f'<{tag} id="g{index}" gradientUnits="{units}" {geo}{tr}>{stops}</{tag}>'
+
+
 def to_svg(design: Design, box: Tuple[float, float] = RENDER_BOX) -> str:
     """Clean SVG written only from the model's typed fields, scaled to fit ``box`` (never enlarged)."""
     s = min(1.0, box[0] / design.width, box[1] / design.height)
     w, h = max(1, round(design.width * s)), max(1, round(design.height * s))
-    out = [f'<svg xmlns="{SVG_NS}" width="{w}" height="{h}" viewBox="{_n(design.ox)} {_n(design.oy)} {_n(design.width)} {_n(design.height)}">',
-           f'<rect x="{_n(design.ox)}" y="{_n(design.oy)}" width="{_n(design.width)}" height="{_n(design.height)}" '
+    used: Dict[Gradient, int] = {}
+    for sh in design.shapes:
+        if sh.fill and sh.fill_gradient is not None and sh.fill_gradient not in used:
+            used[sh.fill_gradient] = len(used)
+    out = [f'<svg xmlns="{SVG_NS}" width="{w}" height="{h}" viewBox="{_n(design.ox)} {_n(design.oy)} {_n(design.width)} {_n(design.height)}">']
+    if used:
+        out.append("<defs>" + "".join(_gradient_svg(g, i) for g, i in used.items()) + "</defs>")
+    out += [f'<rect x="{_n(design.ox)}" y="{_n(design.oy)}" width="{_n(design.width)}" height="{_n(design.height)}" '
            f'fill="{design.background or "#ffffff"}"/>']
     for sh in design.shapes:
-        a = [f'fill="{sh.fill}"' if sh.fill else 'fill="none"']
+        a = [f'fill="url(#g{used[sh.fill_gradient]})"' if sh.fill and sh.fill_gradient is not None
+             else f'fill="{sh.fill}"' if sh.fill else 'fill="none"']
         if sh.fill and sh.fill_opacity < 1:
             a.append(f'fill-opacity="{_n(sh.fill_opacity)}"')
         if sh.stroke:
@@ -421,6 +635,31 @@ def _area(sh: Shape, d: Design) -> float:
     else:
         area = 1000.0
     return min(area, d.width * d.height) * sh.opacity
+
+
+DROPPED_LABELS = {
+    "image": "images", "foreignObject": "embedded HTML", "use": "linked shapes", "script": "scripts",
+    "paint": "unreadable paints", "other": "other elements", "malformed": "malformed shapes", "line": "lines",
+    "polyline": "lines", "polygon": "polygons", "bad_transform": "unsupported transforms", "switch": "switches",
+    "text_truncated": "over-long texts", "gradient": "unreadable gradients",
+    "gradient_limit": "gradients over the limit of 64", "gradient_stroke": "gradient strokes",
+    "gradient_focal": "gradient focal points", "gradient_spread": "gradient spread modes",
+    "stylesheet": "style sheets", "class_paint": "styled shapes", "tspan_paint": "styled text spans"}
+
+
+def describe_dropped(dropped: Dict[str, int]) -> List[str]:
+    """'2 images', '1 style sheet': what the import left out, in words (never the internal counter names)."""
+    out = []
+    for key, n in sorted(dropped.items()):
+        if not n:
+            continue
+        label = DROPPED_LABELS.get(key, key.replace("_", " "))
+        if n == 1 and label.endswith("ches"):
+            label = label[:-2]
+        elif n == 1 and label.endswith("s"):
+            label = label[:-1]
+        out.append(f"{n} {label}")
+    return out
 
 
 def design_to_style(design: Design, filename: str = "", sha256: Optional[str] = None) -> ImportResult:
@@ -490,11 +729,7 @@ def design_to_style(design: Design, filename: str = "", sha256: Optional[str] = 
         raise PenpotImportError("A readable style could not be built from this design.")
     if adjusted:
         style.warnings.append("The accent colour was adjusted slightly so it stays readable on the background.")
-    labels = {"image": "images", "foreignObject": "embedded HTML", "use": "linked shapes", "script": "scripts",
-              "paint": "gradients or patterns", "other": "other elements", "malformed": "malformed shapes",
-              "line": "lines", "polyline": "lines", "polygon": "polygons", "bad_transform": "unsupported transforms",
-              "switch": "switches", "text_truncated": "over-long texts"}
-    skipped = [f"{n} {labels.get(k, k)}" for k, n in sorted(design.dropped.items()) if n]
+    skipped = describe_dropped(design.dropped)
     if skipped:
         style.warnings.append("Not imported: " + ", ".join(skipped) + ".")
     style.warnings.append(NOT_IMPORTED)

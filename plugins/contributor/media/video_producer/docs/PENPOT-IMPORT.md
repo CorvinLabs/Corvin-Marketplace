@@ -21,7 +21,14 @@ aborted); no byte of the upload reaches the browser.
 ## What is not imported
 
 An SVG export does not carry Penpot components, constraints, auto-layout or animations, so they are not imported.
-Dropped and counted (the dialog and the asset response say how many): images, gradients and patterns, filters
+**Kept:** linear and radial gradients on fills (2 to 8 stops, at most 64 per design); a shape that uses one also carries
+its first stop colour as the flat fallback the palette ranking reads. A gradient that breaks a bound (more than 8 stops,
+decreasing or out-of-range offsets, an unknown unit, a transform other than `matrix()`, a reference to another
+gradient) is dropped, counted, and the shape takes the colour of its first valid stop.
+
+Dropped and counted (the dialog and the asset response say how many): gradient strokes, patterns, a gradient or colour
+that cannot be read, style sheets that set `fill`/`stroke` (and the shapes they style; the `@font-face` sheet and the
+structural classes of a real Penpot export cost nothing), colours set on a `<tspan>`, images, filters
 (shadows, blurs), `foreignObject`, `use`, scripts, lines/polylines/polygons, unsupported transforms, shapes with
 malformed numbers. External `@font-face` URLs in the export are never followed. Text keeps its position and box width
 (`textLength`); the typeface falls back to the host's sans-serif when the Penpot font is not available, so

@@ -228,7 +228,7 @@ def test_grey_only_design_uses_neutral_accent_and_says_so():
 
 def test_dropped_elements_are_named_in_the_warnings():
     res = pi.import_penpot(svg('<image href="x" width="1" height="1"/><rect width="9" height="9" fill="#ff0000"/>'), "a.svg")
-    assert any(w.startswith("Not imported: 1 images") for w in res.style.warnings)
+    assert any(w.startswith("Not imported: 1 image") for w in res.style.warnings)
 
 
 def test_no_shapes_is_a_clear_refusal():
