@@ -381,3 +381,16 @@ def test_update_refuses_a_write_that_would_make_the_record_unreadable(store):
     with pytest.raises(A.AssetError):
         store.update(rec["id"], caption="\U0001F600" * 160, hotspots=_heavy_hotspots())
     assert store.get(rec["id"])["caption"] == "fine"
+
+
+def test_an_over_cap_record_is_refused_before_the_audit_hook_runs(store):
+    calls = []
+    with pytest.raises(A.AssetError):
+        add(store, caption="\U0001F600" * 160, hotspots=_heavy_hotspots(), source="https://a/" + "\U0001F600" * 190,
+            before_commit=lambda d: calls.append(d) or True)
+    assert calls == [] and store.ids() == []
+    rec = add(store, caption="fine", source="https://a/" + "\U0001F600" * 190)
+    with pytest.raises(A.AssetError):
+        store.update(rec["id"], caption="\U0001F600" * 160, hotspots=_heavy_hotspots(),
+                     before_commit=lambda d: calls.append(d) or True)
+    assert calls == []

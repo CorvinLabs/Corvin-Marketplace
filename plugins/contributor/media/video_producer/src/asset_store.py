@@ -279,9 +279,10 @@ class AssetStore:
                 if len(self.ids()) >= MAX_ASSETS:
                     raise AssetQuotaExceeded(f"at most {MAX_ASSETS} images per workspace; delete one first")
                 doc["id"] = self._new_id()
+                raw = _encode_record(doc)   # before the audit hook: a record that cannot be stored must not be recorded
                 if before_commit is not None and not before_commit(dict(doc)):
                     raise AssetNotRecorded("the upload could not be recorded; nothing was stored")
-                _atomic_write(staging / "asset.json", _encode_record(doc))
+                _atomic_write(staging / "asset.json", raw)
                 os.rename(staging, self.root / doc["id"])
         except BaseException:
             shutil.rmtree(staging, ignore_errors=True)
@@ -304,9 +305,10 @@ class AssetStore:
                 new["caption"] = _clean_text(caption, MAX_CAPTION, "the caption")
             if hotspots is not None:
                 new["hotspots"] = _validate_hotspots(hotspots)
+            raw = _encode_record(new)   # before the audit hook, as in add()
             if before_commit is not None and not before_commit(dict(new)):
                 raise AssetNotRecorded("the change could not be recorded; nothing was changed")
-            _atomic_write(self._dir(asset_id) / "asset.json", _encode_record(new))
+            _atomic_write(self._dir(asset_id) / "asset.json", raw)
         return new
 
     def get(self, asset_id: str, *, with_png: bool = True) -> Dict[str, Any]:
