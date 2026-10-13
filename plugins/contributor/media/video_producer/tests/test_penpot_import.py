@@ -102,7 +102,7 @@ def test_hostile_content_is_dropped_and_never_reaches_the_output():
     assert out.count("<script") == 0
     assert d.dropped["image"] == 1 and d.dropped["foreignObject"] == 1 and d.dropped["use"] == 1
     assert d.dropped["paint"] == 1 and d.dropped["malformed"] == 1
-    assert re.fullmatch(r'<svg xmlns="http://www.w3.org/2000/svg"[^<]*>(<[^<>]*>[^<>]*)*</svg>', out.replace("</text>", "</text>"))
+    assert re.fullmatch(r'<svg xmlns="http://www.w3.org/2000/svg"[^<]*>(<[^<>]*>[^<>]*)*</svg>', out)
     assert "&lt;/text&gt;&lt;script&gt;" in out  # text stays text: escaped, never markup
 
 
@@ -128,6 +128,74 @@ def test_transforms_compose_and_inherited_fill():
     r = pi.parse_design(svg(body)).shapes[0]
     assert r.fill == "#0a141e"
     assert r.matrix == (2.0, 0.0, 0.0, 2.0, 10.0, 20.0)
+
+
+# ── review findings (fidelity and load) ─────────────────────────────────────
+
+def test_viewbox_origin_and_size_are_the_coordinate_space():
+    d = pi.parse_design(svg('<rect x="100" y="200" width="800" height="600" fill="#101020"/>'
+                            '<rect x="900" y="900" width="50" height="50" fill="#ff0000"/>', 100, 100,
+                            'viewBox="100 200 800 600"').replace(b'width="100" height="100" viewBox="0 0 100 100"', b'width="100" height="100"'))
+    assert (d.ox, d.oy, d.width, d.height) == (100.0, 200.0, 800.0, 600.0)
+    assert d.background == "#101020"  # the full-viewBox rectangle at the origin is the page
+    out = pi.to_svg(d)
+    assert 'viewBox="100 200 800 600"' in out and '<rect x="100" y="200" width="800" height="600" fill="#101020"/>' in out
+
+
+def test_percent_size_with_a_viewbox_is_accepted():
+    raw = f'<svg {NS} width="100%" height="100%" viewBox="0 0 640 360"><rect width="10" height="10" fill="#ff0000"/></svg>'.encode()
+    assert (pi.parse_design(raw).width, pi.parse_design(raw).height) == (640.0, 360.0)
+
+
+def test_group_opacity_and_stroke_width_are_inherited():
+    body = ('<g opacity="0.5" fill-opacity="0.4" stroke="#000000" stroke-width="7">'
+            '<g opacity="0.5"><rect width="9" height="9" fill="#ff0000"/></g></g>')
+    sh = pi.parse_design(svg(body)).shapes[0]
+    assert (sh.opacity, sh.fill_opacity, sh.stroke_width) == (0.25, 0.4, 7.0)
+    assert 'opacity="0.25"' in pi.to_svg(pi.parse_design(svg(body)))
+
+
+def test_text_anchor_survives():
+    d = pi.parse_design(svg('<text x="200" y="50" text-anchor="middle" style="fill:#000">Centre</text>'
+                            '<text x="5" y="90" text-anchor="evil" style="fill:#000">x</text>'))
+    assert [t.anchor for t in d.shapes] == ["middle", "start"]
+    assert 'text-anchor="middle"' in pi.to_svg(d)
+
+
+def test_rect_with_only_one_radius_uses_it_for_both():
+    d = pi.parse_design(svg('<rect width="80" height="60" rx="12" fill="#ff0000"/><rect width="9" height="9" fill="#00ff00"/>'))
+    assert (d.shapes[0].rx, d.shapes[0].ry) == (12.0, 12.0)
+    assert (d.shapes[1].rx, d.shapes[1].ry) == (0.0, 0.0)
+
+
+def test_total_path_data_is_budgeted():
+    path = f'<path d="M0 0 L{"1 1 " * 4000}Z" fill="#ff0000"/>'  # ~16 000 characters each
+    ok = pi.parse_design(svg(path * 20))
+    assert ok.path_chars < pi.MAX_PATH_TOTAL
+    with pytest.raises(pi.PenpotImportError, match="too much path data"):
+        pi.parse_design(svg(path * 40))
+
+
+def test_extreme_proportions_are_refused_before_rendering():
+    for w, h in ((16, 20000), (20000, 16)):
+        with pytest.raises(pi.PenpotImportError, match="proportions"):
+            pi.parse_design(svg('<rect width="4" height="4" fill="#ff0000"/>', w, h))
+
+
+def test_style_ranking_ignores_what_is_off_canvas_and_transparent():
+    body = ('<rect x="-900000" y="0" width="1000000" height="300" fill="#3366cc"/>'
+            '<rect x="10" y="10" width="120" height="80" fill="#cc2200"/>'
+            '<rect x="0" y="0" width="400" height="300" fill="#00aa00" opacity="0.01"/>')
+    st = pi.import_penpot(svg(body), "x.svg").style
+    assert st.tokens["light"]["accent"].lower() != "#3366cc" and st.tokens["dark"]["accent"].lower() != "#3366cc"
+
+
+def test_a_full_canvas_dark_rectangle_without_a_class_is_the_background():
+    body = ('<rect width="400" height="300" fill="#101020"/>'
+            '<rect x="20" y="20" width="100" height="60" fill="#ff8800"/>'
+            '<text x="20" y="200" style="font-size: 24px; fill: #f5f5f5">Hi</text>')
+    st = pi.import_penpot(svg(body), "dark.svg").style
+    assert st.default_theme == "dark" and st.tokens["dark"]["bg"] == "#101020"
 
 
 # ── style derivation ────────────────────────────────────────────────────────

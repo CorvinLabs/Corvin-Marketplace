@@ -41,6 +41,8 @@ MAX_SHAPES = 2000
 MAX_TEXT = 600
 MAX_TEXT_TOTAL = 30_000
 MAX_PATH = 20_000
+MAX_PATH_TOTAL = 400_000  # rendering cost grows with path length; 400 x 20 000 took 26 s in Chromium
+MAX_ASPECT = 32.0
 MIN_DIM, MAX_DIM = 16.0, 20_000.0
 MAX_COORD = 1e6
 MAX_SECONDS = 5.0
@@ -57,6 +59,7 @@ _CTRL = re.compile("[\x00-\x08\x0b-\x1f\x7f‪-‮⁦-⁩‎‏]")
 _BASELINES = frozenset({"alphabetic", "ideographic", "hanging", "middle", "central", "text-before-edge",
                         "text-after-edge", "auto"})
 _IDENT = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+_ANCHORS = frozenset({"start", "middle", "end"})
 NOT_IMPORTED = ("An SVG export does not carry components, constraints, auto-layout or animations; "
                 "they were not imported. Gradients, images, shadows and blurs are dropped.")
 
@@ -86,6 +89,7 @@ class Shape:
     font_weight: int = 400
     text_length: float = 0.0
     baseline: str = "alphabetic"
+    anchor: str = "start"
     matrix: Tuple[float, float, float, float, float, float] = _IDENT
 
 
@@ -96,6 +100,9 @@ class Design:
     background: Optional[str]
     shapes: List[Shape] = field(default_factory=list)
     dropped: Dict[str, int] = field(default_factory=dict)
+    ox: float = 0.0  # viewBox origin: shapes are drawn in the viewBox's own coordinates
+    oy: float = 0.0
+    path_chars: int = 0
 
 
 def _local(tag: Any) -> str:
@@ -192,6 +199,22 @@ def _bump(tally: Dict[str, int], key: str) -> None:
     tally[key] = tally.get(key, 0) + 1
 
 
+def _radii(el: ET.Element) -> Tuple[float, float]:
+    """SVG rule: a rect given only rx (or only ry) uses it for both radii."""
+    rx = _num(el.get("rx"), None, 0.0) if el.get("rx") is not None else None
+    ry = _num(el.get("ry"), None, 0.0) if el.get("ry") is not None else None
+    if rx is None and ry is None:
+        return 0.0, 0.0
+    return (ry if rx is None else rx), (rx if ry is None else ry)
+
+
+def _stroke_width(el: ET.Element, st: Dict[str, str], default: float) -> float:
+    try:
+        return _num(_attr(el, st, "stroke-width"), default, 0.0, 1000.0)
+    except ValueError:
+        return default
+
+
 def _shape(tag: str, el: ET.Element, st: Dict[str, str], m: Tuple[float, ...], inh: Dict[str, Any],
            tally: Dict[str, int]) -> Optional[Shape]:
     fill = _color(_attr(el, st, "fill")) if _attr(el, st, "fill") is not None else inh["fill"]
@@ -202,13 +225,13 @@ def _shape(tag: str, el: ET.Element, st: Dict[str, str], m: Tuple[float, ...], i
     if stroke is _UNSET:
         _bump(tally, "paint")
         stroke = None
-    common = dict(fill=fill, fill_opacity=_unit(_attr(el, st, "fill-opacity")), stroke=stroke,
-                  stroke_width=_num(_attr(el, st, "stroke-width"), 1.0, 0.0, 1000.0) if stroke else 0.0,
-                  opacity=_unit(_attr(el, st, "opacity")), matrix=m)
+    common = dict(fill=fill, fill_opacity=_unit(_attr(el, st, "fill-opacity"), inh["fill_opacity"]), stroke=stroke,
+                  stroke_width=_stroke_width(el, st, inh["stroke_width"]) if stroke else 0.0,
+                  opacity=inh["opacity"] * _unit(_attr(el, st, "opacity")), matrix=m)
     if tag == "rect":
         w, h = _num(el.get("width"), None, 0.0), _num(el.get("height"), None, 0.0)
-        return Shape("rect", x=_num(el.get("x"), 0.0), y=_num(el.get("y"), 0.0), w=w, h=h,
-                     rx=_num(el.get("rx"), 0.0, 0.0), ry=_num(el.get("ry"), 0.0, 0.0), **common)
+        rx, ry = _radii(el)
+        return Shape("rect", x=_num(el.get("x"), 0.0), y=_num(el.get("y"), 0.0), w=w, h=h, rx=rx, ry=ry, **common)
     if tag in ("ellipse", "circle"):
         rx = _num(el.get("rx", el.get("r")), None, 0.0)
         ry = _num(el.get("ry", el.get("r")), None, 0.0)
@@ -227,7 +250,9 @@ def _shape(tag: str, el: ET.Element, st: Dict[str, str], m: Tuple[float, ...], i
     base = (_attr(el, st, "dominant-baseline") or "alphabetic").strip().lower()
     weight = (_attr(el, st, "font-weight") or "400").strip().lower()
     weight_n = 700 if weight == "bold" else 400 if weight == "normal" else int(weight) if weight.isdigit() else 400
+    anchor = (_attr(el, st, "text-anchor") or "start").strip().lower()
     return Shape("text", x=_num(el.get("x"), 0.0), y=_num(el.get("y"), 0.0), text=text,
+                 anchor=anchor if anchor in _ANCHORS else "start",
                  font_family=_clean_font((_attr(el, st, "font-family") or "").split(",")[0].strip("'\" ")),
                  font_size=_num(_attr(el, st, "font-size"), 16.0, 1.0, 2000.0),
                  font_weight=min(max(weight_n, 100), 900), baseline=base if base in _BASELINES else "alphabetic",
@@ -251,6 +276,9 @@ def _walk(node: ET.Element, m: Tuple[float, ...], inh: Dict[str, Any], design: D
         cm = _mul(m, _matrix(el, tally))
         if tag in ("g", "svg"):
             sub = dict(inh)
+            sub["opacity"] = inh["opacity"] * _unit(_attr(el, st, "opacity"))
+            sub["fill_opacity"] = _unit(_attr(el, st, "fill-opacity"), inh["fill_opacity"])
+            sub["stroke_width"] = _stroke_width(el, st, inh["stroke_width"])
             for key in ("fill", "stroke"):
                 if _attr(el, st, key) is not None:
                     c = _color(_attr(el, st, key))
@@ -267,11 +295,15 @@ def _walk(node: ET.Element, m: Tuple[float, ...], inh: Dict[str, Any], design: D
             continue
         if shape is None:
             continue
-        if (tag == "rect" and "frame-background" in (el.get("class") or "").split() and design.background is None
-                and shape.fill and cm == _IDENT and shape.x <= 0.5 and shape.y <= 0.5
-                and shape.w >= design.width - 1 and shape.h >= design.height - 1):
-            design.background = shape.fill
+        if (tag == "rect" and not design.shapes and design.background is None and shape.fill and cm == _IDENT
+                and shape.fill_opacity == 1.0 and shape.opacity == 1.0 and shape.x <= design.ox + 0.5
+                and shape.y <= design.oy + 0.5 and shape.w >= design.width - 1 and shape.h >= design.height - 1):
+            design.background = shape.fill  # the first full-canvas solid rectangle is the page, not a shape
             continue
+        if shape.kind == "path":
+            design.path_chars += len(shape.d)
+            if design.path_chars > MAX_PATH_TOTAL:
+                raise PenpotImportError("The design has too much path data to render.")
         state["text_total"] += len(shape.text)
         if len(design.shapes) >= MAX_SHAPES or state["text_total"] > MAX_TEXT_TOTAL:
             raise PenpotImportError("The design has too many shapes or too much text to import.")
@@ -290,17 +322,23 @@ def parse_design(data: bytes) -> Design:
         raise PenpotImportError(str(e).replace("presentation", "design")) from None
     if _local(root.tag) != "svg" or not root.tag.startswith("{" + SVG_NS + "}"):
         raise PenpotImportError("This is not an SVG file.")
+    ox = oy = 0.0
     try:
-        vb = [float(x) for x in re.split(r"[\s,]+", (root.get("viewBox") or "").strip())] if root.get("viewBox") else []
-        width = _num(root.get("width"), vb[2] if len(vb) == 4 else None)
-        height = _num(root.get("height"), vb[3] if len(vb) == 4 else None)
-    except (ValueError, IndexError):
+        vb = [_num(x, None) for x in re.split(r"[\s,]+", root.get("viewBox").strip())] if root.get("viewBox") else []
+        if len(vb) == 4:
+            ox, oy, width, height = vb  # shapes are drawn in the viewBox's coordinates; width/height only scale
+        else:
+            width, height = _num(root.get("width"), None), _num(root.get("height"), None)
+    except ValueError:
         raise PenpotImportError("The SVG has no usable size.") from None
     if not (MIN_DIM <= width <= MAX_DIM and MIN_DIM <= height <= MAX_DIM):
         raise PenpotImportError("The SVG size is outside 16 to 20000 pixels.")
-    design = Design(width=width, height=height, background=None)
+    if max(width, height) / min(width, height) > MAX_ASPECT:
+        raise PenpotImportError("The SVG proportions are too extreme to render.")
+    design = Design(width=width, height=height, background=None, ox=ox, oy=oy)
     root_fill = _color(_attr(root, _style(root), "fill"))
-    inh = {"fill": "#000000" if root_fill is _UNSET else root_fill, "stroke": None}
+    inh = {"fill": "#000000" if root_fill is _UNSET else root_fill, "stroke": None, "opacity": 1.0,
+           "fill_opacity": 1.0, "stroke_width": 1.0}
     state = {"deadline": time.monotonic() + MAX_SECONDS, "text_total": 0}
     _walk(root, _IDENT, inh, design, design.dropped, state)
     if not design.shapes and design.background is None:
@@ -316,8 +354,9 @@ def to_svg(design: Design, box: Tuple[float, float] = RENDER_BOX) -> str:
     """Clean SVG written only from the model's typed fields, scaled to fit ``box`` (never enlarged)."""
     s = min(1.0, box[0] / design.width, box[1] / design.height)
     w, h = max(1, round(design.width * s)), max(1, round(design.height * s))
-    out = [f'<svg xmlns="{SVG_NS}" width="{w}" height="{h}" viewBox="0 0 {_n(design.width)} {_n(design.height)}">',
-           f'<rect width="{_n(design.width)}" height="{_n(design.height)}" fill="{design.background or "#ffffff"}"/>']
+    out = [f'<svg xmlns="{SVG_NS}" width="{w}" height="{h}" viewBox="{_n(design.ox)} {_n(design.oy)} {_n(design.width)} {_n(design.height)}">',
+           f'<rect x="{_n(design.ox)}" y="{_n(design.oy)}" width="{_n(design.width)}" height="{_n(design.height)}" '
+           f'fill="{design.background or "#ffffff"}"/>']
     for sh in design.shapes:
         a = [f'fill="{sh.fill}"' if sh.fill else 'fill="none"']
         if sh.fill and sh.fill_opacity < 1:
@@ -340,7 +379,7 @@ def to_svg(design: Design, box: Tuple[float, float] = RENDER_BOX) -> str:
             fam = html.escape(f"'{sh.font_family}', sans-serif" if sh.font_family else "sans-serif", quote=True)
             tl = f' textLength="{_n(sh.text_length)}" lengthAdjust="spacingAndGlyphs"' if sh.text_length else ""
             out.append(f'<text x="{_n(sh.x)}" y="{_n(sh.y)}" dominant-baseline="{sh.baseline}" font-family="{fam}" '
-                       f'font-size="{_n(sh.font_size)}" font-weight="{sh.font_weight}" xml:space="preserve"{tl} '
+                       f'font-size="{_n(sh.font_size)}" font-weight="{sh.font_weight}" text-anchor="{sh.anchor}" xml:space="preserve"{tl} '
                        f'{attrs}>{html.escape(sh.text, quote=False)}</text>')
     out.append("</svg>")
     return "".join(out)
@@ -354,7 +393,7 @@ def to_html(design: Design, box: Tuple[float, float] = RENDER_BOX) -> Tuple[str,
             'svg{display:block}</style></head><body>' + svg + "</body></html>"), w, h
 
 
-async def render_png(design: Design, *, timeout_s: float = 30.0) -> bytes:
+async def render_png(design: Design, *, timeout_s: float = 15.0) -> bytes:
     """The design as PNG through the producer's hardened headless Chromium (JS off, network aborted)."""
     try:
         from .web_renderer import WebSlideRenderer
@@ -367,12 +406,21 @@ async def render_png(design: Design, *, timeout_s: float = 30.0) -> bytes:
 
 # ── style derivation ────────────────────────────────────────────────────────
 
-def _area(sh: Shape) -> float:
+def _area(sh: Shape, d: Design) -> float:
+    """Visible area for colour ranking: clipped to the canvas, weighted by opacity."""
+    a, b, c, e, _, _ = sh.matrix
+    scale = abs(a * e - b * c)
     if sh.kind == "rect":
-        return sh.w * sh.h
-    if sh.kind == "ellipse":
-        return math.pi * sh.w * sh.h
-    return 1000.0
+        w, h = sh.w, sh.h
+        if sh.matrix == _IDENT:
+            w = max(0.0, min(sh.x + sh.w, d.ox + d.width) - max(sh.x, d.ox))
+            h = max(0.0, min(sh.y + sh.h, d.oy + d.height) - max(sh.y, d.oy))
+        area = w * h * scale
+    elif sh.kind == "ellipse":
+        area = math.pi * sh.w * sh.h * scale
+    else:
+        area = 1000.0
+    return min(area, d.width * d.height) * sh.opacity
 
 
 def design_to_style(design: Design, filename: str = "", sha256: Optional[str] = None) -> ImportResult:
@@ -387,7 +435,7 @@ def design_to_style(design: Design, filename: str = "", sha256: Optional[str] = 
             if sh.kind == "text":
                 chars[sh.fill] = chars.get(sh.fill, 0) + len(sh.text)
             else:
-                area[sh.fill] = area.get(sh.fill, 0.0) + _area(sh) * sh.fill_opacity
+                area[sh.fill] = area.get(sh.fill, 0.0) + _area(sh, design) * sh.fill_opacity
         if sh.kind == "text" and sh.font_family:
             fams[sh.font_family] = fams.get(sh.font_family, 0) + len(sh.text)
             if sh.font_size > biggest[0]:
