@@ -12,7 +12,7 @@
 
 **Ready-Gate (ADR-2247, T-0097):** `scripts/ready_gate.py` (A operations, B quality bootstrap, C hygiene) runs on demand. No corpus produced yet: verdict is "not assessed" (Staged Release: use 1.6.0 internally, no "production ready" claim).
 
-**Known Limits:** Capture (website screenshot → asset) is a spike-only prototype (T-0112 NO-GO); not in 1.6.0. Release gate: the fresh-install Playwright spec (CorvinOS web-next, fresh-install config, test 6c) installs this release from GitHub and produces a video with a canvas scene; Linux only (headless Chromium, ffmpeg).
+**Known Limits:** Capture (website screenshot → asset) is not in 1.6.0. The S3 policy spike (T-0112, `spike_capture_policy/`) measured GO on 2026-10-13 (146 hostile URLs, 0 reached); the product path (P4, T-0113) is not built. Release gate: the fresh-install Playwright spec (CorvinOS web-next, fresh-install config, test 6c) installs this release from GitHub and produces a video with a canvas scene; Linux only (headless Chromium, ffmpeg).
 
 ---
 
