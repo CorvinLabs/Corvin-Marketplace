@@ -67,11 +67,11 @@ then plays it at full width. **F** (or the fullscreen button) goes fullscreen.
 Select a produced video, or press **Revise** on its card, describe the change ("make scene 2 shorter") and send.
 A new video is produced; the original stays and the new card carries a *revision* badge.
 
-### Step 6: Use Your Own Look (PowerPoint Style)
+### Step 6: Use Your Own Look (PowerPoint or Penpot Style)
 
-By default every video looks like CorvinOS. To make videos that look like *your* deck:
+By default every video looks like CorvinOS. To make videos that look like *your* deck or *your* Penpot design (export a board as SVG; see [docs/PENPOT-IMPORT.md](docs/PENPOT-IMPORT.md) for what an SVG export keeps):
 
-1. Open the **Style** chip next to the mode switch and choose **Import from PowerPoint…**, or attach a `.pptx` / `.potx`
+1. Open the **Style** chip next to the mode switch and choose **Import from PowerPoint or Penpot…**, or attach a `.pptx` / `.potx` / `.svg`
    file in the composer and choose **Use as style** (a different action from using it as source material).
 2. The import dialog shows three sample slides rendered with the extracted look. Check or change:
    - **Name** and **Wordmark** (the wordmark is shown in the footer of every slide),

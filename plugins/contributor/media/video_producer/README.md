@@ -90,7 +90,7 @@ Marketplace workflow `video-producer-release-lint.yml`).
 
 ### Your Own Look (Style Packs)
 
-A *style* — palette, fonts, logo, wordmark, decoration — is a validated, per-workspace object created from a PowerPoint (`.pptx`/`.potx`) in the console panel. Without a style the CorvinOS look is used and its output is pinned byte-for-byte by golden tests. Details: [USER-GUIDE.md](USER-GUIDE.md) (Step 6). Logos are PNG-only (SVG is dropped by design), the deck is never stored, and contrast rules are enforced when a style is saved.
+A *style* — palette, fonts, logo, wordmark, decoration — is a validated, per-workspace object created from a PowerPoint (`.pptx`/`.potx`) or a board exported from Penpot as SVG in the console panel. Without a style the CorvinOS look is used and its output is pinned byte-for-byte by golden tests. Details: [USER-GUIDE.md](USER-GUIDE.md) (Step 6). Logos are PNG-only (an SVG supplies colours and fonts, never a logo; a Penpot board can also be imported as an image, see [docs/PENPOT-IMPORT.md](docs/PENPOT-IMPORT.md)), the deck is never stored, and contrast rules are enforced when a style is saved.
 
 ### Web Slide Templates
 
@@ -113,6 +113,7 @@ Known red tests: none since the 1.5.0 baseline work (ADR-2247 R0, `974bf30`). Th
 ## Documentation
 
 ### For Using This Plugin
+- **[docs/PENPOT-IMPORT.md](docs/PENPOT-IMPORT.md)** — Penpot boards as styles and images: what is read, what is dropped, limits, audit
 - **[docs/WEB-SLIDES.md](docs/WEB-SLIDES.md)** — All 15 slide templates, data contracts, narration-synced timing
 - **[ADR-2238](../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md)** — Web-slide renderer design (Chromium, deterministic frames, ambient loops)
 - **[ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md)** — Narration quality (OpenAI TTS, fallback chain)
