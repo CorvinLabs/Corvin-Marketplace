@@ -28,9 +28,9 @@ settings_schema:
   properties:
     tts_engine:
       type: string
-      enum: [gtts]
+      enum: [openai, auto, gtts]
       default: gtts
-      description: Text-to-speech engine for narration (only gtts is implemented; ADR-0953 Phase B evaluated and rejected adopting the openai/piper code paths as-is)
+      description: Text-to-speech engine for narration -- openai (OpenAI TTS), auto (openai, falling back to gtts) or gtts; the same set src/skill.py SUPPORTED_TTS_ENGINES accepts
     youtube_upload_supported:
       type: boolean
       default: false
