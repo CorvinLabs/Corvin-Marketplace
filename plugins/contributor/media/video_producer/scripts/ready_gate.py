@@ -289,8 +289,25 @@ def section_a(corvinos: Optional[Path], py: str, skip_run: bool) -> List[Dict[st
                 continue
             rc, tail = run_pytest(py if repo == "plugin" or corvinos is None else str(_venv_py(corvinos, py)),
                                   root, files, env)
-            out.append(item(name, "pass" if rc == 0 else "fail", files=files, exit_code=rc, tail=tail))
+            out.append(item(name, a_status(name, rc, tail), files=files, exit_code=rc, tail=tail))
     return out
+
+
+# rows whose evidence is void if ANY of their tests was skipped (no Chrome, no /proc, no curl): a skipped
+# hostile-corpus case proves nothing about the capture (review 2, 2026-10-13)
+NO_SKIP_ROWS = frozenset({"capture_policy_hostile_corpus_reaches_nothing",
+                          "capture_policy_route_uniform_failures_and_audit"})
+
+
+def a_status(name: str, rc: int, tail: str) -> str:
+    """pass only when pytest passed AND at least one test ran (pytest exits 0 when everything is skipped)."""
+    if rc != 0:
+        return "fail"
+    if not re.search(r"\b[1-9]\d* passed\b", tail):
+        return "not_demonstrated"
+    if name in NO_SKIP_ROWS and re.search(r"\b[1-9]\d* skipped\b", tail):
+        return "not_demonstrated"
+    return "pass"
 
 
 def _venv_py(corvinos: Path, fallback: str) -> str:

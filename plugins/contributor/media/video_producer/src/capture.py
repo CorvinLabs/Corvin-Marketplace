@@ -92,6 +92,12 @@ SIX_TO_FOUR = ipaddress.ip_network("2002::/16")
 TEREDO = ipaddress.ip_network("2001::/32")
 V4_COMPAT = ipaddress.ip_network("::/96")
 REFUSED_NAMES = {"localhost", "metadata.google.internal", "metadata", "instance-data"}
+SIIT = ipaddress.ip_network("::ffff:0:0:0/96")       # ::ffff:0:a.b.c.d - stateless IP/ICMP translation
+REFUSED_NETS = [ipaddress.ip_network(n) for n in (
+    "fec0::/10",        # deprecated site-local: an internal network wherever it is still used
+    "2001:20::/28",     # ORCHIDv2: not a routable destination
+    "192.88.99.0/24",   # 6to4 relay anycast: a transition form, refused like 2002::/16
+)]
 
 
 class CaptureRefused(ValueError):
@@ -117,6 +123,16 @@ def _udp_local(probe: str, family: int) -> Optional[str]:
 
 
 def own_addresses() -> Set[Any]:
+    """Every address of this host (addresses only; see ``own_networks`` and ``own_scope``)."""
+    return {x for x in own_scope() if isinstance(x, (ipaddress.IPv4Address, ipaddress.IPv6Address))}
+
+
+def own_networks() -> Set[Any]:
+    """The on-link networks of this host's global addresses: the neighbours behind the same firewall."""
+    return {x for x in own_scope() if isinstance(x, (ipaddress.IPv4Network, ipaddress.IPv6Network))}
+
+
+def own_scope() -> Set[Any]:
     """Every address of this host - so the host can never be its own target. Sources, any of which
     counts: ``ip -j addr`` (Linux), ``ifconfig -a`` (macOS/BSD), and on every platform the source
     address the kernel picks towards a public v4/v6 address (a UDP connect, no packet sent), plus
@@ -125,18 +141,25 @@ def own_addresses() -> Set[Any]:
     out: Set[Any] = {ipaddress.ip_address("127.0.0.1"), ipaddress.ip_address("::1")}
     known = False
 
-    def add(text: str) -> None:
+    def add(text: str, prefix: Optional[int] = None) -> None:
+        """An own address, and - for a global one - its on-link network (the neighbours behind the same
+        firewall): the reported prefix, else /64 for IPv6 (the SLAAC subnet) and /24 for IPv4."""
         try:
-            out.add(ipaddress.ip_address(text.split("%")[0]))
+            ip = ipaddress.ip_address(text.split("%")[0])
         except ValueError:
-            pass
+            return
+        out.add(ip)
+        if ip.is_global:
+            plen = prefix if isinstance(prefix, int) else (64 if ip.version == 6 else 24)
+            plen = max(plen, 48 if ip.version == 6 else 16)  # never refuse a whole provider block
+            out.add(ipaddress.ip_network(f"{ip}/{plen}", strict=False))
 
     if shutil.which("ip"):
         try:
             r = _dl.run_process(["ip", "-j", "addr"], deadline_s=5, text=True, what="ip addr")
             for itf in json.loads(r.stdout or "[]"):
                 for a in itf.get("addr_info", []):
-                    add(a["local"])
+                    add(a["local"], a.get("prefixlen"))
             known = True
         except Exception:  # noqa: BLE001 - the next source decides; known stays False if none answers
             pass
@@ -146,7 +169,18 @@ def own_addresses() -> Set[Any]:
             for line in (r.stdout or "").splitlines():
                 parts = line.split()
                 if len(parts) >= 2 and parts[0] in ("inet", "inet6"):
-                    add(parts[1])
+                    plen = None
+                    if "prefixlen" in parts[:-1]:
+                        try:
+                            plen = int(parts[parts.index("prefixlen") + 1])
+                        except ValueError:
+                            plen = None
+                    elif "netmask" in parts[:-1]:
+                        try:
+                            plen = bin(int(parts[parts.index("netmask") + 1], 16)).count("1")
+                        except ValueError:
+                            plen = None
+                    add(parts[1], plen)
                     known = True
         except Exception:  # noqa: BLE001
             pass
@@ -191,7 +225,7 @@ def _embedded_v4(ip) -> Iterable[Any]:
         yield ip.ipv4_mapped
     if ip in V4_COMPAT:
         yield ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
-    if any(ip in n for n in NAT64):
+    if any(ip in n for n in NAT64) or ip in SIIT:
         yield ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
     if ip.sixtofour:
         yield ip.sixtofour
@@ -204,12 +238,17 @@ def address_verdict(ip, own: Set[Any]) -> Optional[str]:
     Python 3.11: True for 224.0.0.1, ff05::1:3, 64:ff9b::7f00:1, ::127.0.0.1 and own global v6)."""
     if ip in own:
         return "own_interface"
+    if any(isinstance(n, (ipaddress.IPv4Network, ipaddress.IPv6Network)) and ip.version == n.version and ip in n
+           for n in own):
+        return "own_network"  # a neighbour on this host's own link: behind its firewall, never a public target
+    if any(ip.version == n.version and ip in n for n in REFUSED_NETS):
+        return "refused_range"
     if ip.version == 6:
         for v4 in _embedded_v4(ip):
             r = address_verdict(v4, own)
             if r:
                 return "embedded_v4:" + r
-        if any(ip in n for n in NAT64) or ip in SIX_TO_FOUR or ip in TEREDO or ip in V4_COMPAT:
+        if any(ip in n for n in NAT64) or ip in SIX_TO_FOUR or ip in TEREDO or ip in V4_COMPAT or ip in SIIT:
             return "transition_form"  # v1: no transition-mechanism destinations at all
     if ip.is_multicast:
         return "multicast"
@@ -237,7 +276,7 @@ def precheck_host(host: str, console_names: Iterable[str] = ()) -> Optional[str]
         return "bad_host"
     if lit is not None:
         try:
-            return address_verdict(lit, own_addresses())
+            return address_verdict(lit, own_scope())
         except OwnAddressesUnknown:
             return "own_unknown"
     return None
@@ -269,10 +308,13 @@ def check_url(url: Any) -> Dict[str, Any]:
     if ":" in host:  # IPv6 literal
         shown = f"[{host}]"
     else:
+        host = host.rstrip(".")  # "example.com." must be judged as "example.com" by the egress gate too
         try:
             host = host.encode("idna").decode("ascii").lower()
         except UnicodeError:
             raise CaptureRefused("invalid_url") from None
+        if not host:
+            raise CaptureRefused("invalid_url")
         shown = host
     default = 443 if scheme == "https" else 80
     port = port or default
@@ -321,7 +363,7 @@ class CaptureProxy:
         self.resolver = resolver
         self.egress = egress
         self.announced: Set[Tuple[str, int]] = set()   # (host, port) a PAGE session asked for
-        self.own = own_addresses()
+        self.own = own_scope()  # addresses AND on-link networks
         self.log: List[Dict[str, Any]] = []
         self.outbound: List[Tuple[str, int]] = []   # every TCP connect the proxy actually made
         self.port = 0
@@ -711,9 +753,17 @@ class _Cdp:
             pass
 
 
-def _shown_frame(cdp: _Cdp, sid: str, proxy: CaptureProxy) -> Tuple[Optional[str], str]:
-    """The URL of the frame that is shown, when it is an http(s) document the proxy connected to;
-    else (None, reason). An error page (``unreachableUrl``, ``chrome-error:``) is never shown."""
+def same_site(shown: str, named: str) -> bool:
+    """The shown document stays on the site the user named: the host itself, or a host one is a dot-bounded
+    subdomain of the other (``acme.com`` -> ``www.acme.com``, ``www.acme.com`` -> ``acme.com``). A redirect to
+    any other site - even one the egress rules allow - is not what the user asked to capture."""
+    a, b = _canonical_host(shown), _canonical_host(named)
+    return a == b or a.endswith("." + b) or b.endswith("." + a)
+
+
+def _shown_frame(cdp: _Cdp, sid: str, proxy: CaptureProxy, named: str = "") -> Tuple[Optional[str], str]:
+    """The URL of the frame that is shown, when it is an http(s) document the proxy connected to on the
+    named site; else (None, reason). An error page (``unreachableUrl``, ``chrome-error:``) is never shown."""
     frame = (cdp.call("Page.getFrameTree", session=sid, timeout=max(0.1, cdp.left()))
              .get("frameTree") or {}).get("frame") or {}
     if frame.get("unreachableUrl"):
@@ -724,7 +774,27 @@ def _shown_frame(cdp: _Cdp, sid: str, proxy: CaptureProxy) -> Tuple[Optional[str
     port = parts.port or (443 if parts.scheme == "https" else 80)
     if not proxy.connected(parts.hostname, port):
         return None, "refused"
+    if named and not same_site(parts.hostname, named):
+        return None, "refused"
     return f"{parts.scheme}://{parts.netloc}{parts.path or '/'}", "ok"
+
+
+def _top_frame_navigated(cdp: _Cdp, sid: str) -> bool:
+    """Did the top frame start or finish a navigation (incl. history.back / pushState) since the last drain?"""
+    hit = False
+    while True:
+        try:
+            ev = cdp.events.get_nowait()
+        except Exception:  # noqa: BLE001 - queue.Empty
+            return hit
+        if ev.get("sessionId") != sid:
+            continue
+        m, prm = ev.get("method"), ev.get("params") or {}
+        if m in ("Page.frameNavigated", "Page.frameStartedNavigating", "Page.frameRequestedNavigation",
+                 "Page.navigatedWithinDocument", "Page.frameStartedLoading"):
+            frame = prm.get("frame") if isinstance(prm.get("frame"), dict) else prm
+            if not frame.get("parentId"):
+                hit = True
 
 
 def _drive(cdp: _Cdp, url: str, viewport: str, out_png: str, proxy: CaptureProxy) -> Dict[str, Any]:
@@ -758,13 +828,17 @@ def _drive(cdp: _Cdp, url: str, viewport: str, out_png: str, proxy: CaptureProxy
                 idle = True
             elif prm.get("name") == "init":
                 loader, idle = prm.get("loaderId"), False  # a new document started loading
-    shown, why = _shown_frame(cdp, sid, proxy)
+    cdp.drain()  # from here on, ANY navigation of the top frame voids the capture (e.g. away and back)
+    named = urlsplit(url).hostname or ""
+    shown, why = _shown_frame(cdp, sid, proxy, named)
     if not shown:
         return {"ok": False, "reason": why}
     shot = cdp.call("Page.captureScreenshot", {"format": "png"}, session=sid, timeout=max(0.1, cdp.left()))
-    again, why = _shown_frame(cdp, sid, proxy)
+    again, why = _shown_frame(cdp, sid, proxy, named)
     if again != shown:  # navigated away while the screenshot was taken
         return {"ok": False, "reason": why if not again else "unreachable"}
+    if _top_frame_navigated(cdp, sid):
+        return {"ok": False, "reason": "unreachable"}
     import base64  # noqa: PLC0415
     png = base64.b64decode(shot.get("data") or "")
     if not png:
@@ -860,6 +934,20 @@ def _reap(pid: int, marker: str) -> None:
 
 # ── host side ───────────────────────────────────────────────────────────────────────────────
 
+def host_support() -> Optional[str]:
+    """None when this host can capture at all, else a closed reason: unsupported (no posix_spawn, e.g.
+    Windows, or this host's own addresses cannot be enumerated) | no_browser. Cheap; no network."""
+    if not hasattr(os, "posix_spawn"):
+        return "unsupported"
+    if not find_browser():
+        return "no_browser"
+    try:
+        own_addresses()
+    except OwnAddressesUnknown:
+        return "unsupported"
+    return None
+
+
 _SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT)
 _TENANT_LOCK = threading.Lock()
 _TENANT_RUNNING: Dict[str, int] = {}
@@ -889,10 +977,12 @@ def _give_slot(tenant: str) -> None:
 def capture_url(url: str, *, viewport: str = "desktop", deadline_s: float = CAPTURE_DEADLINE_S,
                 console_names: Iterable[str] = (), chrome: Optional[str] = None,
                 work_dir: Optional[str] = None, egress: Optional[Dict[str, Any]] = None,
-                tenant: str = "_default") -> Dict[str, Any]:
+                tenant: str = "_default", fail_hold_until: Optional[float] = None) -> Dict[str, Any]:
     """Capture ``url`` in a worker process -> ``{ok, reason, png, final_url, hosts, elapsed}``; ``png``
     only when ``ok``. ``egress``: the tenant's rules for hosts other than the named one
-    (``egress_allows``); ``tenant`` keys the per-tenant concurrency bound.
+    (``egress_allows``); ``tenant`` keys the per-tenant concurrency bound; ``fail_hold_until`` (a
+    ``time.monotonic()`` instant): after a FAILED capture the slot is held until then, so polling for
+    "busy" cannot measure how long the worker really ran (the caller answers failures at that instant).
 
     ``reason`` is a closed token: ok | invalid_url | refused | unreachable | timeout | browser_failed |
     no_browser | unsupported | busy. It is for the audit record; a caller must answer refused /
@@ -922,6 +1012,19 @@ def capture_url(url: str, *, viewport: str = "desktop", deadline_s: float = CAPT
         return done(False, "no_browser")
     if not _take_slot(tenant):
         return done(False, "busy")
+    result: Dict[str, Any] = {}
+    try:
+        result = _run_worker(target, viewport, deadline_s, console_names, chrome, work_dir, egress, done)
+        return result
+    finally:
+        if not result.get("ok") and fail_hold_until is not None:
+            time.sleep(max(0.0, min(fail_hold_until - time.monotonic(), deadline_s + 5.0)))
+        _give_slot(tenant)
+
+
+def _run_worker(target: Dict[str, Any], viewport: str, deadline_s: float, console_names: Iterable[str],
+                chrome: str, work_dir: Optional[str], egress: Optional[Dict[str, Any]],
+                done: Callable[..., Dict[str, Any]]) -> Dict[str, Any]:
     own_dir = work_dir is None
     work = None
     try:
@@ -961,7 +1064,6 @@ def capture_url(url: str, *, viewport: str = "desktop", deadline_s: float = CAPT
     except OSError:  # no temp dir, no process: a failure like any other, never an exception
         return done(False, "browser_failed")
     finally:
-        _give_slot(tenant)
         if work:
             if own_dir:
                 shutil.rmtree(work, ignore_errors=True)

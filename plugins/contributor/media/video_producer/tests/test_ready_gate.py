@@ -202,3 +202,11 @@ def test_the_words_production_ready_need_alignment_and_a_full_pass():
     bad = [rg.item("y", "not_demonstrated")]
     v = rg.verdict(ok, bad, ok, invalid=False, with_alignment=True, commit="c")
     assert v["ready"] is False and v["misses"] == ["B:y=not_demonstrated"]
+
+
+def test_a_row_where_every_test_skipped_is_not_demonstrated():
+    assert rg.a_status("x", 0, "40 passed in 210.00s") == "pass"
+    assert rg.a_status("x", 0, "1 skipped in 0.01s") == "not_demonstrated"
+    assert rg.a_status("x", 0, "35 passed, 5 skipped in 9s") == "pass"
+    assert rg.a_status("capture_policy_hostile_corpus_reaches_nothing", 0, "35 passed, 5 skipped in 9s") == "not_demonstrated"
+    assert rg.a_status("x", 1, "1 failed, 3 passed") == "fail"

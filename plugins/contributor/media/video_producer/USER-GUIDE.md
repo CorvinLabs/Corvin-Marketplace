@@ -107,21 +107,24 @@ ask for it** — the storyboard never opens a website by itself.
    composer then offers **Add a screenshot of acme.example?** before you send — or open **Quality, learning, code,
    canvas and images → Images → Add website screenshot**. Enter the address, pick **Desktop** (1920×1080) or
    **Phone** (412×915 at 2×, i.e. 824×1830 px) and write a **caption**. A capture takes up to about 15 seconds.
-3. **Place hotspots.** The dialog then shows the stored picture: click it to place a hotspot a callout can point
-   at (at most 8), name the hotspots, adjust the caption and **Save** — or **Delete screenshot**.
+3. **Place hotspots.** The dialog then shows the stored picture: click it (or use **Add hotspot** and type the
+   position in percent) to place a hotspot a callout can point at (at most 8), name the hotspots, adjust the caption
+   and **Save** — or **Delete screenshot**. **Edit hotspots** on an image in the list does the same later.
 
 What happens: the console opens the page in a headless browser whose every request goes through a proxy owned by
 the console. The page may load images, fonts and scripts from other hosts only when **the page itself** asked for
 them and the workspace's egress policy allows them; this host, private networks and cloud metadata addresses are
-always refused. Chrome's own background traffic never leaves. A redirect, refresh or script that moves the page to
-an address that may not be opened ends the capture **without** a picture.
+always refused, and so are the other machines on the console host's own network. Chrome's own background traffic
+never leaves. A redirect, refresh or script that moves the page to an address that may not be opened, or to another
+site (`acme.com` → `www.acme.com` is the same site), ends the capture **without** a picture.
 
 What you see: an address that cannot be captured — refused, unreachable or too slow — always answers *"This address
 cannot be captured"* after the same time, so the answer never tells you which of these it was. A host that the
 workspace's own egress policy forbids is refused at once with that reason. The picture is never read back: no text
 from the page reaches the storyboard, only your caption and hotspot names. Cookie banners and pop-ups are captured
 as they appear. Limits: one capture per workspace at a time (two per host), 50 images per workspace, 4 MB per image
-after re-encoding, viewport only (no full-page captures), Linux and macOS hosts (not Windows).
+after re-encoding, viewport only (no full-page captures), Linux and macOS hosts with Chrome or Chromium (not
+Windows; the panel says so when the host cannot capture).
 
 ### Step 7: Download
 

@@ -23,6 +23,7 @@ fixture ``origin.test`` (it hosts the hostile pages) and it is excluded from the
 """
 from __future__ import annotations
 
+import asyncio
 import http.server
 import ipaddress
 import os
@@ -125,6 +126,7 @@ class OfflineProxy(capture.CaptureProxy):
         self.fixture_port = fixture_port
         self.all_named = all_named
         self.global_withheld: list = []
+        self.extra_fixture_hosts: set = set()
 
     def _is_named(self, host, port):
         return True if self.all_named else super()._is_named(host, port)
@@ -132,6 +134,15 @@ class OfflineProxy(capture.CaptureProxy):
     async def decide(self, host, port):
         if self.fixture_port and host.lower().rstrip(".") == "origin.test" and port == self.fixture_port:
             return ipaddress.ip_address("127.0.0.1"), "harness_fixture"
+        if self.fixture_port and host.lower().rstrip(".") in self.extra_fixture_hosts and port == self.fixture_port:
+            # the production host rule (page announcement + tenant rules), the fixture's port standing in for 80
+            end = time.monotonic() + capture.ANNOUNCE_WAIT_S
+            while not self._is_announced(host, port) and time.monotonic() < end:
+                await asyncio.sleep(0.02)
+            if not self._is_announced(host, port):
+                return None, "not_from_page"
+            allowed, why = capture.egress_allows(host, self.egress)
+            return (ipaddress.ip_address("127.0.0.1"), "harness_fixture") if allowed else (None, why)
         ip, why = await super().decide(host, port)
         if ip is not None:
             self.global_withheld.append((host, str(ip), port))
@@ -325,6 +336,12 @@ def _fixture_server(P: int, udp_port: int, udp_addr: str = "127.0.0.1"):
             if p == "/redirect":
                 self.send_response(302)
                 self.send_header("Location", f"http://127.0.0.1:{P}/redir")
+                self.end_headers()
+                return
+            if p in ("/offsite", "/to_www"):
+                self.send_response(302)
+                host = "other.test" if p == "/offsite" else "www.origin.test"
+                self.send_header("Location", f"http://{host}:{self.server.server_address[1]}/plain")
                 self.end_headers()
                 return
             if p == "/hang":
@@ -582,3 +599,127 @@ def test_own_addresses_without_ip_still_finds_the_outbound_address(monkeypatch):
     real = capture._udp_local("192.0.2.1", socket.AF_INET)
     if real:
         assert ipaddress.ip_address(real) in got
+
+
+# ── 8. review 2 (2026-10-13, reviewer A) ─────────────────────────────────────────────────────
+
+def test_a_trailing_dot_is_the_same_host_for_the_gate_and_the_proxy():
+    t = capture.check_url("https://Example.COM./pricing?x=1")
+    assert t["host"] == "example.com" and t["url"] == "https://example.com/pricing?x=1"
+    with pytest.raises(capture.CaptureRefused):
+        capture.check_url("http://./")
+
+
+@pytest.mark.parametrize("addr,reason", [
+    ("2a00:1450:4001:80b::99", "own_network"),     # a neighbour in the host's own /64
+    ("::ffff:0:7f00:1", "embedded_v4"),            # SIIT form of 127.0.0.1
+    ("fec0::1", "refused_range"),                  # deprecated site-local
+    ("2001:20::1", "refused_range"),               # ORCHIDv2
+    ("192.88.99.1", "refused_range"),              # 6to4 relay anycast
+])
+def test_on_link_neighbours_and_odd_ranges_are_refused(addr, reason):
+    own = {ipaddress.ip_address("2a00:1450:4001:80b::1"), ipaddress.ip_network("2a00:1450:4001:80b::/64")}
+    got = capture.address_verdict(ipaddress.ip_address(addr), own)
+    assert got and got.startswith(reason), got
+    assert capture.address_verdict(ipaddress.ip_address("2a00:1450:4001:80c::1"), own) is None
+
+
+def test_own_global_addresses_carry_their_on_link_network():
+    addrs, nets = capture.own_addresses(), capture.own_networks()
+    assert all(isinstance(a, (ipaddress.IPv4Address, ipaddress.IPv6Address)) for a in addrs)
+    for a in [x for x in addrs if x.is_global]:
+        assert any(n.version == a.version and a in n for n in nets), a
+
+
+@needs_chrome
+def test_a_failed_capture_holds_its_slot_until_the_answer_instant(tmp_path):
+    """Polling 'busy' must not reveal how long the worker ran: the slot is held until fail_hold_until."""
+    hold = time.monotonic() + 6.0
+    box = {}
+    th = threading.Thread(target=lambda: box.update(r=capture.capture_url(
+        "http://capture-hold-probe.invalid/", tenant="hold_t", fail_hold_until=hold, work_dir=str(tmp_path))))
+    th.start()
+    busy_seen_late = False
+    while th.is_alive():
+        if time.monotonic() > hold - 1.0:
+            if not capture._take_slot("hold_t"):
+                busy_seen_late = True
+            else:
+                capture._give_slot("hold_t")
+            break
+        time.sleep(0.1)
+    th.join(30)
+    assert box["r"]["ok"] is False
+    assert time.monotonic() >= hold - 0.05
+    assert busy_seen_late, "the slot was free before the answer instant"
+
+
+def test_a_top_frame_navigation_between_the_checks_voids_the_capture():
+    import queue
+    class Q:
+        events = queue.Queue()
+    for ev in ({"sessionId": "s", "method": "Page.frameNavigated", "params": {"frame": {"id": "c", "parentId": "t"}}},
+               {"sessionId": "x", "method": "Page.frameNavigated", "params": {"frame": {"id": "t"}}}):
+        Q.events.put(ev)
+    assert capture._top_frame_navigated(Q, "s") is False  # a child frame / another session
+    Q.events.put({"sessionId": "s", "method": "Page.navigatedWithinDocument", "params": {"frameId": "t"}})
+    assert capture._top_frame_navigated(Q, "s") is True
+
+
+def test_same_site_is_the_host_or_a_dot_bounded_sub_or_parent_domain():
+    assert capture.same_site("www.acme.com", "acme.com") and capture.same_site("acme.com", "www.acme.com")
+    assert capture.same_site("ACME.com.", "acme.com")
+    assert not capture.same_site("evilacme.com", "acme.com") and not capture.same_site("acme.com.evil.org", "acme.com")
+    assert not capture.same_site("other.org", "acme.com")
+
+
+@needs_chrome
+@pytest.mark.parametrize("page,ok", [("/to_www", True), ("/offsite", False)])
+def test_a_redirect_to_another_site_is_no_asset_even_when_the_rules_allow_it(stub, canary, page, ok, tmp_path):
+    """Review 2 (B): the egress rules decide what may LOAD; what is CAPTURED must stay on the named site."""
+    srv, fport = _fixture_server(canary.port, 9)
+    px = OfflineProxy(named_hosts=["origin.test"], ports=[fport], resolver=_stub_resolver(stub.port),
+                      fixture_port=fport, egress=ALLOW_ALL)
+    px.extra_fixture_hosts = {"www.origin.test", "other.test"}
+    px.start()
+    try:
+        res = capture.run_capture(f"http://origin.test:{fport}{page}", viewport="desktop", work_dir=str(tmp_path),
+                                  proxy=px, chrome=CHROME, deadline_s=15)
+    finally:
+        px.stop()
+        srv.shutdown()
+    target = "www.origin.test" if page == "/to_www" else "other.test"
+    assert px.connected(target, fport), px.log  # the redirect target really loaded through the proxy
+    assert res["ok"] is ok, res
+    if ok:
+        assert res["final_url"] == f"http://www.origin.test:{fport}/plain"
+
+
+def test_own_addresses_read_macos_ifconfig_with_prefixes(monkeypatch):
+    """The macOS/BSD path: no ``ip``, ``ifconfig -a`` output with prefixlen / hex netmask."""
+    out = """en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	inet6 fe80::1c2b:3d4e:5f60:7182%en0 prefixlen 64 secured scopeid 0x4
+	inet6 2a02:8070:1:2:a:b:c:d prefixlen 64 autoconf secured
+	inet 203.0.113.7 netmask 0xffffff00 broadcast 203.0.113.255
+lo0: flags=8049<UP,LOOPBACK,RUNNING,MULTICAST> mtu 16384
+	inet 127.0.0.1 netmask 0xff000000
+"""
+    class R:
+        stdout = out
+    monkeypatch.setattr(capture.shutil, "which", lambda name: "/sbin/ifconfig" if name == "ifconfig" else None)
+    monkeypatch.setattr(capture._dl, "run_process", lambda *a, **k: R())
+    monkeypatch.setattr(capture, "_udp_local", lambda probe, fam: None)
+    got = capture.own_scope()
+    assert ipaddress.ip_address("2a02:8070:1:2:a:b:c:d") in capture.own_addresses()
+    assert ipaddress.ip_network("2a02:8070:1:2::/64") in capture.own_networks()
+    assert ipaddress.ip_network("203.0.113.0/24") in got or ipaddress.ip_address("203.0.113.7") in got
+    assert capture.address_verdict(ipaddress.ip_address("2a02:8070:1:2::1"), got) == "own_network"
+
+
+def test_host_support_names_why_a_host_cannot_capture(monkeypatch):
+    if CHROME and hasattr(os, "posix_spawn"):
+        assert capture.host_support() is None
+    monkeypatch.setattr(capture, "find_browser", lambda: None)
+    assert capture.host_support() == "no_browser"
+    monkeypatch.delattr(capture.os, "posix_spawn")
+    assert capture.host_support() == "unsupported"

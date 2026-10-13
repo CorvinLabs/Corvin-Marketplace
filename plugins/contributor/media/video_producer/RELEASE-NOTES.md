@@ -8,19 +8,23 @@ egress policy. See USER-GUIDE Step 6b.
 
 **Capture module (`src/capture.py`):** one worker process per capture (`python -I capture.py --worker`, own session,
 killed as a group at 12 s). Chrome is driven over `--remote-debugging-pipe` (no port); the capture is ok only when the
-frame SHOWN at the end is an http(s) document the proxy actually connected to — a redirect, meta refresh or script
-navigation to a refused address and every Chrome error page end without a picture. The Corvin-owned proxy admits the
+frame SHOWN at the end is an http(s) document the proxy actually connected to ON THE NAMED SITE (the host or a
+dot-bounded sub/parent domain, e.g. acme.com → www.acme.com) — a redirect, meta refresh or script navigation to a
+refused address or to another site, a top-frame navigation during the screenshot, and every Chrome error page end
+without a picture. The Corvin-owned proxy admits the
 named host (checked by the workspace's real L35 gate before the worker starts) and any other host only when a PAGE
 session announced the request (`Network.requestWillBeSent`, iframes and workers auto-attached), the workspace's egress
 rules allow it, it is on port 80/443 and every resolved address passes the allow-by-global address policy (pinned
-connect, no rebinding). Chrome's own background traffic (safe browsing, `clients2/accounts.google.com`, … — measured
+connect, no rebinding; this host's own addresses AND its on-link networks — the neighbours behind the same firewall
+— are refused, as are SIIT, site-local, ORCHIDv2 and 6to4-relay ranges). Chrome's own background traffic (safe browsing, `clients2/accounts.google.com`, … — measured
 despite the flags) is therefore refused. One capture per workspace, two per host. This host's addresses come from
 `ip` / `ifconfig` / the UDP-connect source address; when none answers, capture is refused as unsupported.
 
 **Console (CorvinOS):** `POST /v1/console/video/capture` and `PATCH /v1/console/video/assets/{id}` (caption and
-hotspots after a capture). Every failure that depends on the target answers the same 422 at 13 s; a host the
+hotspots after a capture, or later from the image list). Every failure that depends on the target answers the same
+422 at 14 s, and the workspace's capture slot stays taken until then; a host the
 workspace's own policy forbids is refused at once (403). Caption, hotspots and the quota are checked before anything
-is fetched. Audit: `capture_started` / `capture_finished` (host, sha256 prefix of the URL, final host, connected /
+is fetched. A trailing dot (`example.com.`) is the same host for the egress gate and the proxy. Audit: `capture_started` / `capture_finished` (host, sha256 prefix of the URL, final host, connected /
 refused host counts — never the URL, path or query) and `asset_updated`.
 
 **Asset store:** `update()` (caption/hotspots, audit-first), `validate_meta()`, `has_room()`; the re-encoded image
@@ -28,9 +32,12 @@ cap rose from 2 to 4 MiB (a 1920×1080 photo-heavy page is about 2 MB).
 
 **Ready gate:** two new A rows carry the ADR-2249 signal `capture_policy`:
 `capture_policy_hostile_corpus_reaches_nothing` (tests/test_capture_policy.py, 40 tests) and
-`capture_policy_route_uniform_failures_and_audit` (CorvinOS capture E2E, 6 tests).
+`capture_policy_route_uniform_failures_and_audit` (CorvinOS capture E2E, 6 tests); a row whose tests were skipped
+(no Chrome, no /proc) is `not_demonstrated`, never `pass`.
 
-**Known limits:** viewport screenshots only; cookie banners are captured as shown; no Windows host (the DevTools pipe
+**Known limits:** `forbidden_hosts` is matched by name (an IP literal or another name for a forbidden host is not
+caught by it; the address policy still applies); a router's public address reached by hairpin NAT is not known to
+the host; viewport screenshots only; cookie banners are captured as shown; no Windows host (the DevTools pipe
 needs `posix_spawn`); the egress rules handed to the proxy are the static `forbidden/allowed/default` lists, an
 ADR-0167 ratchet descriptor is not consulted for sub-resource hosts.
 
