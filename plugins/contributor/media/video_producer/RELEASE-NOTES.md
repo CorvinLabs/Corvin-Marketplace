@@ -1,6 +1,22 @@
 # Video Producer Plugin — Release Notes
 
-## Unreleased (toward 1.5.0 - ADR-2247 / PLAN-0946; not released, no readiness claim)
+## 1.6.0 — Expressive Scenes (ADR-2249 / PLAN-0947; release candidate)
+
+**Canvas Template (ADR-2249 D1, T-0110):** Storyboard can now render bounded-vocabulary hand-drawn diagrams with pen sprites, degrade ladder for collision recovery, and pen-drawn annotation marks. Canvas validate blocks overfull, circles over id references, and measures collisions post-layout. Reveals follow narration beats; wobble is seeded for determinism. Tests: 15 E2E across collision, degrade, and real-video rendering.
+
+**Code Annotations (ADR-2249 D1, T-0110):** Code v2 scenes now carry pen-drawn underlines and loops over code regions. Shared `pen_path()` vocabulary with still callouts ensures one mark style across templates. Storyboard prompt offers Code v2 when grounding includes code paths. Tests: real-video E2E proves pen marks render at callout beat time only.
+
+**Asset Store (ADR-2249 D3/D5, T-0111):** Per-tenant PNG store with EXIF stripping, hotspot and caption markup, and user quota (50 assets/tenant). Upload / list / delete routes with CSRF. Audit-first: `asset_uploaded` event written before asset becomes visible. Still template supports callout assets with named hotspots and zoom. Per-user erasure (L36). Signal: `asset_hygiene` (PNG metadata scan). Tests: unit asset_store, E2E upload/list/delete, still render with asset callout.
+
+**Panel (T-0114):** Three tabs (Code, Canvas, Assets) in the Video Producer plugin panel. Composer offers "Add Asset" to upload or reference existing. Download tab shows MP4 + metadata.
+
+**Ready-Gate (ADR-2247, T-0097):** `scripts/ready_gate.py` (A operations, B quality bootstrap, C hygiene) runs on demand. No corpus produced yet: verdict is "not assessed" (Staged Release: use 1.6.0 internally, no "production ready" claim).
+
+**Known Limits:** Capture (website screenshot → asset) is a spike-only prototype (T-0112 NO-GO); not in 1.6.0. Fresh-install E2E confirmed on Linux.
+
+---
+
+## 1.5.0 (unreleased, staged release — use for internal experiments only)
 
 - **`scripts/ready_gate.py` computes the readiness verdict** (A operations as pytest runs in a sandbox, B quality from the `report.json` of a produced corpus with a 90 % cluster bootstrap, C hygiene). It exits 1 on any miss; `skip`, `not_assessed` and `not_demonstrated` are misses, a TTS fallback makes a run `invalid`, and without `--with-alignment` the verdict never carries the words "production ready". `tests/test_ready_gate.py` covers the verdict logic and the exit codes. No corpus has been produced and no verdict has been attached yet: 1.5.0 stays unreleased.
 - **Every job runs in its own process** (host default since R1a go; `ProcessJobRunner`, `src/job_main.py`). The

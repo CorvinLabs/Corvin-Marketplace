@@ -1,8 +1,8 @@
 # Video Producer Plugin — Create Narrated Videos with Animated Slides
 
-**What ships live today: turn a task description into a professional narrated MP4 with animated slides in the corvin-labs.com design language.**
+**What ships live today: turn a task description into a professional narrated MP4 with animated slides and expressive diagrams in the corvin-labs.com design language.**
 
-> **Readiness: not claimed — see the ready-gate (ADR-2247) once it exists.** This version documents the live implementation: LLM-written storyboard, OpenAI TTS narration, deterministic web-slide rendering, and ffmpeg assembly. See [ADR-2238](../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md) (web slides) and [ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md) (narration quality).
+> **Version 1.6.0 (release candidate — staged release for internal use):** Canvas template (ADR-2249 D1), code annotations with pen marks (D1), asset store (D3/D5), and ready-gate (ADR-2247) are live. No "production ready" claim until the ready-gate corpus verdict is attached. This version documents the live implementation: LLM-written storyboard, OpenAI TTS narration, deterministic web-slide rendering, hand-drawn canvas diagrams, and ffmpeg assembly. See [ADR-2249](../../Corvin-Knowledge/decisions/ADR-2249-video-producer-expressive-scenes-pen-drawn-canvas.md) (expressive scenes), [ADR-2238](../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md) (web slides), and [ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md) (narration quality).
 
 ## How it works
 
