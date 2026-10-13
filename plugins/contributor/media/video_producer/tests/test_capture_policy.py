@@ -26,6 +26,7 @@ from __future__ import annotations
 import asyncio
 import http.server
 import ipaddress
+import json
 import os
 import shutil
 import socket
@@ -582,6 +583,22 @@ def test_one_tenant_cannot_hold_every_slot():
     assert capture._TENANT_RUNNING == {}
 
 
+def test_a_refused_literal_holds_the_slot_like_a_capture_that_ran():
+    hold = time.monotonic() + 1.5
+    box = {}
+    th = threading.Thread(target=lambda: box.update(r=capture.capture_url("http://10.0.0.1/", tenant="lit_t",
+                                                                           fail_hold_until=hold)))
+    th.start()
+    time.sleep(0.5)
+    busy = not capture._take_slot("lit_t")
+    if not busy:
+        capture._give_slot("lit_t")
+    th.join(10)
+    assert box["r"]["reason"] in ("refused", "no_browser")
+    if box["r"]["reason"] == "refused":
+        assert busy, "a refused literal released its slot before the answer instant"
+
+
 def test_own_addresses_fail_closed_when_no_source_answers(monkeypatch):
     monkeypatch.setattr(capture.shutil, "which", lambda name: None)
     monkeypatch.setattr(capture, "_udp_local", lambda probe, fam: None)
@@ -603,11 +620,30 @@ def test_own_addresses_without_ip_still_finds_the_outbound_address(monkeypatch):
 
 # ── 8. review 2 (2026-10-13, reviewer A) ─────────────────────────────────────────────────────
 
-def test_a_trailing_dot_is_the_same_host_for_the_gate_and_the_proxy():
-    t = capture.check_url("https://Example.COM./pricing?x=1")
+@pytest.mark.parametrize("url", ["https://Example.COM./pricing?x=1", "https://example.com\u3002/pricing?x=1",
+                                 "https://example.com\uff0e/pricing?x=1", "https://example.com\uff61/pricing?x=1"])
+def test_a_trailing_dot_is_the_same_host_for_the_gate_and_the_proxy(url):
+    t = capture.check_url(url)
     assert t["host"] == "example.com" and t["url"] == "https://example.com/pricing?x=1"
+
+
+@pytest.mark.parametrize("bad", ["http://./", "https://com/", "http://intranet/", "https://example..com/"])
+def test_single_label_and_empty_label_hosts_are_no_website(bad):
     with pytest.raises(capture.CaptureRefused):
-        capture.check_url("http://./")
+        capture.check_url(bad)
+
+
+def test_a_reported_host_prefix_never_narrows_the_neighbour_refusal(monkeypatch):
+    class R:
+        stdout = json.dumps([{"addr_info": [{"local": "2a01:4f8:1:2::5", "prefixlen": 128},
+                                            {"local": "5.9.10.7", "prefixlen": 32}]}])
+    monkeypatch.setattr(capture.shutil, "which", lambda name: "/sbin/ip" if name == "ip" else None)
+    monkeypatch.setattr(capture._dl, "run_process", lambda *a, **k: R())
+    monkeypatch.setattr(capture, "_udp_local", lambda probe, fam: None)
+    scope = capture.own_scope()
+    for addr in ("2a01:4f8:1:2::1", "2a01:4f8:1:2::6", "2a01:4f8:1:3::9", "5.9.10.1", "::ffff:5.9.10.8"):
+        assert capture.address_verdict(ipaddress.ip_address(addr), scope), addr
+    assert capture.address_verdict(ipaddress.ip_address("2a01:4f8:2::1"), scope) is None  # outside the /56
 
 
 @pytest.mark.parametrize("addr,reason", [
@@ -711,7 +747,7 @@ lo0: flags=8049<UP,LOOPBACK,RUNNING,MULTICAST> mtu 16384
     monkeypatch.setattr(capture, "_udp_local", lambda probe, fam: None)
     got = capture.own_scope()
     assert ipaddress.ip_address("2a02:8070:1:2:a:b:c:d") in capture.own_addresses()
-    assert ipaddress.ip_network("2a02:8070:1:2::/64") in capture.own_networks()
+    assert ipaddress.ip_network("2a02:8070:1::/56") in capture.own_networks()  # /64 reported, /56 refused
     assert ipaddress.ip_network("203.0.113.0/24") in got or ipaddress.ip_address("203.0.113.7") in got
     assert capture.address_verdict(ipaddress.ip_address("2a02:8070:1:2::1"), got) == "own_network"
 

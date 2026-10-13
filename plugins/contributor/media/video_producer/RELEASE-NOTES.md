@@ -15,16 +15,18 @@ without a picture. The Corvin-owned proxy admits the
 named host (checked by the workspace's real L35 gate before the worker starts) and any other host only when a PAGE
 session announced the request (`Network.requestWillBeSent`, iframes and workers auto-attached), the workspace's egress
 rules allow it, it is on port 80/443 and every resolved address passes the allow-by-global address policy (pinned
-connect, no rebinding; this host's own addresses AND its on-link networks — the neighbours behind the same firewall
-— are refused, as are SIIT, site-local, ORCHIDv2 and 6to4-relay ranges). Chrome's own background traffic (safe browsing, `clients2/accounts.google.com`, … — measured
+connect, no rebinding; this host's own addresses AND its on-link networks — the neighbours behind the same firewall, at least the /56 a
+router delegates or the /24 around a v4 address, whatever prefix the interface reports — are refused, as are SIIT, site-local, ORCHIDv2 and 6to4-relay ranges). Chrome's own background traffic (safe browsing, `clients2/accounts.google.com`, … — measured
 despite the flags) is therefore refused. One capture per workspace, two per host. This host's addresses come from
 `ip` / `ifconfig` / the UDP-connect source address; when none answers, capture is refused as unsupported.
 
 **Console (CorvinOS):** `POST /v1/console/video/capture` and `PATCH /v1/console/video/assets/{id}` (caption and
 hotspots after a capture, or later from the image list). Every failure that depends on the target answers the same
-422 at 14 s, and the workspace's capture slot stays taken until then; a host the
+422 at 14 s; the workspace's capture slot stays taken until then and `capture_finished` is written at that instant
+(its timestamp is readable in the audit tail); a host the
 workspace's own policy forbids is refused at once (403). Caption, hotspots and the quota are checked before anything
-is fetched. A trailing dot (`example.com.`) is the same host for the egress gate and the proxy. Audit: `capture_started` / `capture_finished` (host, sha256 prefix of the URL, final host, connected /
+is fetched. A trailing dot (`example.com.`, also as `。`/`．`) is the same host for the egress gate and the proxy; a
+name without a dot (`localhost`, `intranet`) is not a website and is refused as input. Audit: `capture_started` / `capture_finished` (host, sha256 prefix of the URL, final host, connected /
 refused host counts — never the URL, path or query) and `asset_updated`.
 
 **Asset store:** `update()` (caption/hotspots, audit-first), `validate_meta()`, `has_room()`; the re-encoded image
@@ -35,7 +37,9 @@ cap rose from 2 to 4 MiB (a 1920×1080 photo-heavy page is about 2 MB).
 `capture_policy_route_uniform_failures_and_audit` (CorvinOS capture E2E, 6 tests); a row whose tests were skipped
 (no Chrome, no /proc) is `not_demonstrated`, never `pass`.
 
-**Known limits:** `forbidden_hosts` is matched by name (an IP literal or another name for a forbidden host is not
+**Known limits:** a page can show an error text of its own (e.g. a full-size frame of a refused host) — it is
+captured as shown and carries no information; `same_site` has no public-suffix list (a named `a.github.io` accepts
+`github.io`; only the named site's owner or an open redirect on it can use that); `forbidden_hosts` is matched by name (an IP literal or another name for a forbidden host is not
 caught by it; the address policy still applies); a router's public address reached by hairpin NAT is not known to
 the host; viewport screenshots only; cookie banners are captured as shown; no Windows host (the DevTools pipe
 needs `posix_spawn`); the egress rules handed to the proxy are the static `forbidden/allowed/default` lists, an

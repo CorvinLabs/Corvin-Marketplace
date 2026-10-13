@@ -150,8 +150,12 @@ def own_scope() -> Set[Any]:
             return
         out.add(ip)
         if ip.is_global:
-            plen = prefix if isinstance(prefix, int) else (64 if ip.version == 6 else 24)
-            plen = max(plen, 48 if ip.version == 6 else 16)  # never refuse a whole provider block
+            # a reported host prefix (/128, /32 - DHCPv6, point-to-point) never NARROWS the refusal: at least
+            # the /56 a router delegates (its other /64s are guest nets, VLANs) or the /24 around a v4 address,
+            # at most /48 | /16 so a whole provider block is never refused
+            wide = 56 if ip.version == 6 else 24
+            plen = min(prefix, wide) if isinstance(prefix, int) else wide
+            plen = max(plen, 48 if ip.version == 6 else 16)
             out.add(ipaddress.ip_network(f"{ip}/{plen}", strict=False))
 
     if shutil.which("ip"):
@@ -308,13 +312,15 @@ def check_url(url: Any) -> Dict[str, Any]:
     if ":" in host:  # IPv6 literal
         shown = f"[{host}]"
     else:
-        host = host.rstrip(".")  # "example.com." must be judged as "example.com" by the egress gate too
         try:
             host = host.encode("idna").decode("ascii").lower()
         except UnicodeError:
             raise CaptureRefused("invalid_url") from None
-        if not host:
-            raise CaptureRefused("invalid_url")
+        # AFTER the IDNA step: it turns a trailing U+3002 / U+FF0E / U+FF61 into an ASCII dot, and
+        # "example.com." must be the same host for the egress gate and the proxy (refutation 2026-10-14)
+        host = host.rstrip(".")
+        if not host or "." not in host or ".." in host:
+            raise CaptureRefused("invalid_url")  # a single-label name ("com", "intranet") is no website
         shown = host
     default = 443 if scheme == "https" else 80
     port = port or default
@@ -1005,8 +1011,6 @@ def capture_url(url: str, *, viewport: str = "desktop", deadline_s: float = CAPT
         own_addresses()
     except OwnAddressesUnknown:
         return done(False, "unsupported")
-    if precheck_host(target["host"], console_names):
-        return done(False, "refused")
     chrome = chrome or find_browser()
     if not chrome:
         return done(False, "no_browser")
@@ -1014,6 +1018,11 @@ def capture_url(url: str, *, viewport: str = "desktop", deadline_s: float = CAPT
         return done(False, "busy")
     result: Dict[str, Any] = {}
     try:
+        # a refused literal or console name holds the slot exactly like a capture that ran, so polling
+        # "busy" cannot tell which names are this console's own (refutation 2026-10-14)
+        if precheck_host(target["host"], console_names):
+            result = done(False, "refused")
+            return result
         result = _run_worker(target, viewport, deadline_s, console_names, chrome, work_dir, egress, done)
         return result
     finally:
