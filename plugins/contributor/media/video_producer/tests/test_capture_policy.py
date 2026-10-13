@@ -312,6 +312,8 @@ def _fixture_server(P: int, udp_port: int, udp_addr: str = "127.0.0.1"):
                    'pc.createDataChannel("x");pc.createOffer().then(o=>pc.setLocalDescription(o));</script>'
                    '<p>webrtc</p>' % (udp_addr, udp_port),
         "/hang": None,
+        "/plain": "<p>a page with nothing to load</p>",
+        "/cdn": '<img src="http://cdn.test/pixel.png"><p>one image from another host</p>',
     }
 
     class H(http.server.BaseHTTPRequestHandler):
@@ -347,14 +349,21 @@ def _survivors(marker: str):
     return dl.find_processes(marker)
 
 
+# pages whose DOCUMENT moves to a refused address: no screenshot of an error page, ever (review
+# 2026-10-13 finding 2); every other page keeps its document and only loses the refused sub-resources
+NAVIGATES_AWAY = {"/redirect", "/meta", "/jsnav"}
+ALLOW_ALL = {"forbidden": [], "allowed": [], "default": "allow"}
+
+
 @needs_chrome
-@pytest.mark.parametrize("all_named", [False, True], ids=["production_allowlist", "address_policy_only"])
-def test_browser_corpus_reaches_nothing(stub, canary, all_named, tmp_path):
+@pytest.mark.parametrize("all_named,egress", [(False, None), (True, None), (False, ALLOW_ALL)],
+                         ids=["production_allowlist", "address_policy_only", "tenant_egress_allow_all"])
+def test_browser_corpus_reaches_nothing(stub, canary, all_named, egress, tmp_path):
     udp = UdpCanary()
     srv, fport = _fixture_server(canary.port, udp.port)
     resolver = _stub_resolver(stub.port)
     px = OfflineProxy(named_hosts=["origin.test"], ports=[fport], resolver=resolver,
-                      fixture_port=fport, all_named=all_named)
+                      fixture_port=fport, all_named=all_named, egress=egress)
     px.start()
     results = {}
     try:
@@ -372,24 +381,78 @@ def test_browser_corpus_reaches_nothing(stub, canary, all_named, tmp_path):
     assert hostile == [], hostile
     connected = {(r.get("host"), r.get("port")) for r in px.log if r.get("verdict") == "connected"}
     assert connected <= {("origin.test", fport)}, connected
-    # the main document of every page was the named fixture, so every run produced a screenshot
-    assert all(r["ok"] for r in results.values()), results
+    for page, r in results.items():
+        if page in NAVIGATES_AWAY:
+            assert r["ok"] is False and r["png_path"] is None, (page, r)
+        else:
+            assert r["ok"] is True and r["final_url"] == f"http://origin.test:{fport}{page}", (page, r)
     # Chrome's own background traffic (if any reached the proxy) was refused, never resolved for real
     assert not [h for h in resolver.seen if not h.endswith(".test")] or all_named
 
 
 @needs_chrome
 def test_chrome_flags_carry_the_three_spike_conditions(tmp_path):
-    cmd = capture.chrome_command(CHROME, proxy_port=1234, profile_dir=str(tmp_path / "p"),
-                                 out_png=str(tmp_path / "s.png"), url="https://example.org/", viewport="desktop")
+    cmd = capture.chrome_command(CHROME, proxy_port=1234, profile_dir=str(tmp_path / "p"), viewport="desktop")
     assert "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1" in cmd
     assert "--proxy-server=http://127.0.0.1:1234" in cmd
     assert "--proxy-bypass-list=<-loopback>" in cmd
     assert "--disable-quic" in cmd
     assert "--disable-background-networking" in cmd
+    assert "--remote-debugging-pipe" in cmd and not [a for a in cmd if a.startswith("--remote-debugging-port")]
     for flag in capture.WEBRTC_FLAGS:
         assert flag in cmd
-    assert cmd[-1] == "https://example.org/"
+    assert cmd[-1] == "about:blank"  # the URL is navigated over the protocol, never on the command line
+
+
+@needs_chrome
+def test_a_page_without_subresources_makes_exactly_one_request(stub, canary, tmp_path):
+    """Condition 1 under tenant egress rules that allow EVERYTHING: Chrome's own background traffic
+    (safe browsing, clients2/accounts.google.com, ... - measured 2026-10-13 despite the flags) never
+    appears on a page session, so the proxy refuses it as not_from_page and nothing else is dialled."""
+    srv, fport = _fixture_server(canary.port, 9)
+    px = OfflineProxy(named_hosts=["origin.test"], ports=[fport], resolver=_stub_resolver(stub.port),
+                      fixture_port=fport, egress=ALLOW_ALL)
+    px.start()
+    try:
+        res = capture.run_capture(f"http://origin.test:{fport}/plain", viewport="desktop", work_dir=str(tmp_path),
+                                  proxy=px, chrome=CHROME, deadline_s=15)
+    finally:
+        px.stop()
+        srv.shutdown()
+    assert res["ok"] is True, res
+    assert px.global_withheld == [], px.global_withheld
+    others = [r for r in px.log if r.get("host") != "origin.test"]
+    assert all(r["reason"] == "not_from_page" for r in others), others
+    assert {(r["host"], r["port"]) for r in px.log if r.get("verdict") == "connected"} == {("origin.test", fport)}
+
+
+@needs_chrome
+@pytest.mark.parametrize("egress,reason", [
+    (ALLOW_ALL, "dns"), ({"forbidden": ["cdn.test"], "allowed": [], "default": "allow"}, "egress_forbidden"),
+    ({"forbidden": [], "allowed": [], "default": "deny"}, "egress_default_deny"),
+    ({"forbidden": [], "allowed": ["cdn.test"], "default": "deny"}, "dns"),
+], ids=["allow_all", "forbidden", "default_deny", "allowed_explicit"])
+def test_a_host_the_page_requests_is_decided_by_the_tenant_rules(stub, canary, egress, reason, tmp_path):
+    """A sub-resource host the PAGE asked for reaches the tenant's egress rules (and then the address
+    policy - here the stub resolver, so 'dns' = it got past the host rule); a forbidden or unmatched host
+    under default deny is refused by the rules themselves."""
+    srv, fport = _fixture_server(canary.port, 9)
+    px = OfflineProxy(named_hosts=["origin.test"], ports=[fport], resolver=_stub_resolver(stub.port),
+                      fixture_port=fport, egress=egress)
+    px.start()
+    try:
+        res = capture.run_capture(f"http://origin.test:{fport}/cdn", viewport="desktop", work_dir=str(tmp_path),
+                                  proxy=px, chrome=CHROME, deadline_s=15)
+    finally:
+        px.stop()
+        srv.shutdown()
+    assert res["ok"] is True, res
+    cdn = [r for r in px.log if r.get("host") == "cdn.test"]
+    assert cdn, px.log
+    got = cdn[0]["reason"]
+    assert got.startswith(reason) or (reason == "dns" and got.split(":")[0] in (
+        "dns_fail", "dns_empty", "offline_global_withheld", "not_global", "own_interface")), cdn
+    assert canary.hits == [], canary.hits
 
 
 @needs_chrome
@@ -405,9 +468,11 @@ def test_webrtc_udp_never_leaves_the_browser_with_positive_control(stub, canary,
         # positive control: the SAME command without the WebRTC flags - the canary must see STUN packets
         ctl = tmp_path / "control"
         ctl.mkdir()
+        # (without the WebRTC flags and without the DevTools pipe; --screenshot makes it exit by itself)
         cmd = [a for a in capture.chrome_command(CHROME, proxy_port=pport, profile_dir=str(ctl / "profile"),
-                                                 out_png=str(ctl / "shot.png"), url=url, viewport="desktop")
-               if a not in capture.WEBRTC_FLAGS]
+                                                 viewport="desktop")
+               if a not in capture.WEBRTC_FLAGS and a not in ("--remote-debugging-pipe", "about:blank")]
+        cmd += ["--virtual-time-budget=5000", f"--screenshot={ctl / 'shot.png'}", url]
         dl.run_process(cmd, deadline_s=20, what="control chrome")
         control_packets = udp.packets
         assert control_packets > 0, "positive control failed: the UDP canary saw nothing even without the flag"
@@ -438,7 +503,7 @@ def test_run_capture_kills_a_hanging_page_at_its_deadline(stub, canary, tmp_path
         px.stop()
         srv.shutdown()
     assert time.monotonic() - t0 < 6
-    assert res == {"ok": False, "reason": "timeout", "png_path": None}
+    assert res["ok"] is False and res["reason"] == "timeout" and res["png_path"] is None
     time.sleep(0.3)
     assert _survivors(str(tmp_path)) == []
 
@@ -482,3 +547,38 @@ def test_precheck_refuses_literals_and_names_without_dns(host):
 
 def test_precheck_lets_a_public_name_through_to_the_proxy():
     assert capture.precheck_host("example.org", console_names=set()) is None
+
+
+# ── 7. host-side bounds: per-tenant slots, own addresses fail closed ─────────────────────────
+
+def test_one_tenant_cannot_hold_every_slot():
+    assert capture._take_slot("tenant_a")
+    try:
+        assert not capture._take_slot("tenant_a"), "a second concurrent capture of the same tenant"
+        assert capture._take_slot("tenant_b"), "another tenant still gets the second host-wide slot"
+        try:
+            assert not capture._take_slot("tenant_c"), "the host-wide bound still holds"
+        finally:
+            capture._give_slot("tenant_b")
+    finally:
+        capture._give_slot("tenant_a")
+    assert capture._TENANT_RUNNING == {}
+
+
+def test_own_addresses_fail_closed_when_no_source_answers(monkeypatch):
+    monkeypatch.setattr(capture.shutil, "which", lambda name: None)
+    monkeypatch.setattr(capture, "_udp_local", lambda probe, fam: None)
+    with pytest.raises(capture.OwnAddressesUnknown):
+        capture.own_addresses()
+    assert capture.precheck_host("203.0.113.9") == "own_unknown"
+    res = capture.capture_url("https://example.org/", chrome="/nonexistent")
+    assert res["ok"] is False and res["reason"] == "unsupported"
+
+
+def test_own_addresses_without_ip_still_finds_the_outbound_address(monkeypatch):
+    """macOS/Windows have no ``ip``: the UDP-connect source address is found anyway (no packet sent)."""
+    monkeypatch.setattr(capture.shutil, "which", lambda name: None)
+    got = capture.own_addresses()
+    real = capture._udp_local("192.0.2.1", socket.AF_INET)
+    if real:
+        assert ipaddress.ip_address(real) in got
