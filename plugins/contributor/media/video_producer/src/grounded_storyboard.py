@@ -25,10 +25,11 @@ GROUNDED_MAX_SCENES = 10
 
 # --------------------------------------------------------------------------- prompt
 
-GROUNDED_TEMPLATE_GUIDE = """- "console_still": {"eyebrow"?, "title", "asset", "caption"?, "callouts"?: [0-3 {"spot", "label"}],
+GROUNDED_TEMPLATE_GUIDE = """- "console_still": {"eyebrow"?, "title", "asset", "caption"?, "callouts"?: [0-3 {"spot", "label", "mark"?}],
               "zoom"?: {"spot", "scale": 1-1.6}}  (a real screenshot of the Corvin console; "asset" is one of:
               {assets}. You cannot see the images: callouts and zoom may only name a listed spot of that asset;
-              the label names what the narration talks about, max 32 characters)
+              the label names what the narration talks about, max 32 characters; "mark": "circle"|"underline"
+              lets a pen draw that mark on the spot when its callout appears - use it for the one thing to look at)
 - Optional per scene: "map": {"focus": "channels"|"agents"|"engines"|"compute"|"data"|"audit"} — a small
   "you are here" strip of Corvin's layers (Channels, Agents, Engines, Pipelines & Compute, Data, Audit & Compliance)
   with the focus layer lit; use it when the video moves between layers.

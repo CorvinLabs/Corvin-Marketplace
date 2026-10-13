@@ -346,6 +346,15 @@ html, body {
                 font-family: var(--font-mono); font-size: 22px; letter-spacing: .04em; color: var(--bg);
                 background: var(--accent); border-radius: 10px; padding: 8px 16px; }
 .callout.left span { left: auto; right: 40px; }
+/* ADR-2249 D1 annotation layer: a pen-drawn mark (circle | underline) around the hotspot instead of the ring,
+   drawn on at the callout's beat; 30x13 pen cells at 8 px each, centred on the spot */
+.callout .pen { position: absolute; left: -120px; top: -52px; width: 240px; height: 104px; overflow: visible; }
+.callout .pen path { fill: none; stroke: var(--accent); stroke-width: .55; stroke-linecap: round; stroke-linejoin: round;
+                     stroke-dasharray: 1; stroke-dashoffset: 1; animation: still-pen 650ms ease-out both;
+                     animation-delay: var(--at); }
+.callout.marked span { left: 150px; }
+.callout.marked.left span { left: auto; right: 150px; }
+@keyframes still-pen { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 .still-cap { margin-top: 26px; font-size: 26px; color: var(--text-muted); text-align: center; }
 @keyframes push { from { transform: scale(1); } to { transform: scale(var(--zs)); } }
 

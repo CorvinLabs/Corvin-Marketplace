@@ -490,8 +490,14 @@ def validate_scene_data(template: Any, data: Any) -> Dict[str, Any]:
         for c in (_list(data, "callouts", 0, 3) if "callouts" in data else []):
             if not isinstance(c, dict):
                 raise WebSceneError("callouts entries must be objects")
-            _unknown(c, ("spot", "label"))
-            callouts.append({**spot(c), "label": _text(c, "label", 32)})
+            _unknown(c, ("spot", "label", "mark"))
+            entry = {**spot(c), "label": _text(c, "label", 32)}
+            if c.get("mark") is not None:  # ADR-2249 D1 annotation layer: the pen draws on the hotspot
+                pen_marks = _code_v2().PEN_MARKS
+                if not isinstance(c["mark"], str) or c["mark"] not in pen_marks:
+                    raise WebSceneError(f"callout 'mark' must be one of {', '.join(pen_marks)}")
+                entry["mark"] = c["mark"]
+            callouts.append(entry)
         zoom = None
         if data.get("zoom") is not None:
             z = data["zoom"]
@@ -1073,6 +1079,26 @@ def _layers(d):
     return f'<div class="frame">{_header(d)}<div class="stack">{"".join(rows)}</div></div>'
 
 
+def _code_v2():
+    try:
+        from . import code_v2
+    except ImportError:
+        import code_v2
+    return code_v2
+
+
+STILL_PEN_W, STILL_PEN_H = 30.0, 13.0  # the pen's viewBox around a hotspot, in code-cell units (8 px each in CSS)
+
+
+def _still_pen(kind: str, key: str) -> str:
+    """A pen mark around a still's hotspot (ADR-2249 D1 annotation layer): the same path generator
+    as the code annotation, anchored to the catalogue spot (never to model coordinates), seeded by
+    asset/spot/position so two renders are bit-identical."""
+    d = _code_v2().pen_path(kind, STILL_PEN_W, STILL_PEN_H, zlib.crc32(key.encode("utf-8")))
+    return (f'<svg class="pen {kind}" viewBox="0 0 {STILL_PEN_W:g} {STILL_PEN_H:g}" preserveAspectRatio="none" '
+            f'aria-hidden="true"><path pathLength="1" d="{d}"/></svg>')
+
+
 def _console_still(d):
     entry = _console_catalog()[d["asset"]]
     data = base64.b64encode(entry["file"].read_bytes()).decode("ascii")
@@ -1088,8 +1114,13 @@ def _console_still(d):
     for k, c in enumerate(d.get("callouts") or []):
         c = {**c, **spots[c["spot"]]}
         side = " left" if c["x"] > 0.62 else ""
+        if c.get("mark"):  # the pen replaces the ring: a seeded hand-drawn stroke, drawn on at the callout's beat
+            ring = _still_pen(c["mark"], f'{d["asset"]}/{c["spot"]}/{k}')
+            side += " marked"
+        else:
+            ring = "<i></i>"
         marks.append(f'<div class="callout{side}" style="--i:{3 + k};left:{c["x"] * 100:.2f}%;top:{c["y"] * 100:.2f}%">'
-                     f'<i></i><span>{_e(c["label"])}</span></div>')
+                     f'{ring}<span>{_e(c["label"])}</span></div>')
     cap = f'<div class="still-cap r" style="--i:{3 + len(marks)}">{_e(d["caption"])}</div>' if d.get("caption") else ""
     return (f'<div class="frame still">{_header(d)}'
             f'<div class="still-box r" style="--i:2;width:{bw}px;height:{bh}px">'

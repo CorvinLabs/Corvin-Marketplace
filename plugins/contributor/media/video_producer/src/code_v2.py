@@ -412,25 +412,33 @@ def _line_html(tokens: List[code_lexer.Token], marks: List[Tuple[int, int, int]]
 PEN_CELL_W, PEN_CELL_H = 6.0, 13.0  # one code column in the pen's viewBox: the 0.6em x 1.3em aspect of a monospace cell
 
 
+def pen_path(kind: str, w: float, h: float, seed: int) -> str:
+    """The SVG path of one hand-drawn pen mark (``PEN_MARKS``) on a w x h viewBox (units of a code
+    cell, see ``PEN_CELL_W``/``PEN_CELL_H``): an underline along the bottom edge or a loop that
+    overshoots its start around the box. The wobble is seeded, so two renders are bit-identical
+    (ADR-2249 S2 contract). Shared by the code annotation (``_pen``) and the still-scene callout
+    (``web_templates._console_still``) - one pen vocabulary over code and stills (ADR-2249 D1)."""
+    rnd = random.Random(seed)
+    j = lambda amp: rnd.uniform(-amp, amp)  # noqa: E731
+    if kind == "underline":
+        y = h - 0.55
+        return (f"M {0.4:.2f} {y + j(.3):.2f} Q {w * .3:.2f} {y + .9 + j(.3):.2f} {w * .55:.2f} {y + j(.3):.2f} "
+                f"T {w - 0.4:.2f} {y + .5 + j(.3):.2f}")
+    cx, cy, rx, ry = w / 2, h / 2, w / 2 + 2.2, h / 2 + 0.9
+    pts = []
+    for k in range(41):  # 365 degrees: the pen overshoots where it started, like a hand
+        a = math.radians(-155 + 365 * k / 40)
+        pts.append((cx + (rx + j(.25)) * math.cos(a), cy + (ry + j(.25)) * math.sin(a)))
+    return "M " + " L ".join(f"{x:.2f} {y:.2f}" for x, y in pts)
+
+
 def _pen(line_idx: int, c0: int, c1: int, step: int, kind: str) -> str:
     """A hand-drawn mark over columns c0..c1 (0-based) of a code line. Anchored in ``ch`` units to the
     code's own monospace run, so it needs no pixel measurement; the wobble is seeded by position (two
     renders are bit-identical, ADR-2249 S2 contract); the stroke draws on at the annotation's beat."""
     n = c1 - c0 + 1
     w, h = n * PEN_CELL_W, PEN_CELL_H
-    rnd = random.Random(line_idx * 1009 + c0 * 31 + c1)
-    j = lambda amp: rnd.uniform(-amp, amp)  # noqa: E731
-    if kind == "underline":
-        y = h - 0.55
-        d = (f"M {0.4:.2f} {y + j(.3):.2f} Q {w * .3:.2f} {y + .9 + j(.3):.2f} {w * .55:.2f} {y + j(.3):.2f} "
-             f"T {w - 0.4:.2f} {y + .5 + j(.3):.2f}")
-    else:
-        cx, cy, rx, ry = w / 2, h / 2, w / 2 + 2.2, h / 2 + 0.9
-        pts = []
-        for k in range(41):  # 365 degrees: the pen overshoots where it started, like a hand
-            a = math.radians(-155 + 365 * k / 40)
-            pts.append((cx + (rx + j(.25)) * math.cos(a), cy + (ry + j(.25)) * math.sin(a)))
-        d = "M " + " L ".join(f"{x:.2f} {y:.2f}" for x, y in pts)
+    d = pen_path(kind, w, h, line_idx * 1009 + c0 * 31 + c1)
     return (f'<svg class="pen" style="--i:{step};--nofocus:1;--c0:{c0};--n:{n}" viewBox="0 0 {w:g} {h:g}" '
             f'preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="{d}"/></svg>')
 
