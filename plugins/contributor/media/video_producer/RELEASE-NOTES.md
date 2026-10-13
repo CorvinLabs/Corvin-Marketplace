@@ -8,11 +8,11 @@
 
 **Asset Store (ADR-2249 D3/D5, T-0111):** Per-tenant PNG store with EXIF stripping, hotspot and caption markup, and user quota (50 assets/tenant). Upload / list / delete routes with CSRF. Audit-first: `asset_uploaded` event written before asset becomes visible. Still template supports callout assets with named hotspots and zoom. Per-user erasure (L36). Signal: `asset_hygiene` (PNG metadata scan). Tests: unit asset_store, E2E upload/list/delete, still render with asset callout.
 
-**Panel (T-0114):** Three tabs (Code, Canvas, Assets) in the Video Producer plugin panel. Composer offers "Add Asset" to upload or reference existing. Download tab shows MP4 + metadata.
+**Panel (T-0114, console):** the studio's details section has Code, Canvas and Assets tabs next to Quality and Learning. Code and Canvas list the selected video's code / canvas scenes with the canvas signals and authoring counts the job recorded; Assets lists, uploads (PNG, caption, source, hotspots) and deletes the workspace's images through the `/video/assets` routes.
 
 **Ready-Gate (ADR-2247, T-0097):** `scripts/ready_gate.py` (A operations, B quality bootstrap, C hygiene) runs on demand. No corpus produced yet: verdict is "not assessed" (Staged Release: use 1.6.0 internally, no "production ready" claim).
 
-**Known Limits:** Capture (website screenshot → asset) is a spike-only prototype (T-0112 NO-GO); not in 1.6.0. Fresh-install E2E confirmed on Linux.
+**Known Limits:** Capture (website screenshot → asset) is a spike-only prototype (T-0112 NO-GO); not in 1.6.0. Release gate: the fresh-install Playwright spec (CorvinOS web-next, fresh-install config, test 6c) installs this release from GitHub and produces a video with a canvas scene; Linux only (headless Chromium, ffmpeg).
 
 ---
 
