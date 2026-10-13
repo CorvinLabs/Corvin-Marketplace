@@ -265,3 +265,52 @@ def test_validate_meta_and_has_room_answer_before_anything_is_fetched(tmp_path, 
     assert st.has_room()
     st.add(png(), caption="one", uploaded_by="u1")
     assert not st.has_room()
+
+
+# REVIEW-0046 round 3: the module says every read re-validates the record, and hygiene must not flag the store's own output
+
+@pytest.mark.parametrize("field,value", [
+    ("source", "javascript:alert(1)"),
+    ("source", "https://h.test/a?token=1"),
+    ("uploaded_by", 42),
+    ("uploaded_by", "../x"),
+    ("width", 4096), ("height", 4096),   # 16.7 megapixels, over MAX_PIXELS although each side is allowed
+])
+def test_a_hand_edited_record_is_refused_in_every_field_the_store_wrote(store, field, value):
+    rec = add(store, source="https://h.test/a")
+    p = store.root / rec["id"] / "asset.json"
+    doc = json.loads(p.read_text())
+    doc[field] = value
+    if field in ("width", "height"):
+        doc["width"] = doc["height"] = 4096
+    p.write_text(json.dumps(doc))
+    with pytest.raises(A.AssetError):
+        store.get(rec["id"])
+    assert store.list() == []
+
+
+@pytest.mark.parametrize("missing", ["created", "bytes"])
+def test_a_record_without_created_or_bytes_is_refused_not_a_later_keyerror(store, missing):
+    rec = add(store)
+    p = store.root / rec["id"] / "asset.json"
+    doc = json.loads(p.read_text())
+    del doc[missing]
+    p.write_text(json.dumps(doc))
+    with pytest.raises(A.AssetError):
+        store.get(rec["id"])
+
+
+@pytest.mark.parametrize("raw", ["https://medium.com/@user/post", "http://[2001:db8::1]/a", "https://h.test/a%40b"])
+def test_what_the_sanitiser_produces_is_clean_to_the_hygiene_check(store, raw):
+    clean = A.sanitise_provenance(raw)
+    rec = add(store, source=raw)
+    got = store.get(rec["id"])
+    assert got["source"] == clean
+    assert A.sanitise_provenance(clean) == clean
+    assert A.hygiene_findings(got["png"], got) == []
+
+
+def test_an_ipv6_host_keeps_its_brackets_and_userinfo_is_still_flagged():
+    assert A.sanitise_provenance("http://[2001:db8::1]/a") == "http://[2001:db8::1]/a"
+    found = A.hygiene_findings(None, {"width": 100, "height": 100, "source": "https://u:p@h.test/a"})
+    assert "provenance" in found

@@ -94,7 +94,8 @@ def sanitise_provenance(value: Any) -> str:
     if parts.scheme not in ("http", "https") or not host:
         raise AssetError("source must be an http(s) address")
     path = "".join(ch for ch in parts.path if ch.isprintable() and not ch.isspace())
-    out = f"{parts.scheme}://{host.lower()}{path}"
+    shown = f"[{host.lower()}]" if ":" in host else host.lower()   # urlsplit strips an IPv6 literal's brackets
+    out = f"{parts.scheme}://{shown}{path}"
     return out[:200]
 
 
@@ -320,7 +321,16 @@ class AssetStore:
             _clean_text(doc.get("caption"), MAX_CAPTION, "the caption")
             _validate_hotspots(doc.get("hotspots"))
             w, h = int(doc["width"]), int(doc["height"])
-            if not (MIN_DIM <= w <= MAX_DIM and MIN_DIM <= h <= MAX_DIM):
+            if not (MIN_DIM <= w <= MAX_DIM and MIN_DIM <= h <= MAX_DIM) or w * h > MAX_PIXELS:
+                raise AssetError("a stored asset is invalid")
+            src = doc.get("source", "")
+            if not isinstance(src, str) or (src and sanitise_provenance(src) != src):
+                raise AssetError("a stored asset is invalid")
+            who = doc.get("uploaded_by")
+            if not isinstance(who, str) or not USER_RE.fullmatch(who):
+                raise AssetError("a stored asset is invalid")
+            n_bytes = doc["bytes"]
+            if isinstance(n_bytes, bool) or not isinstance(n_bytes, int) or n_bytes < 0 or not isinstance(doc["created"], str):
                 raise AssetError("a stored asset is invalid")
         except (AssetError, KeyError, TypeError, ValueError):
             raise AssetError("a stored asset is invalid") from None
@@ -393,7 +403,7 @@ def hygiene_findings(png: Optional[bytes], doc: Dict[str, Any]) -> List[str]:
         found.append("dimensions")
     src = doc.get("source") or ""
     try:
-        clean = isinstance(src, str) and not any(c in src for c in "?#@") and (not src or sanitise_provenance(src) == src)
+        clean = isinstance(src, str) and not any(c in src for c in "?#") and (not src or sanitise_provenance(src) == src)
     except AssetError:
         clean = False
     if not clean:
