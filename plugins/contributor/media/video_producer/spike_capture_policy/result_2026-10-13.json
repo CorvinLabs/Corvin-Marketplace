@@ -1,0 +1,503 @@
+{
+ "canary_port": 18949,
+ "proxy_port": 37537,
+ "curl_corpus_n": 138,
+ "browser_corpus_n": 8,
+ "browser": {
+  "/redirect": {
+   "killed_by_killpg": false,
+   "survivors": 0,
+   "zombies": 0,
+   "pgid": 295258
+  },
+  "/meta": {
+   "killed_by_killpg": false,
+   "survivors": 0,
+   "zombies": 0,
+   "pgid": 295474
+  },
+  "/jsnav": {
+   "killed_by_killpg": false,
+   "survivors": 0,
+   "zombies": 0,
+   "pgid": 295671
+  },
+  "/iframe": {
+   "killed_by_killpg": false,
+   "survivors": 0,
+   "zombies": 0,
+   "pgid": 295862
+  },
+  "/img": {
+   "killed_by_killpg": false,
+   "survivors": 0,
+   "zombies": 0,
+   "pgid": 296082
+  },
+  "/fetch": {
+   "killed_by_killpg": false,
+   "survivors": 0,
+   "zombies": 0,
+   "pgid": 296260
+  },
+  "/ws": {
+   "killed_by_killpg": false,
+   "survivors": 0,
+   "zombies": 0,
+   "pgid": 296557
+  },
+  "/sw": {
+   "killed_by_killpg": false,
+   "survivors": 0,
+   "zombies": 0,
+   "pgid": 296727
+  }
+ },
+ "killpg": {
+  "killed_by_killpg": true,
+  "survivors": 0,
+  "zombies": 0,
+  "pgid": 296904
+ },
+ "proxy_log_n": 218,
+ "proxy_connected_hostile": [],
+ "proxy_outbound_hostile": [],
+ "canary_hits": [],
+ "global_allowed_withheld": [
+  [
+   "rebind.test",
+   "93.184.215.14",
+   18949
+  ],
+  [
+   "rebind.test",
+   "93.184.215.14",
+   18949
+  ],
+  [
+   "rebind.test",
+   "93.184.215.14",
+   18949
+  ],
+  [
+   "rebind.test",
+   "93.184.215.14",
+   18949
+  ],
+  [
+   "rebind.test",
+   "93.184.215.14",
+   18949
+  ]
+ ],
+ "offline_dns_blocked": [
+  "accounts.google.com",
+  "android.clients.google.com",
+  "clients2.google.com",
+  "safebrowsingohttpgateway.googleapis.com",
+  "www.google.com"
+ ],
+ "browser_hostile_lines": [
+  [
+   "GET http://clients2.google.com/time/1/current?cup2key=9:8i87OlNE38cDEqZzCDaK24L3e6yQQlIUmqL3y8dTpI4&cup2hreq=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT safebrowsingohttpgateway.googleapis.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT accounts.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT www.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://127.0.0.1:18949/redir HTTP/1.1",
+   "own_interface:127.0.0.1"
+  ],
+  [
+   "GET http://127.0.0.1:18949/favicon.ico HTTP/1.1",
+   "own_interface:127.0.0.1"
+  ],
+  [
+   "CONNECT accounts.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT android.clients.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://clients2.google.com/time/1/current?cup2key=9:WK0X3IbwzBbdJL3PWBwfLQ9AK7QwM2AhKlrfihXGVfE&cup2hreq=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT safebrowsingohttpgateway.googleapis.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT accounts.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT www.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://127.0.0.1:18949/meta HTTP/1.1",
+   "own_interface:127.0.0.1"
+  ],
+  [
+   "CONNECT android.clients.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://127.0.0.1:18949/favicon.ico HTTP/1.1",
+   "own_interface:127.0.0.1"
+  ],
+  [
+   "GET http://clients2.google.com/time/1/current?cup2key=9:_X-7Yr3H4Sov0DIzXMGpmnT87VDnD3d1SHnLgQnQ4ys&cup2hreq=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT safebrowsingohttpgateway.googleapis.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT accounts.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT www.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://[::1]:18949/jsnav HTTP/1.1",
+   "own_interface:::1"
+  ],
+  [
+   "CONNECT android.clients.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://[::1]:18949/favicon.ico HTTP/1.1",
+   "own_interface:::1"
+  ],
+  [
+   "GET http://clients2.google.com/time/1/current?cup2key=9:C5liAqcotMXwKEtVjsH5zMsAp52R_6j3EfsknIezRjw&cup2hreq=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT safebrowsingohttpgateway.googleapis.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT accounts.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT www.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://169.254.169.254:18949/ HTTP/1.1",
+   "not_global:169.254.169.254"
+  ],
+  [
+   "GET http://local.test:18949/ HTTP/1.1",
+   "own_interface:127.0.0.1"
+  ],
+  [
+   "CONNECT android.clients.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://clients2.google.com/time/1/current?cup2key=9:dDN9dOGC_QXfyvRR27RDJhVEyZjPmkJY2-fxpTkF0to&cup2hreq=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT safebrowsingohttpgateway.googleapis.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT accounts.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT www.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://127.0.0.1:18949/i.png HTTP/1.1",
+   "own_interface:127.0.0.1"
+  ],
+  [
+   "GET http://100.64.0.1:18949/i.png HTTP/1.1",
+   "not_global:100.64.0.1"
+  ],
+  [
+   "CONNECT android.clients.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://clients2.google.com/time/1/current?cup2key=9:N0jBrcFx7l54Cw6Ld5DZbEpZOS5SB5WB-K6vjGK8I_Y&cup2hreq=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT safebrowsingohttpgateway.googleapis.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT accounts.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT www.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://127.0.0.1:18949/f HTTP/1.1",
+   "own_interface:127.0.0.1"
+  ],
+  [
+   "GET http://[64:ff9b::7f00:1]:18949/f HTTP/1.1",
+   "embedded_v4:own_interface:64:ff9b::7f00:1"
+  ],
+  [
+   "GET http://mixed.test:18949/f HTTP/1.1",
+   "own_interface:127.0.0.1"
+  ],
+  [
+   "GET http://rebind.test:18949/f HTTP/1.1",
+   "offline_global_withheld"
+  ],
+  [
+   "CONNECT android.clients.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://rebind.test:18949/f HTTP/1.1",
+   "own_interface:127.0.0.1"
+  ],
+  [
+   "CONNECT accounts.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://clients2.google.com/time/1/current?cup2key=9:CEuG7WlJ_q210xltACkuuG5kygYZZi5XuM2i_vFHaVI&cup2hreq=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT safebrowsingohttpgateway.googleapis.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT accounts.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT www.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT 127.0.0.1:18949 HTTP/1.1",
+   "own_interface:127.0.0.1"
+  ],
+  [
+   "CONNECT localhost:18949 HTTP/1.1",
+   "refused_name"
+  ],
+  [
+   "CONNECT [::1]:18949 HTTP/1.1",
+   "own_interface:::1"
+  ],
+  [
+   "CONNECT local.test:18949 HTTP/1.1",
+   "own_interface:127.0.0.1"
+  ],
+  [
+   "GET http://clients2.google.com/time/1/current?cup2key=9:we9imrbSKAOmQDSkmskeT9hXca7p9hp0U_Ft21qyG9Q&cup2hreq=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT safebrowsingohttpgateway.googleapis.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT accounts.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT www.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "GET http://clients2.google.com/time/1/current?cup2key=9:EHQJcDPGUp9EoPxyLBmMS8f3fIAuV6lh-qgpXouQp4w&cup2hreq=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT safebrowsingohttpgateway.googleapis.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT accounts.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT www.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT android.clients.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ],
+  [
+   "CONNECT accounts.google.com:443 HTTP/1.1",
+   "dns_fail:OSError"
+  ]
+ ],
+ "refusal_reasons": [
+  "bad_host",
+  "dns_empty",
+  "dns_fail",
+  "embedded_v4",
+  "harness_fixture",
+  "multicast",
+  "not_global",
+  "offline_global_withheld",
+  "own_interface",
+  "refused_name",
+  "transition_form"
+ ],
+ "dns_stub_queries": 56,
+ "curl_rows_not_502": [],
+ "curl_rejected_locally": [
+  "http://origin.test%40127.0.0.1:18949/"
+ ],
+ "timing": {
+  "refused_loopback": {
+   "median_ms": 2003.84,
+   "min_ms": 2002.2,
+   "max_ms": 2005.64
+  },
+  "refused_connect_meta": {
+   "median_ms": 2003.1,
+   "min_ms": 2002.8,
+   "max_ms": 2004.31
+  },
+  "dns_empty": {
+   "median_ms": 2004.02,
+   "min_ms": 2002.24,
+   "max_ms": 2005.75
+  },
+  "unreachable_conn_refused": {
+   "median_ms": 2003.09,
+   "min_ms": 2002.54,
+   "max_ms": 2004.05
+  },
+  "unreachable_conn_timeout": {
+   "median_ms": 2002.44,
+   "min_ms": 2001.59,
+   "max_ms": 2004.24
+  }
+ },
+ "response_bytes_identical": true,
+ "timing_spread_ms": {
+  "median_spread": 1.58,
+  "global_min": 2001.59,
+  "global_max": 2005.75
+ },
+ "perm_outbound": [
+  [
+   "127.0.0.1",
+   38695
+  ],
+  [
+   "127.0.0.1",
+   38695
+  ],
+  [
+   "127.0.0.1",
+   38695
+  ],
+  [
+   "127.0.0.1",
+   38695
+  ],
+  [
+   "127.0.0.1",
+   38695
+  ],
+  [
+   "127.0.0.1",
+   38695
+  ],
+  [
+   "127.0.0.1",
+   38695
+  ],
+  [
+   "127.0.0.1",
+   38695
+  ],
+  [
+   "127.0.0.1",
+   38695
+  ],
+  [
+   "127.0.0.1",
+   38695
+  ],
+  [
+   "10.255.255.1",
+   9
+  ],
+  [
+   "10.255.255.1",
+   9
+  ],
+  [
+   "10.255.255.1",
+   9
+  ],
+  [
+   "10.255.255.1",
+   9
+  ],
+  [
+   "10.255.255.1",
+   9
+  ],
+  [
+   "10.255.255.1",
+   9
+  ],
+  [
+   "10.255.255.1",
+   9
+  ],
+  [
+   "10.255.255.1",
+   9
+  ],
+  [
+   "10.255.255.1",
+   9
+  ],
+  [
+   "10.255.255.1",
+   9
+  ]
+ ],
+ "checks": {
+  "zero_reached": true,
+  "corpus_ge_80": true,
+  "killpg_ok": true,
+  "timing_ok": true
+ },
+ "verdict": "GO",
+ "note": "https rows report 000|502 (CONNECT refused by proxy); only the %40 URL was rejected by curl itself"
+}
