@@ -55,6 +55,12 @@ A_CHECKS: List[Tuple[str, str, List[str]]] = [
      ["core/console/tests/test_video_producer_tenant_isolation_e2e.py"]),
     ("plugin_loads_only_for_an_enabling_tenant_F3", "corvinos",
      ["core/console/tests/test_video_producer_plugin_import_e2e.py"]),
+    # ADR-2249 D5 signal capture_policy: the hostile corpus (>= 80 entries, the browser pages, WebRTC,
+    # Chrome's own background traffic) reaches ZERO destinations and refusals are byte- and time-identical
+    ("capture_policy_hostile_corpus_reaches_nothing", "plugin", ["tests/test_capture_policy.py"]),
+    # ... and the console answers every target-dependent failure alike (incl. a hang), audits host + hash only
+    ("capture_policy_route_uniform_failures_and_audit", "corvinos",
+     ["core/console/tests/test_video_producer_capture_e2e.py"]),
 ]
 
 
