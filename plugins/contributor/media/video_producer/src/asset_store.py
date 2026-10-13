@@ -44,6 +44,7 @@ MAX_CAPTION = 160
 MAX_SPOTS = 8
 MAX_SPOT_DESC = 120
 MAX_JSON_BYTES = 16 * 1024
+_RECORD_KEYS = frozenset({"id", "caption", "uploaded_by", "source", "hotspots", "width", "height", "bytes", "created"})
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
@@ -307,30 +308,35 @@ class AssetStore:
             doc = json.loads(_read_regular(d / "asset.json", MAX_JSON_BYTES).decode("utf-8"))
             if with_png:
                 png = _read_regular(d / "image.png", MAX_IMAGE_BYTES)
+                image_size = len(png)
             else:
                 st = os.lstat(d / "image.png")
                 if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_IMAGE_BYTES:
                     raise AssetError("a stored asset is invalid")
-                png = None
+                png, image_size = None, st.st_size
         except (OSError, ValueError):
             raise AssetError("a stored asset is unreadable") from None
         if not isinstance(doc, dict) or doc.get("id") != asset_id \
                 or (png is not None and (len(png) > MAX_IMAGE_BYTES or not png.startswith(PNG_MAGIC))):
             raise AssetError("a stored asset is invalid")
         try:
-            _clean_text(doc.get("caption"), MAX_CAPTION, "the caption")
-            _validate_hotspots(doc.get("hotspots"))
-            w, h = int(doc["width"]), int(doc["height"])
-            if not (MIN_DIM <= w <= MAX_DIM and MIN_DIM <= h <= MAX_DIM) or w * h > MAX_PIXELS:
+            if set(doc) != _RECORD_KEYS:   # exactly what add() writes: an unknown or missing key is a tampered record
                 raise AssetError("a stored asset is invalid")
-            src = doc.get("source", "")
+            # the cleaners return what the store would have written; a record that differs was not written by it
+            if _clean_text(doc["caption"], MAX_CAPTION, "the caption") != doc["caption"] \
+                    or _validate_hotspots(doc["hotspots"]) != doc["hotspots"]:
+                raise AssetError("a stored asset is invalid")
+            if any(type(doc[k]) is not int for k in ("width", "height", "bytes")):
+                raise AssetError("a stored asset is invalid")
+            w, h = doc["width"], doc["height"]
+            if not (MIN_DIM <= w <= MAX_DIM and MIN_DIM <= h <= MAX_DIM) or w * h > MAX_PIXELS \
+                    or doc["bytes"] != image_size:
+                raise AssetError("a stored asset is invalid")
+            src = doc["source"]
             if not isinstance(src, str) or (src and sanitise_provenance(src) != src):
                 raise AssetError("a stored asset is invalid")
-            who = doc.get("uploaded_by")
-            if not isinstance(who, str) or not USER_RE.fullmatch(who):
-                raise AssetError("a stored asset is invalid")
-            n_bytes = doc["bytes"]
-            if isinstance(n_bytes, bool) or not isinstance(n_bytes, int) or n_bytes < 0 or not isinstance(doc["created"], str):
+            who = doc["uploaded_by"]
+            if not isinstance(who, str) or not USER_RE.fullmatch(who) or not isinstance(doc["created"], str):
                 raise AssetError("a stored asset is invalid")
         except (AssetError, KeyError, TypeError, ValueError):
             raise AssetError("a stored asset is invalid") from None

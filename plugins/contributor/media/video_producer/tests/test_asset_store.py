@@ -314,3 +314,51 @@ def test_an_ipv6_host_keeps_its_brackets_and_userinfo_is_still_flagged():
     assert A.sanitise_provenance("http://[2001:db8::1]/a") == "http://[2001:db8::1]/a"
     found = A.hygiene_findings(None, {"width": 100, "height": 100, "source": "https://u:p@h.test/a"})
     assert "provenance" in found
+
+
+# REVIEW-0046 round 5: get() must refuse a record whose text the store would have changed, an unknown key, and loose types
+
+def _edit(store, rec, fn):
+    p = store.root / rec["id"] / "asset.json"
+    doc = json.loads(p.read_text())
+    fn(doc)
+    p.write_text(json.dumps(doc))
+
+
+@pytest.mark.parametrize("caption", ["‮Total\u0000", "two\nlines", "double  space", "a" + "​" * 50 + "b"])
+def test_a_caption_the_store_would_have_cleaned_is_refused_not_returned_raw(store, caption):
+    rec = add(store)
+    _edit(store, rec, lambda d: d.update(caption=caption))
+    with pytest.raises(A.AssetError):
+        store.get(rec["id"])
+    assert store.catalogue() == {}
+
+
+def test_a_hotspot_the_store_would_have_rewritten_is_refused(store):
+    rec = add(store, hotspots=[{"name": "save", "x": .5, "y": .5, "description": "the save button"}])
+    _edit(store, rec, lambda d: d["hotspots"][0].update(description="a⁦b", x=0.123456789))
+    with pytest.raises(A.AssetError):
+        store.get(rec["id"])
+
+
+@pytest.mark.parametrize("key", ["steps", "x", "format"])
+def test_a_key_the_store_never_writes_is_refused(store, key):
+    rec = add(store)
+    _edit(store, rec, lambda d: d.update({key: "hello"}))
+    with pytest.raises(A.AssetError):
+        store.get(rec["id"])
+
+
+@pytest.mark.parametrize("field,value", [("width", "64"), ("width", 64.9), ("height", True), ("bytes", 1.5), ("bytes", True)])
+def test_stored_numbers_must_be_real_integers(store, field, value):
+    rec = add(store)
+    _edit(store, rec, lambda d: d.update({field: value}))
+    with pytest.raises(A.AssetError):
+        store.get(rec["id"])
+
+
+def test_the_recorded_byte_count_must_match_the_stored_image(store):
+    rec = add(store)
+    _edit(store, rec, lambda d: d.update(bytes=d["bytes"] + 1))
+    with pytest.raises(A.AssetError):
+        store.get(rec["id"])
