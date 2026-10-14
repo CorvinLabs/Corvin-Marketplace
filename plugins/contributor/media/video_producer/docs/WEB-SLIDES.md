@@ -259,7 +259,7 @@ is an error, and **all** errors of a scene are reported at once (one repair roun
 - Connectors `arrow`/`line`: `from`, `to` (ids), `from_anchor`/`to_anchor` (`n|e|s|w|c`), `route: straight|elbow|curved`,
   `text?` (24). Marks `brace`, `bracket`, `underline`, `circle-highlight`: `target` (or `targets`), `side`, `text?` (30).
   `freehand`: 2-40 `[x, y]` points in grid units.
-- Every element: `step` (1-12, default = the previous one), `erase_at` (a later step: fades the element out), `tone`
+- Every element: `step` (1-12, default = the previous one), `erase_at` (a later step: fades the element out, and everything attached to it - an arrow, a mark, an element placed inside it - fades with it; an element may not appear at or after the step what it is attached to is erased, and a connector is lifted to the step of its endpoints before that is checked), `tone`
   (`accent|accent_hi|text|muted|success`: palette roles, never a colour value).
 
 The validator proves what the data decides (grid bounds, attached arrows, shapes sharing cells, text that cannot

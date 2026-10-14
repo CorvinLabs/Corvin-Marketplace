@@ -161,7 +161,13 @@ def validate_canvas(data: Any, base: Optional[List[Dict[str, Any]]] = None) -> D
     at the first frame; its elements are on the same board as the scene's own (ids, placement,
     overlap, the 40-element and 400-character limits count both) but take no step."""
     if isinstance(data, dict) and isinstance(data.get("source"), dict) and set(data) <= _NORM_KEYS:
-        return validate_canvas(data["source"], base=data.get("base") if base is None else base)
+        # ONE level only: the spec inside is validated as a spec, so a normalised form nested in it is an
+        # unknown field - otherwise {"source": {"source": X, "base": B}} smuggled in a board nobody carried over
+        return _validate_spec(data["source"], data.get("base") if base is None else base)
+    return _validate_spec(data, base)
+
+
+def _validate_spec(data: Any, base: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     errs: List[str] = []
     if not isinstance(data, dict):
         raise CanvasError(["canvas data must be a JSON object"])
@@ -351,6 +357,8 @@ def validate_canvas(data: Any, base: Optional[List[Dict[str, Any]]] = None) -> D
     if not errs:
         _check_refs(norm, ids, errs)
     if not errs:
+        _check_erasures(norm, ids, errs)
+    if not errs:
         _check_cells_and_text(norm, errs)
     if errs:
         raise CanvasError(errs)
@@ -471,6 +479,43 @@ def _check_refs(els: List[Dict[str, Any]], ids: Dict[str, int], errs: List[str])
             a, b = els[ids[e["from"]]], els[ids[e["to"]]]
             if e.get("step", 1) < max(a["step"], b["step"]):
                 e["step"] = max(a["step"], b["step"])  # an arrow cannot appear before what it connects
+
+
+def _check_erasures(els: List[Dict[str, Any]], ids: Dict[str, int], errs: List[str]) -> None:
+    """Run after ``_check_refs`` has lifted connectors to their endpoints' step. What is attached to an element
+    (a connector, a mark, an element placed inside it) goes when that element goes - otherwise the scene's last
+    frame shows an arrow to nothing, and the scene that continues from it starts from a different picture. An
+    element may not appear at or after the step what it is attached to is erased, and no element may be erased
+    at or before the step it appears at (a lifted connector included)."""
+    def attached_to(e: Dict[str, Any]) -> List[str]:
+        if e["type"] in CONNECTORS:
+            return [e["from"], e["to"]]
+        if e["type"] in MARKS:
+            return list(e.get("targets") or [])
+        inside = (e.get("box") or {}).get("inside")
+        return [inside] if inside else []
+
+    for _ in range(len(els) + 1):
+        moved = False
+        for e in els:
+            if e.get("base"):
+                continue
+            for r in attached_to(e):
+                ref = els[ids[r]] if r in ids else None
+                ea = ref.get("erase_at") if ref is not None and not ref.get("base") else None
+                if ea and (not e.get("erase_at") or e["erase_at"] > ea):
+                    e["erase_at"] = ea
+                    moved = True
+        if not moved:
+            break
+    for e in els:
+        ea = e.get("erase_at")
+        if e.get("base") or not ea:
+            continue
+        where = f"elements[{e['k']}] ({e['type']})"
+        if ea <= e["step"]:
+            errs.append(f"{where}: erase_at {ea} is not after step {e['step']}, the step it appears at "
+                        f"(it is attached to elements that come later, or to one that is erased at {ea})")
 
 
 def _cells(b: Dict[str, int]) -> set:
@@ -1102,7 +1147,8 @@ def carry_over(d: Dict[str, Any]) -> List[Dict[str, Any]]:
     anything that pointed at one (a connector, a mark, an element placed inside it). Every element
     keeps its resolved cell box (``at``) and the wobble of its own scene (``_seed0``/``_sid``/
     ``_sketch``), so the first frame of the continuation is the last frame of the scene before it.
-    Auto ids are renamed ``_b<n>`` so they cannot clash with the new scene's own auto ids."""
+    Auto ids are renamed ``_b<n>`` so they cannot clash with the new scene's own auto ids; ids the model
+    authored are kept (the continuing scene may point at them)."""
     seed0 = zlib.crc32((d.get("title") or "").encode("utf-8"))
     els = [e for e in d["elements"] if not e.get("erase_at")]
     ids = {e["id"] for e in els if "id" in e}
@@ -1118,7 +1164,8 @@ def carry_over(d: Dict[str, Any]) -> List[Dict[str, Any]]:
                 continue
             keep.append(e)
         els = keep
-    rename = {e["id"]: f"_b{j}" for j, e in enumerate(els) if str(e.get("id", "")).startswith("_")}
+    # auto ids (_e<k>) and ids carried once already (_b<j>) are renamed; an id the model authored keeps its name
+    rename = {e["id"]: f"_b{j}" for j, e in enumerate(els) if re.fullmatch(r"_[eb]\d+", str(e.get("id", "")))}
     rid = lambda x: rename.get(x, x)  # noqa: E731
     out: List[Dict[str, Any]] = []
     for e in els:
@@ -1235,7 +1282,9 @@ def repair_variants(d: Dict[str, Any], issues: List[Dict[str, Any]]) -> List[Tup
         changed = False
         for k in sorted(conn | marks):
             where, j = slots[k]
-            el = (base if where == "base" else src["elements"])[j]
+            if where == "base":
+                continue  # what the earlier scene ended with is not this scene's to re-route
+            el = src["elements"][j]
             if k in conn:
                 before = (el.get("route", "straight"), el.get("from_anchor"), el.get("to_anchor"))
                 el["route"] = route
