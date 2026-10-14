@@ -10,6 +10,12 @@ Measured on the 9-video gate corpus (79 scenes, silent mock voice, same `still_t
   storyboard gives no beat get a fallback keyword from the sentence itself. Chips stay verbatim words of the narration.
 - The storyboard prompt now asks for a chip string on sentences that carry a claim but name no item.
 
+Found on the real corpus 3 (2026-10-14): a `compare` point named before its own card was revealed inside a still
+invisible card, so the slide did not change (10 s unchanged); a card now appears no later than its earliest point
+(`scene_item_groups`). Keyword chips were a thin outline on a dark card and moved fewer than 0.15 % of the pixels, which
+the `still_time` metric does not count; they are now larger and filled (inline style, `base.css` untouched), and up to
+6 per scene (`MAX_CHIPS`).
+
 The golden hashes of `compare` slides change on purpose. The gate may still report `not_demonstrated` for `still_time`:
 the offline projection puts the upper confidence bounds at 20.3 % (limit 20 %) and 8.25 s (limit 8 s).
 

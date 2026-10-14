@@ -30,7 +30,7 @@ FOCUS_MIN_GAP_S = 2.5               # focus never jumps faster than this
 MIN_VISIBLE_S = 2.5                 # an item named in the last words still gets this long on screen
 SNAP_WINDOW_S = 1.2
 MIN_SENTENCE_S = 0.5
-MAX_CHIPS = 4
+MAX_CHIPS = 6
 CHIP_MAX_CHARS = 28
 SPARSE_TEMPLATES = ("hero", "quote", "stat")   # little on the slide by design: keyword chips carry the narration
 # Templates that fill their frame: a chip is added only to fill a stretch where nothing else happens (readiness
@@ -310,6 +310,7 @@ def build_timeline(
     lang: str = "en",
     chips_allowed: bool = True,
     subs: Optional[List[str]] = None,
+    groups: Optional[List[List[int]]] = None,
 ) -> Timeline:
     """Cues for one scene. ``items`` = (label, step) per data item, in data order;
     ``subs`` = each item's sub-line, a second place the narration may name it."""
@@ -396,6 +397,11 @@ def build_timeline(
             item_time[j] = latest
         latest = max(FIRST_CONTENT_S, item_time[j] - 0.3)
 
+    for grp in groups or []:
+        # a child is drawn inside its parent: the parent appears no later than its earliest child
+        # (otherwise the child "shows" inside a still invisible card and the slide stays unchanged)
+        if len(grp) > 1 and all(0 <= g < len(items) for g in grp):
+            item_time[grp[0]] = min(item_time[g] for g in grp)
     step_times: Dict[int, float] = {}
     for j, (_, step) in enumerate(items):
         t = round(item_time[j], 3)

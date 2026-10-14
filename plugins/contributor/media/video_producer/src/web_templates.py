@@ -678,6 +678,20 @@ def scene_items(template: str, data: Dict[str, Any]) -> List[Tuple[str, int]]:
     return []  # hero, quote, stat, line: one statement, no items to walk through
 
 
+_CHIP_LOOK = ("font-size:36px;padding:16px 38px;font-weight:600;"
+              "background:color-mix(in srgb, var(--accent) 30%, var(--bg-card))")
+
+
+def scene_item_groups(template: str, data: Dict[str, Any]) -> List[List[int]]:
+    """Item indices that live INSIDE another item (``scene_items`` order): ``[parent, child, ...]`` per group.
+    A child sits in its parent's element, so it can never show before the parent does."""
+    if template == "compare":
+        lp = len(data["left"]["points"])
+        rp = len(data["right"]["points"])
+        return [list(range(0, 1 + lp)), list(range(1 + lp, 2 + lp + rp))]
+    return []
+
+
 def scene_item_subs(template: str, data: Dict[str, Any]) -> List[str]:
     """Each item's secondary text (sub-line, bullet points, timestamp), aligned with scene_items."""
     d = data
@@ -1438,7 +1452,9 @@ def build_document(
     if scene_index == 1 and (style is None or (style.intro_mark and style.mark_png)):
         body = _with_intro_mark(template, body, style)
     if chip_list:
-        row = "".join(f'<span class="chip r" style="--i:{CHIP_STEP0 + c}">{_e(_clean_chip(t))}</span>'
+        # inline, not in base.css (the shared stylesheet is pinned by the golden hashes): a chip is the only change on a
+        # quiet slide, so it must be big and filled enough to read as one - a thin outline on a dark card is not seen
+        row = "".join(f'<span class="chip r" style="--i:{CHIP_STEP0 + c};{_CHIP_LOOK}">{_e(_clean_chip(t))}</span>'
                       for c, (_, t) in enumerate(chip_list))
         body = body[: body.rfind("</div>")] + f'<div class="chips">{row}</div></div>'
     focus_css, stage_style = "", ""

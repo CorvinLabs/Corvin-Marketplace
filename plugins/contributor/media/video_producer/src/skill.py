@@ -33,7 +33,7 @@ try:
     from .style_pack import Style, validate_style
     from .style_store import write_style_snapshot
     from .web_layout import format_issues
-    from .web_templates import MAP_LAYERS, console_assets, scene_item_subs, scene_items, user_assets
+    from .web_templates import MAP_LAYERS, console_assets, scene_item_groups, scene_item_subs, scene_items, user_assets
     from . import asset_store
     from .web_timeline import AudioPauses, build_timeline, detect_pauses, split_sentences
     from .grounding import render_pack, validate_pack
@@ -51,7 +51,7 @@ except ImportError:  # standalone script use (no package context)
     from style_pack import Style, validate_style
     from style_store import write_style_snapshot
     from web_layout import format_issues
-    from web_templates import MAP_LAYERS, console_assets, scene_item_subs, scene_items, user_assets
+    from web_templates import MAP_LAYERS, console_assets, scene_item_groups, scene_item_subs, scene_items, user_assets
     import asset_store
     from web_timeline import AudioPauses, build_timeline, detect_pauses, split_sentences
     from grounding import render_pack, validate_pack
@@ -1491,7 +1491,8 @@ class _SceneCues:
         d = validate_scene_data(template, data)
         return build_timeline(template, scene_items(template, d), self.narration, self.pauses,
                               beats=self.beats if use_beats else None, lang=self.lang,
-                              chips_allowed=self.chips_allowed, subs=scene_item_subs(template, d))
+                              chips_allowed=self.chips_allowed, subs=scene_item_subs(template, d),
+                              groups=scene_item_groups(template, d))
 
 
 _COMPACTABLE = ("diagram", "flow", "cycle", "timeline", "content")

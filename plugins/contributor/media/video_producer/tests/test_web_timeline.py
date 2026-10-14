@@ -300,3 +300,21 @@ def test_the_chip_reaches_the_slide_escaped_and_in_a_step_after_the_items():
                   item_steps=tl.item_steps, focus=tl.focus, chips=[(6.0, "<b>Mess</b> & Signal")], source=tl.source, notes=[])
     doc = build_document("chart", CHART, duration_s=21, timeline=tl)
     assert "&lt;b&gt;Mess&lt;/b&gt; &amp; Signal" in doc and "<b>Mess</b>" not in doc
+
+
+# ── compare: a point never shows before its own card (real corpus 2026-10-14: 10 s of unchanged slide) ──────────────────
+
+def test_a_compare_card_appears_no_later_than_its_earliest_point():
+    from src.web_templates import scene_item_groups
+    data = {"title": "Vergleich", "left": {"title": "Blackbox", "points": ["Unklar wer was getan hat", "Kosten kaum planbar"]},
+            "right": {"title": "Corvin", "points": ["Klare Limits pro Tag", "Jede Pruefung im Audit"]}}
+    d = validate_scene_data("compare", data)
+    narr = ("Heute ist vieles eine Blackbox. Es gibt klare Limits pro Tag. Jede Pruefung steht im Audit. "
+            "Dagegen ist Corvin offen. Unklar wer was getan hat, und die Kosten sind kaum planbar.")
+    items = scene_items("compare", d)
+    tl = build_timeline("compare", items, narr, PAUSES, lang="de", subs=scene_item_subs("compare", d),
+                        groups=scene_item_groups("compare", d))
+    for grp in scene_item_groups("compare", d):
+        parent_t = tl.step_times[items[grp[0]][1]]
+        for g in grp[1:]:
+            assert parent_t <= tl.step_times[items[g][1]] + 1e-6, (items[grp[0]][0], items[g][0], tl.step_times)
