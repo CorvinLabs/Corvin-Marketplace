@@ -41,7 +41,7 @@ DEGRADED_MAX = 0.10
 DEAD_SHARE_MAX = 0.20
 LONGEST_STILL_P90_MAX_S = 8.0
 EXPECTED_VIDEOS = 9          # the seven 2026-10-09 baseline tasks plus the LDD explainer in two languages
-FRESH_INSTALL_TOTAL = 28
+FRESH_INSTALL_TOTAL = 31      # the size of web-next/tests/e2e-fresh/video-producer-lifecycle.spec.ts; 29 before the Quality-tab, cancel and delete cases (T-0097)
 
 # A — each item: (name, repo, [test files relative to that repo]).  "plugin" = this directory.
 A_CHECKS: List[Tuple[str, str, List[str]]] = [

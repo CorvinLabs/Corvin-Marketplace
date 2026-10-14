@@ -185,12 +185,12 @@ def test_bare_fastapi_app_lint_finds_a_test_that_builds_its_own_app(tmp_path):
     assert rg.bare_app_lint(tmp_path) == ["test_x.py"]
 
 
-def test_fresh_install_needs_exactly_28_of_28(tmp_path):
+def test_fresh_install_needs_exactly_31_of_31(tmp_path):
     f = tmp_path / "r.json"
-    f.write_text(json.dumps({"passed": 27, "total": 28}))
+    f.write_text(json.dumps({"passed": 30, "total": 31}))
     out = rg.section_c(sys.executable, True, f)
     assert next(x for x in out if x["check"] == "fresh_install_spec")["status"] == "fail"
-    f.write_text(json.dumps({"passed": 28, "total": 28}))
+    f.write_text(json.dumps({"passed": 31, "total": 31}))
     out = rg.section_c(sys.executable, True, f)
     assert next(x for x in out if x["check"] == "fresh_install_spec")["status"] == "pass"
 
