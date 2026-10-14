@@ -483,20 +483,33 @@ def test_webrtc_udp_never_leaves_the_browser_with_positive_control(stub, canary,
     pport = px.start()
     url = f"http://origin.test:{fport}/webrtc"
     try:
-        # positive control: the SAME command without the WebRTC flags - the canary must see STUN packets
-        ctl = tmp_path / "control"
-        ctl.mkdir()
-        # (without the WebRTC flags and without the DevTools pipe; --screenshot makes it exit by itself)
-        cmd = [a for a in capture.chrome_command(CHROME, proxy_port=pport, profile_dir=str(ctl / "profile"),
-                                                 viewport="desktop")
-               if a not in capture.WEBRTC_FLAGS and a not in ("--remote-debugging-pipe", "about:blank")]
-        cmd += ["--virtual-time-budget=5000", f"--screenshot={ctl / 'shot.png'}", url]
-        dl.run_process(cmd, deadline_s=20, what="control chrome")
-        control_packets = udp.packets
-        assert control_packets > 0, "positive control failed: the UDP canary saw nothing even without the flag"
-        work = tmp_path / "capture"
-        work.mkdir()
-        res = capture.run_capture(url, viewport="desktop", work_dir=str(work), proxy=px, chrome=CHROME, deadline_s=20)
+        # positive control: the SAME command without the WebRTC flags - the canary must see STUN packets.
+        # Measured: Chrome's virtual-time screenshot sometimes finishes before ICE gathering sends anything (about
+        # 1 run in 10, whatever the wait afterwards), so a silent control run proves nothing - it is repeated and
+        # the control holds when ANY attempt reaches the canary.
+        control_packets = 0
+        for attempt in range(8):
+            ctl = tmp_path / f"control{attempt}"
+            ctl.mkdir()
+            # (without the WebRTC flags and without the DevTools pipe; --screenshot makes it exit by itself)
+            cmd = [a for a in capture.chrome_command(CHROME, proxy_port=pport, profile_dir=str(ctl / "profile"),
+                                                     viewport="desktop")
+                   if a not in capture.WEBRTC_FLAGS and a not in ("--remote-debugging-pipe", "about:blank")]
+            cmd += ["--virtual-time-budget=5000", f"--screenshot={ctl / 'shot.png'}", url]
+            dl.run_process(cmd, deadline_s=20, what="control chrome")
+            time.sleep(0.2)
+            control_packets = udp.packets
+            if control_packets > 0:
+                break
+        assert control_packets > 0, "positive control failed: the UDP canary saw nothing in 8 runs even without the flag"
+        # The same Chrome stays silent now and then even unprotected, so one silent guarded run is weak evidence:
+        # the guarded capture runs three times and every run must leave the canary alone.
+        res = {"ok": True}
+        for run in range(3):
+            work = tmp_path / f"capture{run}"
+            work.mkdir()
+            res = capture.run_capture(url, viewport="desktop", work_dir=str(work), proxy=px, chrome=CHROME, deadline_s=20)
+            assert res["ok"], res
         time.sleep(0.5)
     finally:
         px.stop()
