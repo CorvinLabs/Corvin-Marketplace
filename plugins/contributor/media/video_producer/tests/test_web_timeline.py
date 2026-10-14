@@ -318,3 +318,32 @@ def test_a_compare_card_appears_no_later_than_its_earliest_point():
         parent_t = tl.step_times[items[grp[0]][1]]
         for g in grp[1:]:
             assert parent_t <= tl.step_times[items[g][1]] + 1e-6, (items[grp[0]][0], items[g][0], tl.step_times)
+
+
+@needs_ffmpeg
+async def test_a_console_still_whose_first_callout_comes_late_does_not_outlive_the_narration(renderer, tmp_path):
+    """Real corpus 2026-10-14: callouts named at 17.6 s of a 20.4 s scene made the push-in run for another 18.8 s,
+    and the clip grew to 36.4 s (17 s of frozen tail). The push must end with the last callout."""
+    from tests.test_web_templates import SAMPLES
+    data = validate_scene_data("console_still", SAMPLES["console_still"])
+    steps = sorted({s for _, s in scene_items("console_still", data)}) or [3]
+    tl = Timeline(duration=20.4, sentences=[], starts=[], step_times={s: 17.6 + 0.3 * i for i, s in enumerate(steps)},
+                  item_steps=steps, focus=[], chips=[], source="llm")
+    doc = build_document("console_still", SAMPLES["console_still"], duration_s=20.4, timeline=tl)
+    assert "animation-duration:" in doc.split('class="still-zoom"', 1)[1].split(">", 1)[0]
+    frames = await renderer.render("console_still", SAMPLES["console_still"], 20.4, tmp_path / "f", timeline=tl)
+    assert len(frames.schedule) <= 21.5 * 30, f"{len(frames.schedule) / 30:.1f} s of frames for a 20.4 s narration"
+
+
+def test_sentences_that_only_point_back_at_visible_items_still_fill_a_quiet_tail_with_keywords():
+    items, subs = _items("chart", CHART)
+    base = build_timeline("chart", items, LONG_NARRATION, LONG_PAUSES, lang="de", beats=None, subs=subs)
+    n = len(base.sentences)
+    beats = [k % 2 for k in range(n)]            # every sentence names a bar: no null beat, so no beat-driven chip
+    tl = build_timeline("chart", items, LONG_NARRATION, LONG_PAUSES, lang="de", beats=beats, subs=subs)
+    assert tl.source == "llm"
+    assert tl.chips, "a long narration whose sentences all point at visible items must still get a keyword"
+    events = sorted(list(tl.step_times.values()) + [t for t, _ in tl.focus])
+    for i, (when, text) in enumerate(tl.chips):
+        earlier = [e for e in events if e < when] + [w for w, _ in tl.chips[:i]]
+        assert when - max(earlier, default=0.0) >= CHIP_MIN_GAP_S - 1e-6, (when, text)

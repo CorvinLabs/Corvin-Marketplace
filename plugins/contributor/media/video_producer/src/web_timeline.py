@@ -328,6 +328,7 @@ def build_timeline(
     item_time: Dict[int, float] = {}
     focus_raw: List[Tuple[float, Optional[int]]] = []   # data-item index or None
     chips: List[Tuple[float, str]] = []
+    fillers: List[Tuple[float, str]] = []     # keywords of sentences that only point back at an item already on screen
 
     if checked is not None:
         for k, b in enumerate(checked):
@@ -335,6 +336,11 @@ def build_timeline(
             if isinstance(b, int):
                 item_time.setdefault(b, max(FIRST_CONTENT_S, t - REVEAL_LEAD_S))
                 focus_raw.append((t, b))
+                if chips_ok:
+                    c = fallback_chip(sentences[k], lang)
+                    if c:
+                        pc = sentences[k].find(c)
+                        fillers.append((_time_at(spans[k][0] + max(pc, 0), spans, starts, end), c))
             elif isinstance(b, str):
                 p = sentences[k].lower().find(b.lower())
                 chips.append((_time_at(spans[k][0] + max(p, 0), spans, starts, end), b))
@@ -430,10 +436,10 @@ def build_timeline(
     kept: List[Tuple[float, str]] = []
     seen = set()
     events = sorted(list(step_times.values()) + [ft for ft, _ in focus])   # everything else that changes on screen
-    for t, c in sorted(chips):
-        if c.lower() in seen or (kept and t - kept[-1][0] < FOCUS_MIN_GAP_S) or t > duration - 0.8:
-            continue
+    for t, c in sorted(chips) + sorted(fillers):   # the storyboard's own keywords first, then the fillers
         when = round(max(t - REVEAL_LEAD_S, FIRST_CONTENT_S), 3)
+        if c.lower() in seen or any(abs(when - w) < FOCUS_MIN_GAP_S for w, _ in kept) or t > duration - 0.8:
+            continue
         if template not in SPARSE_TEMPLATES and when - max((e for e in events if e <= when), default=0.0) < CHIP_MIN_GAP_S:
             continue                       # something else just happened: no chip on a frame that is already busy
         kept.append((when, c))
@@ -441,6 +447,7 @@ def build_timeline(
         seen.add(c.lower())
         if len(kept) == MAX_CHIPS:
             break
+    kept.sort()
 
     return Timeline(duration=duration, sentences=sentences, starts=[round(s, 3) for s in starts],
                     step_times=step_times, item_steps=item_steps, focus=focus, chips=kept,

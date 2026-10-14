@@ -1451,6 +1451,11 @@ def build_document(
     body = _BUILDERS[template](d_with_lang)
     if scene_index == 1 and (style is None or (style.intro_mark and style.mark_png)):
         body = _with_intro_mark(template, body, style)
+    if timeline is not None and 'class="still-zoom"' in body:
+        # base.css uses --tend as the push's DURATION from --t0, but with a timeline --tend is an absolute time: a push
+        # that starts late (first callout at 17 s) would run for another 18 s and the clip would grow past the
+        # narration into a frozen tail (real corpus 2026-10-14: 36 s clip for 20 s of speech). Inline, not in base.css.
+        body = body.replace('class="still-zoom" style="', f'class="still-zoom" style="animation-duration:{max(tend - t0, 0.2):.3f}s;', 1)
     if chip_list:
         # inline, not in base.css (the shared stylesheet is pinned by the golden hashes): a chip is the only change on a
         # quiet slide, so it must be big and filled enough to read as one - a thin outline on a dark card is not seen

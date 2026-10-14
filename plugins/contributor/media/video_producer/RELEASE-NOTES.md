@@ -16,6 +16,15 @@ invisible card, so the slide did not change (10 s unchanged); a card now appears
 the `still_time` metric does not count; they are now larger and filled (inline style, `base.css` untouched), and up to
 6 per scene (`MAX_CHIPS`).
 
+Corpus 4 (2026-10-14) found two more causes:
+- A `console_still` whose first callout is named late (17.6 s of 20.4 s) started its push-in late and ran it for the
+  whole remaining length of `--tend` (an absolute time that `base.css` reads as a duration): the animation ended at
+  36 s and the clip grew to 36.4 s, 17 s of frozen tail past the narration. The push now ends with the last callout
+  (inline `animation-duration`, only when a timeline drives the slide).
+- A sentence the storyboard points at an item that is already on screen produced no keyword, so a long tail of the
+  narration could stay unchanged. Such sentences now supply filler keywords, tried after the storyboard's own
+  (same quiet-stretch and spacing rules, up to `MAX_CHIPS`).
+
 The golden hashes of `compare` slides change on purpose. The gate may still report `not_demonstrated` for `still_time`:
 the offline projection puts the upper confidence bounds at 20.3 % (limit 20 %) and 8.25 s (limit 8 s).
 
