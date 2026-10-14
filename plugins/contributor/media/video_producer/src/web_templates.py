@@ -1011,40 +1011,148 @@ def _donut(d):
             f'<div class="dn-legend">{"".join(rows)}</div></div></div>')
 
 
+# Flow nodes: the text decides the node, not the other way round. (label px, sub px) from large to small; the
+# widths are the advance per em MEASURED in the browser for natural text (heading serif 0.45 mean, 0.51 max; body sans 0.47, 0.54), rounded up (conservative on purpose:
+# a node that is a little too tall is invisible, one that is too small is a collision and a replaced slide).
+_FLOW_STEPS = ((36, 21), (32, 20), (28, 19), (26, 18), (24, 17))
+_FLOW_EM_LABEL, _FLOW_EM_SUB = 0.50, 0.52
+_FLOW_PAD_X, _FLOW_PAD_Y = 26, 24
+_PILL_EM, _PILL_PAD = 11.4, 34      # the edge label pill: 19px mono plus 16px padding either side and a border
+
+
+def _wrap_lines(text: str, fs: float, avail_w: float, em: float) -> int:
+    """Lines a text needs: greedy word wrap, and a word longer than a line breaks anywhere (the CSS says so)."""
+    cpl = max(1, int(avail_w / (fs * em)))
+    lines, cur = 1, 0
+    for word in str(text).split():
+        n = len(word)
+        if cur and cur + 1 + n <= cpl:
+            cur += 1 + n
+            continue
+        if cur:
+            lines += 1
+        extra = (n - 1) // cpl
+        lines += extra
+        cur = n - extra * cpl
+    return lines
+
+
+def _flow_node_fit(nd: Dict[str, Any], w: float, h_base: float, h_max: float) -> Tuple[Optional[Tuple[int, int]], float]:
+    """(font override or None, node height). Grow the node first, shrink the type only when the column has no room."""
+    inner = w - 2 * _FLOW_PAD_X - 2
+    for k, (fl, fs) in enumerate(_FLOW_STEPS):
+        need = _wrap_lines(nd["label"], fl, inner, _FLOW_EM_LABEL) * fl * 1.1
+        if nd.get("sub"):
+            need += 8 + _wrap_lines(nd["sub"], fs, inner, _FLOW_EM_SUB) * fs * 1.3
+        need = math.ceil(need + _FLOW_PAD_Y)
+        if need <= h_base:
+            return (None if k == 0 else (fl, fs)), h_base
+        if need <= h_max or k == len(_FLOW_STEPS) - 1:
+            return (None if k == 0 else (fl, fs)), float(min(need, max(h_max, h_base)))
+    return None, h_base  # unreachable
+
+
+def _bezier_at_x(x0: float, y0: float, x1: float, y1: float, x2: float, y2: float, x3: float, y3: float,
+                 tx: float) -> Tuple[float, float]:
+    """The point of a cubic Bezier whose x is ``tx`` (x is monotone on the flow edges: control x lie in order)."""
+    lo, hi = 0.0, 1.0
+    for _ in range(30):
+        t = (lo + hi) / 2
+        u = 1 - t
+        x = u ** 3 * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t ** 3 * x3
+        lo, hi = (t, hi) if x < tx else (lo, t)
+    t = (lo + hi) / 2
+    u = 1 - t
+    return (u ** 3 * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t ** 3 * x3,
+            u ** 3 * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t ** 3 * y3)
+
+
 def _flow(d):
     layer, groups = _flow_layout(d)
     nodes = {nd["id"]: nd for nd in d["nodes"]}
     W, H = _VIZ_W, 560
     cols = len(groups)
     gapx = 140 if cols > 1 else 0
+    longest = max((len(e["label"]) for e in d["edges"] if e.get("label")), default=0)
+    if longest and cols > 1:
+        # room between two columns for the longest edge label pill, as long as the nodes stay at least 150px wide
+        gapx = min(max(140, math.ceil(longest * _PILL_EM + _PILL_PAD + 32)), max(140, int((W - cols * 150) / (cols - 1))))
     w = min(300.0, (W - (cols - 1) * gapx) / cols)
     h = 120 if any(nd.get("sub") for nd in d["nodes"]) else 88
     x0 = (W - (cols * w + (cols - 1) * gapx)) / 2
-    pos = {}
+    pos, fit = {}, {}
     for k, g in enumerate(groups):
+        h_max = min(240.0, H / len(g) - 20)
         for j, nid in enumerate(g):
             pos[nid] = (x0 + k * (w + gapx), H * (j + 0.5) / len(g))
+            fit[nid] = _flow_node_fit(nodes[nid], w, h, h_max)
     svg, pulses, labels, cards = [], [], [], []
+    room = gapx - 24 - 8
+    geo = {}
     for m, e in enumerate(d["edges"]):
         (ax, ay), (bx, by) = pos[e["from"]], pos[e["to"]]
         x1, y1, x2, y2 = ax + w + 8, ay, bx - 16, by
-        dx = (x2 - x1) * 0.5
+        geo[m] = (ax, x1, y1, x2, y2, (x2 - x1) * 0.5)
+    # edge label pills. Between neighbouring columns the pill sits on the middle of the edge. An edge that skips a column
+    # has its middle INSIDE the next column, on top of a node: its pill goes to the first gap along the curve where it
+    # touches neither a node nor another pill.
+    pill_w = {}
+    for m, e in enumerate(d["edges"]):
+        if e.get("label"):
+            pill = len(e["label"]) * _PILL_EM + _PILL_PAD
+            pill_w[m] = 200 if pill <= room or room >= 200 else max(60, room)   # a pill wider than the gap wraps inside it
+    placed, spot = [], {}
+    rects = [(pos[nid][0], pos[nid][1] - fit[nid][1] / 2, w, fit[nid][1]) for nid in pos]
+    hit = lambda a, b: a[0] < b[0] + b[2] and b[0] < a[0] + a[2] and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]  # noqa: E731
+    for skip in (False, True):
+        for m, e in enumerate(d["edges"]):
+            if m not in pill_w or (layer[e["to"]] - layer[e["from"]] > 1) != skip:
+                continue
+            ax, x1, y1, x2, y2, dx = geo[m]
+            pw = pill_w[m]
+            if not skip:
+                spot[m] = ((x1 + x2) / 2, (y1 + y2) / 2)
+            else:
+                span = layer[e["to"]] - layer[e["from"]]
+                first, chosen = None, None
+                for k in range(span):
+                    on = _bezier_at_x(x1, y1, x1 + dx, y1, x2 - dx, y2, x2, y2, ax + w + gapx / 2 + k * (w + gapx))
+                    first = first or on
+                    for shift in (0, -48, 48, -96, 96):     # on the curve first, then just above or below it
+                        cand = (on[0], on[1] + shift)
+                        box = (cand[0] - pw / 2, cand[1] - 22, pw, 44)
+                        if box[1] >= 0 and box[1] + 44 <= H and not any(hit(box, r) for r in rects + placed):
+                            chosen = cand
+                            break
+                    if chosen:
+                        break
+                spot[m] = chosen or first
+            placed.append((spot[m][0] - pw / 2, spot[m][1] - 22, pw, 44))
+    for m, e in enumerate(d["edges"]):
+        ax, x1, y1, x2, y2, dx = geo[m]
         path = f"M{x1:.1f} {y1:.1f} C{x1 + dx:.1f} {y1:.1f} {x2 - dx:.1f} {y2:.1f} {x2:.1f} {y2:.1f}"
         i = 2 + layer[e["to"]]
         svg.append(f'<path class="edge" pathLength="1" style="--i:{i}" d="{path}"/>')
         svg.append(f'<path class="head" style="--i:{i}" d="M{x2 + 13:.1f} {y2:.1f} L{x2 - 1:.1f} {y2 - 9:.1f} '
                    f'L{x2 - 1:.1f} {y2 + 9:.1f} Z"/>')
         pulses.append(f'<i class="amb pulse" style="--amb:{i};offset-path:path(\'{path}\');--ph:{(m * 0.55) % 2:.2f}s"></i>')
-        if e.get("label"):
+        if m in spot:
             # a dimmed label pill turns translucent and the edge strikes through it: never focus-dimmed
-            labels.append(f'<div class="elabel r" style="--i:{i};--nofocus:1;left:{(x1 + x2) / 2 - 100:.1f}px;'
-                          f'top:{(y1 + y2) / 2 - 22:.1f}px"><span>{_e(e["label"])}</span></div>')
+            pw = pill_w[m]
+            wide = f"width:{pw:.0f}px;" if pw != 200 else ""
+            lx, ly = spot[m]
+            labels.append(f'<div class="elabel r" style="--i:{i};--nofocus:1;{wide}left:{lx - pw / 2:.1f}px;'
+                          f'top:{ly - 22:.1f}px"><span>{_e(e["label"])}</span></div>')
     for nid, (x, cy) in pos.items():
         nd = nodes[nid]
+        font, hn = fit[nid]
         cls = " hl" if d.get("highlight") == nid else ""
-        sub = f'<div class="s">{_e(nd["sub"])}</div>' if nd.get("sub") else ""
-        cards.append(f'<div class="gnode r{cls}" style="--i:{2 + layer[nid]};left:{x:.1f}px;top:{cy - h / 2:.1f}px;'
-                     f'width:{w:.1f}px;height:{h}px"><div class="l">{_e(nd["label"])}</div>{sub}</div>')
+        # a type override sits inline on the text (the shared stylesheet is part of every document and stays as it is)
+        ls = f' style="font-size:{font[0]}px"' if font else ""
+        ss = f' style="font-size:{font[1]}px"' if font else ""
+        sub = f'<div class="s"{ss}>{_e(nd["sub"])}</div>' if nd.get("sub") else ""
+        cards.append(f'<div class="gnode r{cls}" style="--i:{2 + layer[nid]};left:{x:.1f}px;top:{cy - hn / 2:.1f}px;'
+                     f'width:{w:.1f}px;height:{hn:g}px"><div class="l"{ls}>{_e(nd["label"])}</div>{sub}</div>')
     return (f'<div class="frame">{_header(d)}<div class="viz" style="height:{H}px">'
             f'<svg class="viz-svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">{"".join(svg)}</svg>'
             f'{"".join(pulses)}{"".join(labels)}{"".join(cards)}</div></div>')
