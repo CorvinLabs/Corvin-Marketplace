@@ -275,9 +275,11 @@ in order, telling the slide what to show while that sentence is spoken:
 - an integer k = this sentence is about item k of the data (bullet, node, bar, segment, step,
   layer, event, flow node in "nodes" order; compare: 0 = left, 1 = right; canvas: the k-th step): it appears now
   and the eye is led to it;
-- a string = for "hero", "quote", "stat" only: 1-3 words copied verbatim from that sentence,
-  shown as a keyword chip while it is said;
-- null = nothing new (e.g. an introduction or a summary sentence).
+- a string = 1-3 words copied verbatim from that sentence, shown as a keyword chip while it is said.
+  Use it for "hero", "quote", "stat" and, on any other template, for a sentence that names no item but
+  carries a claim or a term worth seeing (a chip is shown only where the slide is otherwise unchanged
+  for a few seconds, so a busy slide ignores it) - never words that are not in the sentence;
+- null = nothing new (e.g. an introduction, a transition or a summary sentence).
 Name the item in the sentence that introduces it; walk through the items in the order the
 narration explains them, so something new appears every few seconds.
 Example: narration "Alles beginnt mit einem Fehler. Daraus wird ein Loss-Signal. Das ADR-Gate prüft es." with

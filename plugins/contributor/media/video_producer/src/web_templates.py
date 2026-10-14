@@ -27,10 +27,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from .web_geometry import layer_dag, monotone_path, nice_ticks, order_layers, polar
-    from .web_timeline import SPARSE_TEMPLATES, Timeline
+    from .web_timeline import CHIP_TEMPLATES, SPARSE_TEMPLATES, Timeline
 except ImportError:  # standalone script use (no package context)
     from web_geometry import layer_dag, monotone_path, nice_ticks, order_layers, polar
-    from web_timeline import SPARSE_TEMPLATES, Timeline
+    from web_timeline import CHIP_TEMPLATES, SPARSE_TEMPLATES, Timeline
 
 WEB_DIR = Path(__file__).parent / "web"
 DEFAULT_TOKENS_PATH = WEB_DIR / "design_tokens.json"
@@ -620,7 +620,7 @@ def reveal_steps(template: str, data: Dict[str, Any]) -> int:
         "stat": 3,
         "diagram": len(data.get("nodes") or []),
         "chart": len(data.get("bars") or []),
-        "compare": 2,
+        "compare": 2 + sum(len((data.get(k) or {}).get("points") or []) for k in ("left", "right")),
         "quote": 2,
         "code": len(data.get("lines") or []),
         "line": 4,
@@ -650,7 +650,9 @@ def scene_items(template: str, data: Dict[str, Any]) -> List[Tuple[str, int]]:
     if template == "chart":
         return [(b["label"], 2 + k) for k, b in enumerate(d["bars"])]
     if template == "compare":
-        return [(d["left"]["title"], 2), (d["right"]["title"], 3)]
+        lp, rp = d["left"]["points"], d["right"]["points"]
+        return ([(d["left"]["title"], 2)] + [(p, 3 + k) for k, p in enumerate(lp)]
+                + [(d["right"]["title"], 3 + len(lp))] + [(p, 4 + len(lp) + k) for k, p in enumerate(rp)])
     if template == "code":
         if d.get("highlight") is True:
             try:
@@ -689,7 +691,7 @@ def scene_item_subs(template: str, data: Dict[str, Any]) -> List[str]:
     if key:
         return [" ".join(x for x in (it.get("sub"), it.get("tag"), it.get("when")) if x) for it in d[key]]
     if template == "compare":
-        return [" ".join(d["left"]["points"]), " ".join(d["right"]["points"])]
+        return ([""] * (2 + len(d["left"]["points"]) + len(d["right"]["points"])))
     if template == "code" and d.get("highlight") is True:
         try:
             from . import code_v2
@@ -836,10 +838,12 @@ def _chart(d):
 
 def _compare(d):
     def card(side, cls, i):
-        pts = "".join(f"<li>{_e(p)}</li>" for p in side["points"])
+        # each point is its own reveal step (after the card), so a long narration keeps changing the slide
+        pts = "".join(f'<li class="r" style="--i:{i + 1 + k}">{_e(p)}</li>' for k, p in enumerate(side["points"]))
         return f'<div class="card {cls} r" style="--i:{i}"><h3>{_e(side["title"])}</h3><ul>{pts}</ul></div>'
+    right = 3 + len(d["left"]["points"])
     return (f'<div class="frame">{_header(d)}<div class="compare">'
-            f'{card(d["left"], "before", 2)}{card(d["right"], "after", 3)}</div></div>')
+            f'{card(d["left"], "before", 2)}{card(d["right"], "after", right)}</div></div>')
 
 
 def _quote(d):
@@ -1402,7 +1406,7 @@ def build_document(
         t0, stagger = max(timeline.first_content - 0.2, 0.35), 0.45
         tend = timeline.last_reveal + anim["rise_ms"] / 1000.0
         time_of = timeline.time_of
-        chip_list = timeline.chips if chips and template in SPARSE_TEMPLATES else []
+        chip_list = timeline.chips if chips and template in CHIP_TEMPLATES else []
 
     css_vars = "".join(f"--{k.replace('_', '-')}:{palette[k]};" for k in THEME_KEYS)
     css_vars += (f"--font-heading:'{typo['heading_family']}',serif;"

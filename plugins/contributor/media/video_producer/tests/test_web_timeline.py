@@ -234,3 +234,69 @@ def test_silent_mock_audio_spreads_the_cues_over_the_whole_clip(tmp_path):
     tl = build_timeline("diagram", items, NARRATION, p, beats=[0, 1, 2, 3], subs=subs)
     times = sorted(tl.step_times.values())
     assert times[0] < 2.0 and 5.0 < times[-1] < 9.0
+
+
+# ── keyword chips on slides that fill their frame (readiness corpus 2026-10-14) ─────────────────────────────────
+# 13 of 79 scenes sat unchanged for 8 s or more: a chart of two bars, a console picture, a two-column comparison
+# under 15-25 s of narration. A chip is the one thing the narration can add without inventing a visual, so those
+# templates get chips - but only into a stretch where nothing else is happening.
+
+from src.web_timeline import CHIP_MIN_GAP_S, CHIP_TEMPLATES, GAP_CHIP_TEMPLATES, MAX_CHIPS, SPARSE_TEMPLATES  # noqa: E402
+
+CHART = {"title": "Leerlauf", "bars": [{"label": "Ausgangsbasis", "value": 57}, {"label": "Danach", "value": 19}], "unit": "%"}
+LONG_NARRATION = ("Danach fiel der Leerlauf auf neunzehn Prozent. Eine Vorgabe blieb offen: im schlechtesten Zehntel erscheint "
+                  "ein Element mehr als vier Sekunden nach dem gesprochenen Wort. Die Messung hält auch das fest, statt es "
+                  "wegzureden. Schließlich prüft ein Ende-zu-Ende-Test vom frischen Install bis zum fertigen Video.")
+LONG_PAUSES = AudioPauses(duration=21.0, pause_ends=[5.0, 11.0, 15.5], speech_start=0.0, speech_end=21.0, silent_ratio=0.1)
+
+
+def test_the_chip_template_sets_are_consistent():
+    assert set(SPARSE_TEMPLATES) <= set(CHIP_TEMPLATES) and set(GAP_CHIP_TEMPLATES) <= set(CHIP_TEMPLATES)
+    assert not set(SPARSE_TEMPLATES) & set(GAP_CHIP_TEMPLATES)
+    assert {"chart", "compare", "console_still", "flow", "diagram"} <= set(GAP_CHIP_TEMPLATES)
+
+
+def test_a_chart_with_two_early_bars_gets_chips_into_its_long_quiet_stretch():
+    items, subs = _items("chart", CHART)
+    tl = build_timeline("chart", items, LONG_NARRATION, LONG_PAUSES, lang="de", beats=[1, None, None, None], subs=subs)
+    assert tl.chips, "twenty seconds of narration after two bars must not stay a still picture"
+    assert len(tl.chips) <= MAX_CHIPS
+    events = sorted(list(tl.step_times.values()) + [t for t, _ in tl.focus])
+    for i, (when, text) in enumerate(tl.chips):
+        earlier = [e for e in events if e < when] + [w for w, _ in tl.chips[:i]]
+        assert when - max(earlier, default=0.0) >= CHIP_MIN_GAP_S - 1e-6, (when, text, events)
+
+
+def test_a_slide_that_is_already_busy_gets_no_chip():
+    items, subs = _items("diagram", NODES)
+    tl = build_timeline("diagram", items, NARRATION, PAUSES, lang="de", beats=[0, 1, 2, None], subs=subs)
+    assert not tl.chips          # something new appears every few seconds: nothing for a chip to fill
+
+
+def test_a_sentence_the_storyboard_names_nothing_for_still_gets_a_keyword_on_a_sparse_slide():
+    text = "Jede Entscheidung braucht ein Messsignal. Ohne Messsignal bleibt jede Architekturentscheidung geraten."
+    p = AudioPauses(duration=12.0, pause_ends=[5.0], speech_start=0.0, speech_end=12.0, silent_ratio=0.1)
+    tl = build_timeline("quote", [], text, p, lang="de", beats=[None, None])
+    assert [c for _, c in tl.chips] == ["Entscheidung", "Architekturentscheidung"]   # the longest capitalised word of each sentence
+
+
+def test_unverified_claims_get_no_chips_on_any_template():
+    items, subs = _items("chart", CHART)
+    for tpl in ("chart", "quote"):
+        tl = build_timeline(tpl, items if tpl == "chart" else [], LONG_NARRATION, LONG_PAUSES, lang="de",
+                            chips_allowed=False, beats=[1, None, None, None], subs=subs if tpl == "chart" else None)
+        assert not tl.chips
+
+
+def test_filler_words_are_not_keywords():
+    assert fallback_chip("We checked everything with the measurement before shipping it.", "en") == "measurement"
+    assert fallback_chip("There is something about everything here today.", "en") is None
+
+
+def test_the_chip_reaches_the_slide_escaped_and_in_a_step_after_the_items():
+    items, subs = _items("chart", CHART)
+    tl = build_timeline("chart", items, LONG_NARRATION, LONG_PAUSES, lang="de", beats=[1, None, None, None], subs=subs)
+    tl = Timeline(duration=tl.duration, sentences=tl.sentences, starts=tl.starts, step_times=tl.step_times,
+                  item_steps=tl.item_steps, focus=tl.focus, chips=[(6.0, "<b>Mess</b> & Signal")], source=tl.source, notes=[])
+    doc = build_document("chart", CHART, duration_s=21, timeline=tl)
+    assert "&lt;b&gt;Mess&lt;/b&gt; &amp; Signal" in doc and "<b>Mess</b>" not in doc

@@ -32,7 +32,12 @@ SNAP_WINDOW_S = 1.2
 MIN_SENTENCE_S = 0.5
 MAX_CHIPS = 4
 CHIP_MAX_CHARS = 28
-SPARSE_TEMPLATES = ("hero", "quote", "stat")
+SPARSE_TEMPLATES = ("hero", "quote", "stat")   # little on the slide by design: keyword chips carry the narration
+# Templates that fill their frame: a chip is added only to fill a stretch where nothing else happens (readiness
+# corpus 2026-10-14: 13 of 79 scenes sat unchanged for 8 s or more with a handful of items under 15-25 s of narration).
+GAP_CHIP_TEMPLATES = ("chart", "compare", "console_still", "still", "diagram", "flow", "layers", "content")
+CHIP_TEMPLATES = SPARSE_TEMPLATES + GAP_CHIP_TEMPLATES
+CHIP_MIN_GAP_S = 3.0                # a gap chip needs this long of nothing before it
 
 _ABBREV = (
     "z. B.", "z.B.", "u. a.", "u.a.", "d. h.", "d.h.", "bzw.", "ca.", "Nr.", "vgl.", "inkl.", "etc.",
@@ -45,6 +50,9 @@ _STOP = {
     "jedes", "alle", "allen", "kein", "keine", "genau", "dabei", "damit", "dafür", "darum", "hier", "dort",
     "the", "and", "that", "this", "with", "from", "into", "every", "each", "when", "then", "they", "their",
     "there", "which", "would", "could", "should", "about", "because", "while", "where",
+    "everything", "something", "anything", "nothing", "everyone", "someone", "between", "through", "another",
+    "together", "whether", "without", "instead", "however", "actually", "especially", "different", "important",
+    "possible", "available", "currently", "already", "usually", "probably", "whatever", "therefore", "although",
 }
 
 
@@ -311,7 +319,7 @@ def build_timeline(
     sentences = [text[a:b].strip() for a, b in spans]
     starts = sentence_starts(spans, pauses) if spans else []
     end = max(pauses.speech_end, starts[-1] + 0.5 if starts else 0.0)
-    chips_ok = chips_allowed and template in SPARSE_TEMPLATES
+    chips_ok = chips_allowed and template in CHIP_TEMPLATES
     checked, reason = validate_beats(beats, len(sentences), len(items), sentences, chips_ok)
     source = "llm" if checked is not None else "fallback"
     notes = [] if checked is not None or beats is None else [f"beats ignored: {reason}"]
@@ -331,6 +339,11 @@ def build_timeline(
                 chips.append((_time_at(spans[k][0] + max(p, 0), spans, starts, end), b))
             else:
                 focus_raw.append((t, None))
+                if chips_ok:   # the storyboard names nothing for this sentence: it still gets its keyword
+                    c = fallback_chip(sentences[k], lang)
+                    if c:
+                        p = sentences[k].find(c)
+                        chips.append((_time_at(spans[k][0] + max(p, 0), spans, starts, end), c))
     # label mentions fill whatever the beats left open (and are the whole fallback)
     mentions = find_mentions(text, [lb for lb, _ in items], subs) if items else []
     mentioned_sentences = set()
@@ -410,10 +423,15 @@ def build_timeline(
     # chips: spaced, capped, in time order
     kept: List[Tuple[float, str]] = []
     seen = set()
+    events = sorted(list(step_times.values()) + [ft for ft, _ in focus])   # everything else that changes on screen
     for t, c in sorted(chips):
         if c.lower() in seen or (kept and t - kept[-1][0] < FOCUS_MIN_GAP_S) or t > duration - 0.8:
             continue
-        kept.append((round(max(t - REVEAL_LEAD_S, FIRST_CONTENT_S), 3), c))
+        when = round(max(t - REVEAL_LEAD_S, FIRST_CONTENT_S), 3)
+        if template not in SPARSE_TEMPLATES and when - max((e for e in events if e <= when), default=0.0) < CHIP_MIN_GAP_S:
+            continue                       # something else just happened: no chip on a frame that is already busy
+        kept.append((when, c))
+        events = sorted(events + [when])
         seen.add(c.lower())
         if len(kept) == MAX_CHIPS:
             break

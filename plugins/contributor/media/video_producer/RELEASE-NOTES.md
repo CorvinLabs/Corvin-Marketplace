@@ -1,5 +1,18 @@
 # Video Producer Plugin — Release Notes
 
+## Unreleased — fewer dead stretches in the slides (ADR-2245 / ADR-2247 still_time)
+
+Measured on the 9-video gate corpus (79 scenes, silent mock voice, same `still_time` function the gate uses): dead share
+26.0 % -> 14.4 %, scenes with a stretch over 8 s 14 -> 4. Three changes:
+- `compare` reveals every point as its own step (card, then its points), so a long narration keeps changing the slide.
+- Keyword chips are also shown on `chart`, `compare`, `console_still`, `still`, `diagram`, `flow`, `layers` and `content`,
+  but only inside a stretch where nothing else on the slide changes for at least 3 s (`CHIP_MIN_GAP_S`). Sentences the
+  storyboard gives no beat get a fallback keyword from the sentence itself. Chips stay verbatim words of the narration.
+- The storyboard prompt now asks for a chip string on sentences that carry a claim but name no item.
+
+The golden hashes of `compare` slides change on purpose. The gate may still report `not_demonstrated` for `still_time`:
+the offline projection puts the upper confidence bounds at 20.3 % (limit 20 %) and 8.25 s (limit 8 s).
+
 ## Unreleased — Website capture (ADR-2249 D4, T-0113 + T-0194; not in any release)
 
 **What it is:** a user-initiated action that captures a website once and stores the picture as an image asset for

@@ -325,3 +325,11 @@ server that answers like the Figma API; a live call needs a real token.
 generated audio, beats validation, the fallback mapping, a 45 s scene whose
 last cue (38 s, past the old 900-frame cap, after a skipped quiet stretch)
 must appear in the encoded clip, and the focus dimming in real Chromium.
+
+
+## Gap chips and compare points (still_time)
+
+`web_timeline.CHIP_TEMPLATES` lists where keyword chips may appear. On `SPARSE_TEMPLATES` (`hero`, `quote`, `stat`) they
+always may; on `GAP_CHIP_TEMPLATES` a chip is kept only when no other reveal, focus move or chip happens within
+`CHIP_MIN_GAP_S` (3 s) before it. `compare` reveals the left card, its points, the right card, then its points
+(`scene_items` / `reveal_steps` in `web_templates.py`).
