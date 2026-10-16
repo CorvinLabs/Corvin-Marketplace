@@ -19,7 +19,7 @@ from corvin_plugins.protocol import HealthStatus, PluginContext
 class CorvinKnowledgeProvider:
     plugin_id = "corvin_knowledge"
     plugin_type = "context_retriever"
-    version = "1.0.0"
+    version = "1.1.0"
     display_name = "Knowledge Graph"
 
     def __init__(self) -> None:

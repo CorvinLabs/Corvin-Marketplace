@@ -1,5 +1,11 @@
 # Corvin-Knowledge Claude Code Plugin
 
+> **In CorvinOS (1.1.0+):** this plugin is a standard plugin of every installation. Enabling it
+> (with consent) creates the tenant's own knowledge base and binds it to the task board with
+> the concept, ADR and implementation-plan gates — see
+> [docs/TENANT_KNOWLEDGE_BASE.md](../docs/TENANT_KNOWLEDGE_BASE.md). The sections below describe
+> the older Claude Code `mesh` SDK in this directory.
+
 **Agentic Knowledge Mesh for Distributed Teams**
 
 A Claude Code plugin that brings Git-backed, distributed knowledge management to your agent workflows. Query knowledge bases, sync without data loss, and propose new ideas — all from within Claude Code.

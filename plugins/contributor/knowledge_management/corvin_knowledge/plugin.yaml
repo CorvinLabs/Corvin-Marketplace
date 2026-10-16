@@ -1,11 +1,8 @@
 plugin_id: corvin_knowledge
 plugin_type: context_retriever
-version: 1.0.0
+version: 1.1.0
 display_name: Knowledge Graph
-description: "Corvin-Knowledge — query, sync and propose knowledge across distributed teams:
-  ADRs, concepts and ideas as a Git-backed graph with fail-closed validation. Adds the
-  Knowledge Graph panel to the console. Contributor plugin: installs from this checkout,
-  enabling records the operator's consent."
+description: "Your own knowledge base — concepts, decisions (ADRs), implementation plans, initiatives, epics and tasks — as a Git-backed graph, projected onto the CorvinOS task board with the concept, ADR and implementation-plan gates. Enabling it creates the tenant's knowledge base (ships the kb engine); adds the Knowledge Graph panel to the console. Contributor plugin: enabling records the operator's consent."
 origin: community
 boot_layer: installed
 locality: local
@@ -22,12 +19,12 @@ settings_schema:
   properties:
     repo_path:
       type: string
-      default: ~/.corvin-knowledge/
-      description: Local checkout of the knowledge repository the graph is read from
+      default: ""
+      description: Knowledge base the graph is read from; empty = the one bound to the task board (the tenant's own, created on enable)
     remote_url:
       type: string
-      default: https://github.com/CorvinLabs/Corvin-Knowledge.git
-      description: Git remote the sync pulls from and pushes to
+      default: ""
+      description: Git remote the sync pulls from and pushes to (none until you set one)
     auto_sync_on_query:
       type: boolean
       default: true
