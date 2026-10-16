@@ -1,0 +1,66 @@
+# Autonomy levels for agents acting on this KB.
+# kb.py reads this file at EVERY autonomous transition (never cached). Missing or malformed
+# -> every agent action is refused (fail-closed). Humans (any actor not matched below) are
+# never gated by it.
+#
+#   A0 mechanical  heal, index, export, project      — no gate (kb check before/after)
+#   A1 drafts      new idea/concept/decision(proposed)/plan/review/note, review rounds
+#                  — WIP limit; an agent decision must name its concept (G1)
+#   A2 build       start/finish tasks of an implementation_ready decision that is NOT
+#                  human-required — G5 per task, G6 afterwards, breakers
+#   A3 judgement   accepted/rejected, dismiss a review, cancel a task, reset a breaker,
+#                  widen the baseline, retire guidance by blame — humans only
+
+# fnmatch patterns. agent:*, kb-orchestrator, kb-guidance and kb-sweep are agents even if
+# this list is edited (kb.py DEFAULT_AGENT_ACTORS) — a file edit never turns an automaton
+# into a human.
+agent_actors:
+  - "agent:*"
+  - "kb-orchestrator"
+  - "kb-guidance"
+  - "kb-sweep"
+
+# undecided agent drafts (proposed idea/concept/decision/plan, open review) before A1 stops
+wip_limit: 10
+
+# A decision is human-required when its `risk:` names one of these; a MISSING `risk:` is
+# human-required too, and so is any value not listed under autonomous_risks. `risk: []`
+# states explicitly: nothing human-required.
+human_required_risks:
+  - compliance          # L10, L16, L34, L35, L44, GDPR, EU AI Act
+  - security
+  - audit-schema        # audit schema or hash-chain change
+  - irreversible-default  # fail-open/closed, opt-in/opt-out
+  - cross-repo          # binds two or more repos
+  - protocol            # new protocol or wire format
+autonomous_risks: []    # risk values an agent may build without acceptance (none yet)
+
+# breakers
+human_queue_max_age_hours: 72
+# budget: counted from audited records in a rolling window; the first limit reached trips
+# the budget_window breaker, which resets by itself when the window rolls past. A limit that is
+# absent is not enforced. wall-clock and tokens come from the review_round records (the reviewer
+# run's measured seconds and the tokens the reviewer reported); proposals are agent `new` records.
+budget:
+  window_hours: 24
+  max_autonomous_writes: 200
+  max_proposals: 40
+  max_wall_clock_seconds: 14400    # 4 h of reviewer time per window
+  max_tokens: 2000000
+
+# an autonomous write whose claim does not hold (a commit not on origin/main, a test that stays
+# green without the fix) trips postcondition_failure and files a note plus an escalated task in
+# this epic, so the incident shows up in the human queue
+incident_epic: E-015
+
+# `kb orchestrate` puts the plans (epics) it drafts under this initiative (CONCEPT-0090 §3.1);
+# without it the pipeline stops at the plan stage and says so. Unset on purpose: which initiative
+# owns agent-drafted plans is the operator's call.
+# plan_initiative: I-05
+
+# review loop (§3.3)
+max_review_rounds: 8
+
+# learning loop (§3.4): retire guidance when the class rate per proposal did not fall
+# after this many proposals
+guidance_retire_after_proposals: 10

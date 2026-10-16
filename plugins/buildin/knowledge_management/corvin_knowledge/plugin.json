@@ -1,0 +1,45 @@
+{
+  "id": "plugin:buildin-knowledge_management-corvin_knowledge",
+  "type": "plugin",
+  "name": "Corvin-Knowledge: Knowledge Graph",
+  "version": "1.2.0",
+  "author": "CorvinLabs (Shumway + Claude)",
+  "license": "Apache-2.0",
+  "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+  "tier": "buildin",
+  "category": "knowledge_management",
+  "description": "Your own knowledge base — concepts, decisions (ADRs), implementation plans, initiatives, epics and tasks — as a Git-backed graph, projected onto the CorvinOS task board with the concept, ADR and implementation-plan gates. Enabling it creates the tenant's knowledge base (ships the kb engine); adds the Knowledge Graph panel to the console.",
+  "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/knowledge_management/corvin_knowledge/src/README.md",
+  "distribution": {
+    "supports_source": true,
+    "supports_wheel": false,
+    "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/knowledge_management/corvin_knowledge"
+  },
+  "dependencies": [],
+  "requires_version": ">=1.0.0",
+  "boot_layer": "installed",
+  "sla_level": "buildin",
+  "maintainer_url": "https://github.com/CorvinLabs/Corvin-Knowledge",
+  "tags": [
+    "memory",
+    "integration",
+    "ai-learning"
+  ],
+  "capabilities": [
+    "query_entities",
+    "get_graph",
+    "sync_repository",
+    "propose_entity",
+    "validate_consistency"
+  ],
+  "entry_points": {
+    "console_panels": [
+      {
+        "id": "corvin-knowledge-graph",
+        "title": "Knowledge Graph",
+        "route": "corvin-knowledge",
+        "component": "CorvinKnowledgePage"
+      }
+    ]
+  }
+}

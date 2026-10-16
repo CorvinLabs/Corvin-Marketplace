@@ -1,0 +1,43 @@
+plugin_id: corvin_knowledge
+plugin_type: context_retriever
+version: 1.2.0
+display_name: Knowledge Graph
+description: "Your own knowledge base — concepts, decisions (ADRs), implementation plans, initiatives, epics and tasks — as a Git-backed graph, projected onto the CorvinOS task board with the concept, ADR and implementation-plan gates. Enabling it creates the tenant's knowledge base (ships the kb engine); adds the Knowledge Graph panel to the console. First-party plugin: standard on every installation and enabled at first boot; local-only by default (no network, no telemetry)."
+origin: vetted
+boot_layer: installed
+locality: local
+network_egress: external
+egress_hosts:
+  - github.com
+pii_risk: low
+requires_consent: false
+audit_required: true
+infrastructure_plugin: false
+orchestration_support: true
+settings_schema:
+  type: object
+  properties:
+    repo_path:
+      type: string
+      default: ""
+      description: Knowledge base the graph is read from; empty = the one bound to the task board (the tenant's own, created on enable)
+    remote_url:
+      type: string
+      default: ""
+      description: Git remote the sync pulls from and pushes to (none until you set one)
+    auto_sync_on_query:
+      type: boolean
+      default: true
+      description: Pull the remote before a query
+    consistency_level:
+      type: string
+      enum: [strict, warn, ignore]
+      default: warn
+      description: What a validation error does to a sync (abort, log, skip)
+console_panel:
+  label: Knowledge Graph
+  route: corvin-knowledge
+  icon: Network
+  group: marketplace
+  element_kind: react-component
+  component: CorvinKnowledgePage

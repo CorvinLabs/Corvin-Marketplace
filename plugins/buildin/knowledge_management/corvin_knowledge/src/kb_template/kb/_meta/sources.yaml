@@ -1,0 +1,16 @@
+# Where this knowledge base's entities live. The TYPE of an entity is its directory, never
+# a field. `kb new` writes a type into the FIRST directory listed for it.
+sources:
+  - name: kb
+    root: .
+    writable: true
+    dirs:
+      decisions: decision
+      concepts: concept
+      ideas: idea
+      implementation-plans: plan
+      adversarial-reviews: review
+      notes: note
+      kb/initiatives: initiative
+      kb/epics: epic
+      kb/tasks: task
