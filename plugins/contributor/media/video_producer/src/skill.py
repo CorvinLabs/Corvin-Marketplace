@@ -592,7 +592,7 @@ def _synthesize_narration_openai(text: str, out_path: Path, lang: str) -> None:
 
     No silent substitution of another voice — a video whose narrator changes
     mid-way is worse than a refused job. Use tts_engine="auto" for the
-    fallback chain (openai -> edge-tts -> piper -> mock, ADR-2211)."""
+    fallback chain (openai -> edge-tts, ADR-2211)."""
     api_key = _openai_api_key()
     if not api_key:
         raise RuntimeError(
@@ -617,18 +617,12 @@ def _synthesize_narration(text: str, out_path: Path, lang: str) -> None:
 
 
 # --------------------------------------------------------------------------
-# TTS fallback chain (ADR-2211): openai -> edge-tts -> piper-tts -> mock.
+# TTS fallback chain (ADR-2211): openai -> edge-tts. Piper is deliberately NOT a tier (operator decision 2026-10-17).
 # Each tier returns True on success, False on "decline" (missing key/package,
 # network error, timeout) — a decline falls through to the next tier, it
 # never raises past the chain. "mock" is the only tier that cannot decline
 # (no external dependency), so the chain always produces an audio_path.
 # --------------------------------------------------------------------------
-
-_PIPER_VOICE_MODELS = {
-    "de": "de_DE-thorsten-medium",
-    "en": "en_US-lessac-medium",
-}
-
 
 def _tts_tier_openai(text: str, out_path: Path, lang: str) -> bool:
     """Tier 1: OpenAI TTS. Declines if no key or package, or the call fails (graceful degradation).
@@ -700,12 +694,12 @@ def _tts_tier_edge(text: str, out_path: Path, lang: str) -> bool:
     - Voice synthesis error on Microsoft servers
     - Async runtime errors
 
-    Falls back to piper-tts on any failure (ADR-2211: graceful degradation).
+    Last tier of the chain: a decline here fails the job with NoVoiceAvailable (never a silent video).
     """
     try:
         import edge_tts
     except ImportError:
-        logger.info("tts chain: edge-tts package not installed, falling back to piper-tts")
+        logger.info("tts chain: edge-tts package not installed, no further tier")
         return False
 
     voice = "de-DE-KatjaNeural" if lang == "de" else "en-US-AvaMultilingualNeural"
@@ -717,55 +711,18 @@ def _tts_tier_edge(text: str, out_path: Path, lang: str) -> bool:
         _run_coroutine_blocking(_run)
         return out_path.exists() and out_path.stat().st_size > 0
     except asyncio.TimeoutError:
-        logger.warning("tts chain: edge-tts call timed out, falling back to piper-tts")
+        logger.warning("tts chain: edge-tts call timed out, no further tier")
         rp.note_degradation("tts_tier_below", tier="edge", reason="timeout")
         return False
     except Exception as e:  # noqa: BLE001
         error_msg = str(e).lower()
         if "connection" in error_msg or "network" in error_msg:
-            logger.warning("tts chain: edge-tts network error, falling back to piper-tts")
+            logger.warning("tts chain: edge-tts network error, no further tier")
             rp.note_degradation("tts_tier_below", tier="edge", reason="network_error")
         else:
-            logger.warning("tts chain: edge-tts tier declined (%s: %s), falling back to piper-tts",
+            logger.warning("tts chain: edge-tts tier declined (%s: %s), no further tier",
                           type(e).__name__, e)
             rp.note_degradation("tts_tier_below", tier="edge", reason="api_error")
-        return False
-
-
-def _tts_tier_piper(text: str, out_path: Path, lang: str) -> bool:
-    """Tier 3: piper-tts (fully local/offline, needs a downloaded voice model).
-
-    Handles local synthesis failures gracefully (returns False, never raises):
-    - Package not installed
-    - Voice model not downloaded (or corrupted)
-    - Synthesis error (OOM, codec issues)
-
-    If piper also fails, the chain falls back to mock (a silent placeholder with
-    estimated duration, used only in CI and when everything else fails).
-    """
-    try:
-        from piper import PiperVoice
-    except ImportError:
-        logger.info("tts chain: piper-tts package not installed, all real TTS providers exhausted")
-        return False
-
-    model_name = _PIPER_VOICE_MODELS.get(lang, _PIPER_VOICE_MODELS["en"])
-    model_path = Path.home() / ".local" / "share" / "piper-voices" / f"{model_name}.onnx"
-    if not model_path.exists():
-        logger.info("tts chain: piper voice model %s not downloaded; re-download via `piper_download_voice`",
-                   model_name)
-        rp.note_degradation("tts_tier_below", tier="piper", reason="model_not_found")
-        return False
-
-    try:
-        import wave
-        voice = PiperVoice.load(str(model_path))
-        with wave.open(str(out_path), "wb") as wav_file:
-            voice.synthesize((text or "").strip() or "...", wav_file)
-        return out_path.exists() and out_path.stat().st_size > 0
-    except Exception as e:  # noqa: BLE001
-        logger.warning("tts chain: piper synthesis failed (%s: %s)", type(e).__name__, e)
-        rp.note_degradation("tts_tier_below", tier="piper", reason="synthesis_error")
         return False
 
 
@@ -801,7 +758,6 @@ _TTS_CALL_TIMEOUT_S = 90
 _TTS_CHAIN = (
     ("openai", _tts_tier_openai),
     ("edge", _tts_tier_edge),
-    ("piper", _tts_tier_piper),
 )
 
 
@@ -816,12 +772,12 @@ def _synthesize_narration_chain(text: str, out_path: Path, lang: str) -> str:
     Fallback chain (graceful degradation):
     1. OpenAI TTS (if API key configured, best quality but needs Internet + API quota)
     2. Edge TTS (free Microsoft voices, needs Internet)
-    3. Piper TTS (fully local, needs downloaded voice model)
 
-    If all three fail, the job raises NoVoiceAvailable. This should be rare:
-    - No OpenAI key is OK (falls through)
-    - Edge TTS timeout or network error is OK (falls through)
-    - Piper requires intentional setup; missing model is a config error, not transient
+    Only these two engines narrate (operator decision 2026-10-17: no Piper). If both fail the job
+    raises NoVoiceAvailable. This should be rare:
+    - No OpenAI key is OK (falls through to edge-tts)
+    - An exhausted/invalid OpenAI key is OK (the tier declines, edge-tts takes over)
+    - Edge TTS needs a network and edge-tts >= 7.3.1 (older versions get HTTP 403)
 
     Each fallback is recorded in the production report (report.py: note_degradation).
     """
@@ -837,8 +793,7 @@ def _synthesize_narration_chain(text: str, out_path: Path, lang: str) -> str:
         "No narration voice is available. All TTS providers declined:\n"
         "  • OpenAI TTS: requires OPENAI_API_KEY or CORVIN_TTS_OPENAI_KEY (API error, timeout, auth failure, quota exceeded)\n"
         "  • Edge TTS: requires Internet connection (network timeout, API error)\n"
-        "  • Piper TTS: requires voice model (~80MB) in ~/.local/share/piper-voices/\n"
-        "To fix: check OpenAI key, network connectivity, or download a Piper voice model."
+        "To fix: check network connectivity and that edge-tts >= 7.3.1 is installed, or set an OpenAI TTS key."
     )
 
 
@@ -1153,17 +1108,21 @@ def _ground_storyboard(storyboard_json: Dict[str, Any], pack: Dict[str, Any], pa
             return not _apply_web_scene_contract([copy.deepcopy(scene)], strict=False,
                                                  canvases=_canvas_context(scenes, before=scene.get("id")))
 
-        repaired = gsb.repair_grounded_scenes(
-            storyboard_json, failures, pack_text, console_assets(),
-            call_llm=lambda p: _call_storyboard_llm(p, backend=backend, model=used_model or model,
-                                                    report={}, local_fallback=False),
-            validate_storyboard=lambda sb: validate_storyboard_dict(sb, max_duration_minutes).valid,
-            validate_scene=_scene_ok,
-        )
-        if repaired:
-            # the repaired scenes' web specs are normalised exactly like the first pass
-            _apply_web_scene_contract(storyboard_json["scenes"], strict=False)
+        for attempt in range(2):   # a second, stricter round when the first left (or swapped) an unsupported detail
+            repaired += gsb.repair_grounded_scenes(
+                storyboard_json, failures, pack_text, console_assets(),
+                call_llm=lambda p: _call_storyboard_llm(p, backend=backend, model=used_model or model,
+                                                        report={}, local_fallback=False),
+                validate_storyboard=lambda sb: validate_storyboard_dict(sb, max_duration_minutes).valid,
+                validate_scene=_scene_ok,
+                strict=bool(attempt),
+            )
+            if repaired:
+                # the repaired scenes' web specs are normalised exactly like the first pass
+                _apply_web_scene_contract(storyboard_json["scenes"], strict=False)
             failures = gsb.check_claims(storyboard_json["scenes"], pack_text)
+            if not failures:
+                break
     unverified = gsb.summarise(failures, [str(s.get("id")) for s in storyboard_json["scenes"]])
     _drop_constant_map(storyboard_json["scenes"])
     if repaired:

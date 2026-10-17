@@ -55,7 +55,7 @@ STAGES = ("setup", "storyboard", "scenes", "assemble", "signals")
 STATUSES = frozenset({"complete", "error", "cancelled"})
 
 # The configured tier of each engine: ``auto`` aims for the first tier of the chain (ADR-2211).
-TTS_TIER_ORDER = ("openai", "edge", "piper", "gtts", "mock")
+TTS_TIER_ORDER = ("openai", "edge", "gtts", "mock")
 
 _TOKEN = re.compile(r"^[A-Za-z0-9_.:+\-/ ]{0,80}$")
 _TEXT_WINDOW = 24
