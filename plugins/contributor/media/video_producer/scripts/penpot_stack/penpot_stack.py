@@ -4,16 +4,23 @@
 Standard library only. The stack is never required: ``detect`` exits non-zero
 when no container runtime with a compose provider exists, and callers must then
 not offer the design strand.
+
+Runtime choice is an operator setting (plugin setting ``penpot_runtime``; the CLI
+takes ``--runtime``, the environment ``CORVIN_PENPOT_RUNTIME``): ``auto`` (default:
+docker first, then podman), ``docker`` or ``podman``. A forced runtime is never
+swapped for another one.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import secrets
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -25,6 +32,13 @@ DEFAULT_PORT = 9001
 DEFAULT_PROJECT = "penpot"
 EXIT_NO_RUNTIME = 3
 PROBE_TIMEOUT_S = 20
+RUNTIMES = ("auto", "docker", "podman")
+ENV_RUNTIME = "CORVIN_PENPOT_RUNTIME"
+COMPOSE_IMAGE_RE = re.compile(r"^\s*image:\s*\"?([^\"\s]+)\"?", re.M)
+
+
+class RuntimeChoiceError(ValueError):
+    """The operator asked for a runtime name this script does not know."""
 
 
 def _run(argv, timeout=PROBE_TIMEOUT_S):
@@ -40,10 +54,17 @@ def _ok(argv):
     return p is not None and p.returncode == 0
 
 
-def detect() -> dict:
-    """Pick docker first, then podman. Returns runtime, compose argv and a reason when unusable."""
-    reasons = []
-    for rt in ("docker", "podman"):
+def _prefer(arg: str | None) -> str:
+    value = arg or os.environ.get(ENV_RUNTIME) or "auto"
+    if value not in RUNTIMES:
+        raise RuntimeChoiceError(f"runtime must be one of {', '.join(RUNTIMES)}; got {value!r}")
+    return value
+
+
+def probe(prefer: str = "auto") -> tuple[list, list]:
+    """Every usable runtime in preference order, plus one reason per rejected runtime."""
+    usable, reasons = [], []
+    for rt in (("docker", "podman") if prefer == "auto" else (prefer,)):
         exe = shutil.which(rt)
         if not exe:
             reasons.append(f"{rt}: not found on PATH")
@@ -66,12 +87,36 @@ def detect() -> dict:
         for cmd in candidates:
             if _ok(cmd + ["version"] if cmd[-1] == "compose" else cmd + ["--version"]):
                 p = _run([exe, "--version"])
-                return {"runtime": rt, "runtime_path": exe, "compose": cmd,
-                        "version": (p.stdout.strip() if p else ""), "reason": None}
-        reasons.append(f"{rt}: present but no compose provider "
-                       f"({'docker compose plugin' if rt == 'docker' else 'podman-compose'}) works")
+                usable.append({"runtime": rt, "runtime_path": exe, "compose": cmd,
+                               "version": (p.stdout.strip() if p else ""), "reason": None})
+                break
+        else:
+            reasons.append(f"{rt}: present but no compose provider "
+                           f"({'docker compose plugin' if rt == 'docker' else 'podman-compose'}) works")
+    return usable, reasons
+
+
+def detect(prefer: str = "auto") -> dict:
+    """The preferred usable runtime with its compose argv; without one, the reasons why not."""
+    usable, reasons = probe(prefer)
+    if usable:
+        return usable[0]
     return {"runtime": None, "runtime_path": None, "compose": None, "version": "",
-            "reason": "; ".join(reasons)}
+            "reason": "; ".join(reasons) or f"no {prefer} runtime"}
+
+
+def _runtimes(args):
+    return probe(_prefer(args.runtime))
+
+
+def _ordered(usable, project):
+    """The runtime that already holds this project's containers goes first, so down/status/exec act on the stack that exists."""
+    for i, d in enumerate(usable):
+        p = _run([d["runtime_path"], "ps", "-a", "--format", "{{.Names}}"])
+        names = p.stdout.split() if p is not None and p.returncode == 0 else []
+        if any(n.startswith((f"{project}_", f"{project}-")) for n in names):
+            return [d] + usable[:i] + usable[i + 1:]
+    return usable
 
 
 def _state_dir(arg: str | None) -> Path:
@@ -148,19 +193,52 @@ def _run_redacted(argv, env, stdin=None, stdout=None):
     return subprocess.CompletedProcess(argv, proc.wait())
 
 
-def _compose(args, extra, with_secrets=False):
-    d = detect()
-    if not d["runtime"]:
-        _no_runtime(d)
-        return None
+def compose_images(compose_file: Path) -> list:
+    """The image references the compose file pins."""
+    return COMPOSE_IMAGE_RE.findall(compose_file.read_text(encoding="utf-8"))
+
+
+def _has_image(d, image: str) -> bool:
+    return _ok([d["runtime_path"], "image", "inspect", image])
+
+
+def _compose_on(args, d, extra, with_secrets=False):
     argv = d["compose"] + ["-p", args.project, "-f", str(Path(args.compose_file))] + extra
     return _run_redacted(argv, _env(args, with_secrets))
 
 
-def _no_runtime(d):
+def _compose(args, extra, with_secrets=False):
+    usable, reasons = _runtimes(args)
+    if not usable:
+        _no_runtime("; ".join(reasons))
+        return None
+    return _compose_on(args, _ordered(usable, args.project)[0], extra, with_secrets)
+
+
+def _choose_for_up(args, usable):
+    """A runtime that already holds every pinned image wins before any pull is tried.
+
+    Otherwise the first runtime whose pull succeeds. Returns (runtime, failures).
+    A forced runtime is the only candidate, so its failure is final.
+    """
+    images = compose_images(Path(args.compose_file))
+    for d in usable:
+        if all(_has_image(d, i) for i in images):
+            return d, []
+    failures = []
+    for d in usable:
+        p = _compose_on(args, d, ["pull"], with_secrets=True)
+        if p.returncode == 0:
+            return d, failures
+        failures.append(f"{d['runtime']}: `compose pull` exited {p.returncode}")
+        print(f"penpot-stack: pulling the pinned images with {d['runtime']} failed", file=sys.stderr)
+    return None, failures
+
+
+def _no_runtime(reason):
     print("penpot-stack: no usable container runtime (docker or podman with compose). "
           "The Penpot design strand is not available on this host. "
-          f"Details: {d['reason']}", file=sys.stderr)
+          f"Details: {reason}", file=sys.stderr)
 
 
 def health(port: int, timeout: float = 5.0) -> dict:
@@ -179,19 +257,27 @@ def health(port: int, timeout: float = 5.0) -> dict:
 
 
 def cmd_detect(args):
-    d = detect()
+    d = detect(_prefer(args.runtime))
     print(json.dumps(d))
     if not d["runtime"] or not d["compose"]:
-        _no_runtime(d)
+        _no_runtime(d["reason"])
         return EXIT_NO_RUNTIME
     return 0
 
 
 def cmd_up(args):
     t0 = time.monotonic()
-    p = _compose(args, ["up", "-d"], with_secrets=True)
-    if p is None:
+    usable, reasons = _runtimes(args)
+    if not usable:
+        _no_runtime("; ".join(reasons))
         return EXIT_NO_RUNTIME
+    chosen, failures = _choose_for_up(args, _ordered(usable, args.project))
+    if chosen is None:
+        print("penpot-stack: no runtime could get the pinned images (" + "; ".join(failures) + "). "
+              "Check the registry access, or name a runtime that already holds them with "
+              "--runtime docker|podman (or CORVIN_PENPOT_RUNTIME).", file=sys.stderr)
+        return 1
+    p = _compose_on(args, chosen, ["up", "-d"], with_secrets=True)
     if p.returncode != 0:
         print("penpot-stack: compose up failed", file=sys.stderr)
         return p.returncode
@@ -202,16 +288,19 @@ def cmd_up(args):
         time.sleep(2)
         h = health(args.port)
     t_total = time.monotonic() - t0
-    print(json.dumps({"up_seconds": round(t_up, 1), "healthy_after_seconds": round(t_total, 1), **h}))
+    print(json.dumps({"runtime": chosen["runtime"], "up_seconds": round(t_up, 1),
+                      "healthy_after_seconds": round(t_total, 1), **h}))
     return 0 if h["healthy"] else 1
 
 
 def cmd_down(args):
-    extra = ["down"] + (["-v"] if args.volumes else [])
-    p = _compose(args, extra)
-    if p is None:
+    usable, reasons = _runtimes(args)
+    if not usable:
+        _no_runtime("; ".join(reasons))
         return EXIT_NO_RUNTIME
-    d = detect()
+    d = _ordered(usable, args.project)[0]
+    extra = ["down"] + (["-v"] if args.volumes else [])
+    p = _compose_on(args, d, extra)
     if d["runtime"] == "podman":
         # podman-compose 1.0.6 leaves the project network behind (measured)
         subprocess.run([d["runtime_path"], "network", "rm", f"{args.project}_penpot"],
@@ -220,10 +309,11 @@ def cmd_down(args):
 
 
 def _exec_pg(args, pg_argv, stdin=None, stdout=None):
-    d = detect()
-    if not d["runtime"]:
-        _no_runtime(d)
+    usable, reasons = _runtimes(args)
+    if not usable:
+        _no_runtime("; ".join(reasons))
         return None
+    d = _ordered(usable, args.project)[0]
     argv = d["compose"] + ["-p", args.project, "-f", str(Path(args.compose_file)),
                            "exec", "-T", "penpot-postgres"] + pg_argv
     return _run_redacted(argv, _env(args, False), stdin=stdin, stdout=stdout or None)
@@ -252,10 +342,9 @@ def cmd_restore(args):
     if not src.is_file():
         print(f"penpot-stack: backup file not found: {src}", file=sys.stderr)
         return 2
-    p = _compose(args, ["stop", "penpot-frontend", "penpot-backend", "penpot-exporter", "penpot-admin-console"])
+    p = _compose(args, ["up", "-d", "penpot-postgres"], with_secrets=True)
     if p is None:
         return EXIT_NO_RUNTIME
-    p = _compose(args, ["up", "-d", "penpot-postgres"], with_secrets=True)
     if p.returncode != 0:
         return p.returncode
     deadline = time.monotonic() + 60
@@ -264,6 +353,22 @@ def cmd_restore(args):
             print("penpot-stack: postgres did not become ready", file=sys.stderr)
             return 1
         time.sleep(2)
+    # The backend creates its partitioned tables on first start; pg_restore --clean cannot drop them
+    # (measured: 16 "cannot drop inherited constraint" errors, stack left down). Refuse before touching anything.
+    with tempfile.TemporaryFile("w+") as out:
+        q = _exec_pg(args, ["psql", "-U", "penpot", "-d", "penpot", "-tAc",
+                            "select count(*) from information_schema.tables where table_schema = 'public'"],
+                     stdout=out)
+        out.seek(0)
+        tables = out.read().strip()
+    if q.returncode != 0 or not tables.isdigit():
+        print("penpot-stack: could not count the tables of the penpot database", file=sys.stderr)
+        return 1
+    if int(tables) > 0:
+        print(f"penpot-stack: the penpot database already has {tables} tables; restore needs an empty one. "
+              "Run `down --volumes` first (this deletes the current data), then restore.", file=sys.stderr)
+        return 2
+    _compose(args, ["stop", "penpot-frontend", "penpot-backend", "penpot-exporter", "penpot-admin-console"])
     with open(src, "rb") as fh:
         p = _exec_pg(args, ["pg_restore", "-U", "penpot", "-d", "penpot", "--clean", "--if-exists",
                             "--no-owner"], stdin=fh)
@@ -292,6 +397,8 @@ def build_parser():
     ap.add_argument("--project", default=DEFAULT_PROJECT, help="compose project name")
     ap.add_argument("--compose-file", default=str(DEFAULT_COMPOSE))
     ap.add_argument("--state-dir", default=None, help="where the 0600 secrets file lives")
+    ap.add_argument("--runtime", choices=RUNTIMES, default=None,
+                    help=f"container runtime (default: ${ENV_RUNTIME} or auto)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("detect").set_defaults(fn=cmd_detect)
     up = sub.add_parser("up")
@@ -316,6 +423,9 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     try:
         return args.fn(args)
+    except RuntimeChoiceError as e:
+        print(f"penpot-stack: {e}", file=sys.stderr)
+        return 2
     except subprocess.TimeoutExpired:
         print("penpot-stack: command timed out", file=sys.stderr)
         return 124

@@ -31,6 +31,11 @@ settings_schema:
       enum: [openai, auto, gtts]
       default: gtts
       description: Text-to-speech engine for narration -- openai (OpenAI TTS), auto (openai, falling back to gtts) or gtts; the same set src/skill.py SUPPORTED_TTS_ENGINES accepts
+    penpot_runtime:
+      type: string
+      enum: [auto, docker, podman]
+      default: auto
+      description: Container runtime for the optional Penpot design stack (scripts/penpot_stack) -- auto (docker first, then podman), docker or podman; a forced runtime is never swapped for another. Sent to the CLI as --runtime. Docker pulls can fail on hosts whose registry access is blocked; then pick podman, which already holds the pinned images
     youtube_upload_supported:
       type: boolean
       default: false

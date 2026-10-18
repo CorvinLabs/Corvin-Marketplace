@@ -4,8 +4,16 @@ Optional strand. The Video Producer never needs it. Nothing in the producer offe
 Everything below was run on Linux with rootless podman 4.9.3 + podman-compose 1.0.6 unless marked "not tested".
 Measurements and the MCP/CVE assessment: `PENPOT-STACK-RESULTS.md`.
 
-All commands: `python3 scripts/penpot_stack/penpot_stack.py [--port N] [--project NAME] [--state-dir DIR] <command>`
-(defaults: port 9001, project `penpot`).
+All commands: `python3 scripts/penpot_stack/penpot_stack.py [--port N] [--project NAME] [--state-dir DIR] [--runtime auto|docker|podman] <command>`
+(defaults: port 9001, project `penpot`, runtime `auto`).
+
+## Choosing the runtime (plugin setting `penpot_runtime`)
+- The Video Producer setting `penpot_runtime` (`plugin.yaml` `settings_schema`; values `auto`, `docker`, `podman`) is the operator's choice. It reaches the script as `--runtime`; the environment variable `CORVIN_PENPOT_RUNTIME` does the same for a plain shell. An unknown name exits 2. It is a setting, not a feature flag: nothing turns the stack on or off through it.
+- `auto` (default): a usable runtime that already holds every pinned image is taken first, with no pull. Otherwise each usable runtime in turn is asked to `compose pull`; the first pull that succeeds wins. docker comes before podman in that order.
+- A forced runtime (`docker` or `podman`) is the only candidate. If it is unusable or its pull fails, the command fails with the reason. It is never swapped for the other runtime.
+- If every candidate fails to get the images, `up` exits 1 and names each failed pull and the `--runtime` override.
+- `down`, `status`, `backup` and `restore` act on the runtime that holds the project's containers, so an `auto` setting does not steer them to a second runtime that has none of this stack.
+- Measured on this host (2026-10-18): `docker info` works now (the permission error in the earlier results is gone), so `detect` with `auto` returns docker. `up` with `auto` then used podman without any pull, because podman held the eight pinned images and docker did not. The pull fallback (docker pull fails, podman takes over) is covered by unit tests with fake runtimes; it was not produced live, since it needs the images missing from podman.
 
 ## Start, stop, health
 
@@ -44,7 +52,9 @@ NOT covered: the `penpot_assets` volume (uploaded images, fonts). A file made on
 ```
 python3 scripts/penpot_stack/penpot_stack.py --port 9101 --project penpotfresh restore --in penpot.dump
 ```
-The command stops frontend, backend, exporter and admin console, starts only postgres, waits for `pg_isready`, runs `pg_restore --clean --if-exists --no-owner`, then starts the full stack and waits for health. It works on a stack that was removed with `down --volumes` (empty volume) and, by design, on a running one. Use the SAME secrets file.
+The command starts only postgres, waits for `pg_isready`, then counts the tables of the `penpot` database. If there are any, it exits 2 without touching the stack. Otherwise it stops frontend, backend, exporter and admin console, runs `pg_restore --clean --if-exists --no-owner`, then starts the full stack and waits for health. Use the SAME secrets file.
+- The restore target must be an EMPTY database: run `down --volumes` first (it deletes the current data), then `restore`. Restoring over a stack that has already started is refused on purpose: the backend creates partitioned `file_data_NN` tables on first start, and `pg_restore --clean` cannot drop their inherited constraints (measured 2026-10-18: 16 errors, exit 1, app left stopped).
+- Measured 2026-10-18 (project `penpotvpe2e`, port 9102, rootless podman): `down --volumes` -> `restore` (no `up` in between) -> exit 0, healthy after about 34 s wall clock, marker row from before the backup readable afterwards. The guard refusal was measured against the live populated database (exit 2, the stack stayed healthy).
 
 ### Evidence of the real run (project `penpotfresh`, port 9101)
 1. Created via UI/MCP: account `tester@example.com`, one file with a board, a UI-typed text "Hello UI text" and a rectangle made through MCP `execute_code`. `get-file` read back: revn 3, objects `Board`, `Root Frame`, `mcp-made`, `Hello UI text`.
@@ -79,3 +89,6 @@ A security update inside the 2.18 line (2.18.x) is expected to be the same proce
 | MCP port not reachable directly | the mcp container publishes no port | go through nginx `/mcp/stream` |
 | Leftover network after `down` | podman-compose 1.0.6 does not remove it | `down` in this script removes `<project>_penpot` itself |
 | `up` fails with "run penpot_stack.py up" | compose invoked without the secret variables | always go through `penpot_stack.py` |
+| `up` says "no runtime could get the pinned images" | every candidate lacks the images and its pull failed (registry blocked for docker, for example) | check registry access, or set `penpot_runtime` / `--runtime` to the runtime that already holds the images (measured here: podman) |
+| `restore` exits 2 "already has N tables" | the target database is not empty | `down --volumes` (deletes current data), then `restore` |
+| `restore` exits 1 with `cannot drop inherited constraint` | the same cause, reached through an older run of the script | as above |

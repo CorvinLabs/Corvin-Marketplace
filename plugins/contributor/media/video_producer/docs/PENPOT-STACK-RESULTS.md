@@ -16,6 +16,28 @@ Verdict vocabulary: PASSED, FAILED, NOT CHECKED.
 
 Limits of this measurement: image layers were partly cached (earlier 2.18 tags share layers), so a cold-network pull is not measured. Docker was not usable on this host (daemon permission), so the docker path is covered by the fake-executable tests only, not by a real run.
 
+## Re-run 2026-10-18 - runtime override, lifecycle on Podman (T-0191, T-0193)
+
+Host unchanged (Linux, rootless podman 4.9.3, podman-compose 1.0.6). `docker info` now works on this host, so the docker row of the 2026-10-13 table above is out of date: `detect` with `auto` returns docker. Every container below was started under the project `penpotvpe2e` (port 9102), a separate compose project from the stack `penpot` that was already running on this host and was not touched.
+
+| Step (`--runtime podman`, project `penpotvpe2e`) | Result |
+|---|---|
+| `up --wait 420` (all 8 images local, empty state dir) | healthy after 23.5 s, exit 0, `runtime: podman` |
+| marker table written into postgres, then `down` (no `--volumes`) | 0 project containers; the two project volumes stayed |
+| `up` again | healthy after 23.2 s; marker row still readable (volume data survived the stop) |
+| `backup --out` | 180 174 bytes, `pg_dump -Fc` |
+| `down --volumes` | 0 containers, 0 volumes, network removed |
+| `restore` straight onto the removed stack (no `up` in between, the documented path) | exit 0, healthy, marker row restored |
+| `restore` onto the populated, live database (guard added this run) | exit 2, "already has 61 tables", stack stayed healthy, 8 containers still up |
+| `up` with `auto` (no override) | `runtime: podman`, healthy after 37.3 s; no pull was needed |
+| final `down --volumes` | 0 project containers, 0 project volumes, state dir (with the secrets file) deleted |
+
+Finding in the same run: `restore` onto a stack that had already started failed with 16 `cannot drop inherited constraint "file_data_NN_pkey"` errors (pg_restore exit 1), and the stack stayed down. The backend creates those partitions on first start. The old runbook sentence "by design, on a running one" was wrong; the script now refuses a populated database before stopping anything (`cmd_restore`, covered by `tests/test_penpot_stack_runtime.py`).
+
+Not measured here: a cold pull from registry-1.docker.io (all images were local); the pull fallback in a live run (it needs an image that is missing from podman); the Docker path with its own images; Windows and macOS (only the platform branches in code, see the runbook's runtime section).
+
+Container count left after this run from the project: 0. The separate `penpot` stack (8 containers, already running when this run began and not started by it) was left running; its owner was not identified.
+
 ## T-0192 - checks
 
 ### 1. Text created in the Penpot UI exports - PASSED
