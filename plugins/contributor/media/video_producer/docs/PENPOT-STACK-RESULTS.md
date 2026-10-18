@@ -105,3 +105,22 @@ Blocker recorded for T-0187: the console loads the plugin from the sibling check
 `Corvin-Marketplace/` (`routes/video_producer_api.py::_plugin_locations`), and that checkout's local `main` predates
 f2f953f. The plain-SVG refusal test therefore fails when run against that checkout, and passes with the
 `origin/main` code.
+
+## Docker run 2026-10-18 - cold pull, backup/restore, teardown (T-0191, T-0193)
+
+Host: the same Linux machine, Docker 29.1.3 (`docker info` works for the user), no Docker container of the stack was running beforehand. Project `penpotb1`, port 9103, state dir in `/tmp` (deleted at the end). The separate podman stack `penpot` was not touched. This is NOT a fresh host: it is the same machine, with the image layers for the 2.18.3 tags pulled cold into Docker for the first time.
+
+| Step (`--runtime docker`, project `penpotb1`) | Result |
+|---|---|
+| `detect` | exit 0, `{"runtime": "docker", "compose": ["/usr/bin/docker", "compose"]}` |
+| `up --wait 420` (cold pull, empty state dir) | exit 0, `up_seconds` 219.8, `healthy_after_seconds` 234.0, frontend and backend true; 8 containers, postgres and valkey healthy |
+| `health` | exit 0, `{"frontend": true, "backend": true, "healthy": true}` |
+| marker table written into postgres, `backup --out` | `pg_dump -Fc`, 180 195 bytes, exit 0 |
+| `restore --in` onto the populated database (guard) | exit 2, "already has 61 tables", stack still healthy |
+| `down --volumes` | exit 0, about 11 s; 0 containers, 0 volumes, network removed |
+| `restore --in` onto the removed stack | exit 0, `up_seconds` 6.3, healthy after 20.6 s, wall clock about 24 s; marker row read back from postgres |
+| `down` (stop, keep volumes), then `down --volumes` | both exit 0; 0 containers, 0 volumes, 0 networks |
+| `health` with the stack down | exit 1, all false (the script does not report a stopped stack as healthy) |
+| `detect` with no `docker` or `podman` on PATH | exit 3, "The Penpot design strand is not available on this host" (the strand is not offered) |
+
+Not measured here: a cold pull on a truly fresh host (the Docker pull was cold for this machine only), the pull fallback in a live run, Windows and macOS, and the update path to a following version (still untested, see the runbook).

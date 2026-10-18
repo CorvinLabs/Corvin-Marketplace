@@ -13,7 +13,7 @@ All commands: `python3 scripts/penpot_stack/penpot_stack.py [--port N] [--projec
 - A forced runtime (`docker` or `podman`) is the only candidate. If it is unusable or its pull fails, the command fails with the reason. It is never swapped for the other runtime.
 - If every candidate fails to get the images, `up` exits 1 and names each failed pull and the `--runtime` override.
 - `down`, `status`, `backup` and `restore` act on the runtime that holds the project's containers, so an `auto` setting does not steer them to a second runtime that has none of this stack.
-- Measured on this host (2026-10-18): `docker info` works now (the permission error in the earlier results is gone), so `detect` with `auto` returns docker. `up` with `auto` then used podman without any pull, because podman held the eight pinned images and docker did not. The pull fallback (docker pull fails, podman takes over) is covered by unit tests with fake runtimes; it was not produced live, since it needs the images missing from podman.
+- Measured on this host (2026-10-18): `docker info` works now (the permission error in the earlier results is gone), so `detect` with `auto` returns docker. `up` with `auto` then used podman without any pull, because podman held the eight pinned images and docker did not. The docker path was run live on 2026-10-18 (cold pull, project `penpotb1`, port 9103): `up` healthy after 234 s, backup/restore/down verified, see `PENPOT-STACK-RESULTS.md`. The pull fallback (docker pull fails, podman takes over) is covered by unit tests with fake runtimes; it was not produced live, since it needs the images missing from podman.
 
 ## Start, stop, health
 
