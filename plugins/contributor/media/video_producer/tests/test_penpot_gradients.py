@@ -123,6 +123,27 @@ def test_a_fallback_colour_after_the_url_is_used_when_the_gradient_is_missing():
     assert d.shapes[0].fill == "#12ab34" and d.dropped.get("paint") == 1
 
 
+@pytest.mark.parametrize("paint", [
+    'url(http://evil.example/x.svg#g)', 'url(https://evil.example/x)', 'url(//evil.example/x)',
+    'url(javascript:alert(1))', 'url(data:image/svg+xml;base64,PHN2Zy8+)', 'url(file:///etc/passwd)',
+], ids=["http", "https", "protocol-relative", "javascript", "data", "file"])
+def test_an_external_url_in_a_fill_never_reaches_the_output(paint):
+    d = pi.parse_design(doc(RECT % f'fill="{paint}"'))
+    out = pi.to_svg(d).replace(NS.split(" ", 1)[0], "")  # the output's own xmlns is not upload content
+    assert d.shapes[0].fill is None and d.shapes[0].fill_gradient is None and d.dropped.get("paint") == 1
+    for bad in ("http", "javascript", "data:", "file:", "evil", "url("):
+        assert bad not in out
+
+
+def test_an_external_href_on_a_gradient_is_dropped_and_counted_and_never_fetched():
+    defs = ('<linearGradient id="g" href="http://evil.example/g.svg#x">'
+            '<stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#0000ff"/></linearGradient>')
+    d = pi.parse_design(doc(RECT % 'fill="url(#g)"', defs=defs))
+    out = pi.to_svg(d).replace(NS, "")
+    assert "evil" not in out and "http" not in out and "#ff0000" in out  # first stop, the flat fallback
+    assert d.shapes[0].fill_gradient is None and d.dropped.get("gradient", 0) >= 1
+
+
 # ── bounds and hostile input ────────────────────────────────────────────────
 
 def stops(*pairs):
