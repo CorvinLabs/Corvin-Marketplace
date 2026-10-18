@@ -21,7 +21,7 @@ RECT = '<rect x="10" y="10" width="200" height="100" %s/>'
 
 
 def doc(body: str, root: str = 'fill="none"', defs: str = LINEAR) -> bytes:
-    return f'<svg {NS} width="400" height="300" viewBox="0 0 400 300" {root}><defs>{defs}</defs>{body}</svg>'.encode()
+    return f'<svg {NS} id="shape-test" width="400" height="300" viewBox="0 0 400 300" {root}><defs>{defs}</defs>{body}</svg>'.encode()
 
 
 # ── typed ───────────────────────────────────────────────────────────────────

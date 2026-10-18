@@ -37,6 +37,14 @@ glyph shapes can differ from Penpot's.
 Limits: 8 MB per file, 16 to 20 000 px per side, 2 000 shapes, 600 characters per text (30 000 in total),
 5 s parse budget, 64 levels of nesting. A DOCTYPE or ENTITY declaration refuses the file.
 
+**Only Penpot exports are read.** Penpot names every shape `shape-<uuid>`; a file with no such element (a Figma,
+Inkscape or hand-written SVG) is refused with `Unknown Penpot structure: ...` and nothing is imported. This is checked
+on the 2.18.x export format only; a future Penpot version that renames the shape ids is refused the same way, and its
+fixture test is the place to add the new structure.
+
+Without the console: `python scripts/penpot_to_json.py BOARD.svg > board.json` prints the same closed model as JSON
+(exit 0), or the refusal on stderr with exit 2. The JSON carries only typed fields, never the upload's markup.
+
 ## Measured
 
 On a real export from Penpot 2.18.3 (`tests/fixtures/penpot_board.svg`): 8 shapes read, and the rendering in Chromium is

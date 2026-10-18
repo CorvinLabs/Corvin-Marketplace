@@ -20,7 +20,8 @@ def board() -> bytes:
 
 
 def svg(body: str, w: int = 400, h: int = 300, extra: str = "") -> bytes:
-    return f'<svg {NS} width="{w}" height="{h}" viewBox="0 0 {w} {h}" fill="none" {extra}>{body}</svg>'.encode()
+    # the Penpot shape id on the root is the structure marker every Penpot export carries (see UNKNOWN_STRUCTURE)
+    return f'<svg {NS} id="shape-test" width="{w}" height="{h}" viewBox="0 0 {w} {h}" fill="none" {extra}>{body}</svg>'.encode()
 
 
 # ── real export ─────────────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ def test_wrong_namespace_and_size_limits():
     with pytest.raises(pi.PenpotImportError):
         pi.parse_design(b'<svg xmlns="http://example.com/x" width="40" height="40"><rect width="1" height="1"/></svg>')
     with pytest.raises(pi.PenpotImportError, match="no usable size"):
-        pi.parse_design(f'<svg {NS}><rect width="1" height="1"/></svg>'.encode())
+        pi.parse_design(f'<svg {NS} id="shape-x"><rect width="1" height="1"/></svg>'.encode())
     for w, h in ((8, 100), (100, 30000)):
         with pytest.raises(pi.PenpotImportError, match="size is outside"):
             pi.parse_design(svg('<rect width="4" height="4" fill="#ff0000"/>', w, h))
@@ -143,7 +144,7 @@ def test_viewbox_origin_and_size_are_the_coordinate_space():
 
 
 def test_percent_size_with_a_viewbox_is_accepted():
-    raw = f'<svg {NS} width="100%" height="100%" viewBox="0 0 640 360"><rect width="10" height="10" fill="#ff0000"/></svg>'.encode()
+    raw = f'<svg {NS} id="shape-test" width="100%" height="100%" viewBox="0 0 640 360"><rect width="10" height="10" fill="#ff0000"/></svg>'.encode()
     assert (pi.parse_design(raw).width, pi.parse_design(raw).height) == (640.0, 360.0)
 
 
@@ -229,6 +230,24 @@ def test_grey_only_design_uses_neutral_accent_and_says_so():
 def test_dropped_elements_are_named_in_the_warnings():
     res = pi.import_penpot(svg('<image href="x" width="1" height="1"/><rect width="9" height="9" fill="#ff0000"/>'), "a.svg")
     assert any(w.startswith("Not imported: 1 image") for w in res.style.warnings)
+
+
+def test_a_generic_svg_without_penpot_structure_is_refused_by_name():
+    plain = f'<svg {NS} width="400" height="300" viewBox="0 0 400 300"><rect width="9" height="9" fill="#ff0000"/></svg>'
+    with pytest.raises(pi.PenpotImportError, match="Unknown Penpot structure") as e:
+        pi.import_penpot(plain.encode(), "figma.svg")
+    assert "shape-<uuid>" in str(e.value)
+
+
+def test_svg_to_json_is_plain_json_of_the_closed_model(board):
+    import json
+
+    out = pi.svg_to_json(board)
+    dumped = json.dumps(out)
+    assert (out["canvas"]["width"], out["canvas"]["height"], out["background"]) == (1920.0, 1080.0, "#ffffff")
+    assert len(out["shapes"]) == 8 and {s["kind"] for s in out["shapes"]} == {"rect", "ellipse", "text"}
+    assert "localhost" not in dumped and "<" not in dumped and "href" not in dumped
+    assert out["not_imported"] == pi.NOT_IMPORTED
 
 
 def test_no_shapes_is_a_clear_refusal():

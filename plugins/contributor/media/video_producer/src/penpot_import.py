@@ -15,6 +15,7 @@ imported; ``design_to_style`` says so in the draft's warnings.
 from __future__ import annotations
 
 import copy
+import dataclasses
 import hashlib
 import html
 import math
@@ -67,6 +68,10 @@ _GRAD_TAGS = {"linearGradient": "linear", "radialGradient": "radial"}
 _ANCHORS = frozenset({"start", "middle", "end"})
 NOT_IMPORTED = ("An SVG export has no components, constraints, auto-layout or animations. Fill gradients are kept; "
                 "gradient strokes, images, shadows, blurs, filters and style sheets are dropped.")
+
+
+UNKNOWN_STRUCTURE = ("Unknown Penpot structure: no element with a Penpot shape id (shape-<uuid>). This reader takes "
+                     "SVG exports of boards from Penpot 2.18.x (File > Export > SVG); other SVG files are refused.")
 
 
 class PenpotImportError(StyleError):
@@ -512,6 +517,8 @@ def parse_design(data: bytes) -> Design:
         raise PenpotImportError(str(e).replace("presentation", "design")) from None
     if _local(root.tag) != "svg" or not root.tag.startswith("{" + SVG_NS + "}"):
         raise PenpotImportError("This is not an SVG file.")
+    if not any(str(el.get("id") or "").startswith("shape-") for el in root.iter()):
+        raise PenpotImportError(UNKNOWN_STRUCTURE)
     ox = oy = 0.0
     try:
         vb = [_num(x, None) for x in re.split(r"[\s,]+", root.get("viewBox").strip())] if root.get("viewBox") else []
@@ -735,6 +742,21 @@ def design_to_style(design: Design, filename: str = "", sha256: Optional[str] = 
     style.warnings.append(NOT_IMPORTED)
     style = validate_style(style)
     return ImportResult(style=style, notes=list(style.warnings))
+
+
+def svg_to_json(data: bytes) -> Dict[str, Any]:
+    """Penpot SVG bytes -> the closed shape model as plain JSON types (the spike converter, hardened).
+
+    Only the typed fields of the model appear here; the upload's own text, markup and URLs never do.
+    """
+    d = parse_design(data)
+    return {
+        "canvas": {"width": d.width, "height": d.height, "x": d.ox, "y": d.oy},
+        "background": d.background,
+        "shapes": [dataclasses.asdict(s) for s in d.shapes],
+        "dropped": dict(d.dropped),
+        "not_imported": NOT_IMPORTED,
+    }
 
 
 def import_penpot(data: bytes, filename: str = "") -> ImportResult:
