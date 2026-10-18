@@ -1,5 +1,21 @@
 # Video Producer Plugin — Release Notes
 
+## Unreleased — composed scenes: board and bento (ADR-2260)
+
+**Proposed version: 1.7.0.** Not bumped: `plugin.json` and `setup.py` stay at 1.6.0 until the operator agrees.
+
+- **`board`** - an imported Penpot design revealed step by step while the narration speaks. The import now stores the
+  validated design beside its picture (`design.json`, re-validated on every load); the steps are assigned by hand in the
+  console (**Assets → Board steps**). Only designs with saved steps are offered to the storyboard. A board that cannot be
+  shown becomes a still of the same image (`board_to_still`, never the classic slide). Board limits were measured so the
+  worst allowed design renders within twice the median frame time. Automatic step grouping is **not** included: its
+  measurement (S1) needs real boards and their intended steps from their owner.
+- **`bento`** - a grid of two to six tiles (number, statement, icon, small trend line) laid out from a fixed table; no
+  coordinates. Numbers on bento tiles are checked against the sources like `chart`/`stat`.
+- Ready gate: rows for board determinism and bounds, the bento matrix, the console board routes, and `board_fallback`
+  (zero `board_to_still` on the release corpus).
+- Figma: an SVG export goes through the same importer but is unverified (no real Figma export in the tests).
+
 ## Unreleased — fewer dead stretches in the slides (ADR-2245 / ADR-2247 still_time)
 
 Measured on the 9-video gate corpus (79 scenes, silent mock voice, same `still_time` function the gate uses): dead share
