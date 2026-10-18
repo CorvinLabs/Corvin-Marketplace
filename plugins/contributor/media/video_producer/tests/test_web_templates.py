@@ -26,6 +26,8 @@ SAMPLES = {
     "timeline": {"title": "T", "events": [{"when": "1", "label": "A"}, {"when": "2", "label": "B"}], "current": 0},
     "cycle": {"title": "T", "center": "C", "steps": [{"label": "a"}, {"label": "b"}, {"label": "c"}]},
     "layers": {"title": "T", "layers": [{"label": "a", "tag": "x"}, {"label": "b", "sub": "s"}], "highlight": 0},
+    "bento": {"title": "T", "tiles": [{"kind": "number", "value": 42, "label": "users"},
+                                     {"kind": "statement", "text": "one sentence"}]},
     "console_still": {"title": "T", "asset": "audit_compliance", "callouts": [{"spot": "hash_chain_card", "label": "c"}],
                       "zoom": {"spot": "hash_chain_card", "scale": 1.2}},
     "canvas": CANVAS_CLEAN,  # ADR-2249 D1: the canvas tests own its cases; here it joins the shared contract

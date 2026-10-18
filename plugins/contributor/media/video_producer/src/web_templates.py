@@ -26,9 +26,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
+    from . import bento
     from .web_geometry import layer_dag, monotone_path, nice_ticks, order_layers, polar
     from .web_timeline import CHIP_TEMPLATES, SPARSE_TEMPLATES, Timeline
 except ImportError:  # standalone script use (no package context)
+    import bento
     from web_geometry import layer_dag, monotone_path, nice_ticks, order_layers, polar
     from web_timeline import CHIP_TEMPLATES, SPARSE_TEMPLATES, Timeline
 
@@ -37,7 +39,7 @@ DEFAULT_TOKENS_PATH = WEB_DIR / "design_tokens.json"
 BASE_CSS_PATH = WEB_DIR / "css" / "base.css"
 
 TEMPLATES = ("hero", "content", "stat", "diagram", "chart", "compare", "quote", "code",
-             "line", "donut", "flow", "timeline", "cycle", "layers", "console_still", "canvas", "still")
+             "line", "donut", "flow", "timeline", "cycle", "layers", "console_still", "canvas", "still", "bento")
 THEMES = ("dark", "light")
 
 # The "you are here" strip (PLAN-0942 D11): Corvin's layers as the website's
@@ -519,6 +521,8 @@ def validate_scene_data(template: Any, data: Any) -> Dict[str, Any]:
                            "tag": _text(ly, "tag", 12, False)})
         out.update(title=_text(data, "title", 80), layers=layers,
                    highlight=_int(data, "highlight", 0, len(layers) - 1, None))
+    elif template == "bento":  # ADR-2260 decision 5: closed layout table, typed tiles
+        out.update(bento.validate(data))
     elif template == "console_still":
         _unknown(data, ("eyebrow", "title", "asset", "caption", "callouts", "zoom"))
         asset = data.get("asset")
@@ -630,6 +634,7 @@ def reveal_steps(template: str, data: Dict[str, Any]) -> int:
         "layers": len(data.get("layers") or []),
         "console_still": 1 + len(data.get("callouts") or []),
         "still": 1 + len(data.get("callouts") or []),
+        "bento": len(data.get("tiles") or []),
     }[template]
 
 
@@ -663,6 +668,8 @@ def scene_items(template: str, data: Dict[str, Any]) -> List[Tuple[str, int]]:
         return [(ln.strip(), 2 + k) for k, ln in enumerate(d["lines"])]
     if template == "donut":
         return [(sg["label"], 2 + k) for k, sg in enumerate(d["segments"])]
+    if template == "bento":
+        return bento.scene_items(d)
     if template == "flow":
         layer, _ = _flow_layout(d)
         return [(nd["label"], 2 + layer[nd["id"]]) for nd in d["nodes"]]
@@ -1347,7 +1354,7 @@ _BUILDERS = {"hero": _hero, "content": _content, "stat": _stat, "diagram": _diag
              "chart": _chart, "compare": _compare, "quote": _quote, "code": _code,
              "line": _line, "donut": _donut, "flow": _flow, "timeline": _timeline, "cycle": _cycle,
              "console_still": _console_still, "still": _user_still, "canvas": _canvas,
-             "layers": _layers}
+             "layers": _layers, "bento": bento.build}
 
 
 def _stars(seed: int) -> str:
@@ -1506,6 +1513,8 @@ def build_document(
         extra_css += STILL_PEN_CSS
     if template == "still":
         extra_css += STILL_TONE_CSS
+    if template == "bento":
+        extra_css += bento.CSS
     return (
         f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8">'
         f"<style>{_font_faces()}:root{{{css_vars}}}{_base_css()}{focus_css}{extra_css}</style></head>"

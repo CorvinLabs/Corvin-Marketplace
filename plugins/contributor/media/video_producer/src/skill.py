@@ -252,6 +252,11 @@ Templates and their data (plain text only, never HTML; keep texts short):
              (a loop: feedback, learning, iteration)
 - "layers":  {"eyebrow"?, "title", "layers": [2-6 {"label", "sub"?, "tag"?}], "highlight"?: index}
              (a stack, first = top: architecture layers, tiers)
+- "bento":   {"eyebrow"?, "title"?, "tiles": [2-6 tiles], "featured"?: index}
+             (a grid of tiles; tile kinds: {"kind":"number","value","decimals"?,"unit"?,"label"},
+              {"kind":"statement","text"}, {"kind":"icon","name": one of check|shield|bolt|chart|lock|users|cloud,"label"},
+              {"kind":"spark","values": [3-12 numbers],"label"}; "featured" only with 3, 4 or 5 tiles;
+              only real numbers from the task)
 - "timeline": {"eyebrow"?, "title", "events": [2-6 {"when", "label", "sub"?}], "current"?: index}
              (history, roadmap, phases)
 - "line":    {"eyebrow"?, "title", "labels": [3-12 x-axis labels], "series": [1-3 {"name", "values": [numbers, one per label]}],
@@ -288,6 +293,7 @@ nodes ["Fehler", "Loss-Signal", "ADR-Gate"] -> "beats": [0, 1, 2].
 CHOOSING A VISUAL — pick the template that SHOWS the idea instead of listing it:
 - branching process / architecture with several parts -> "flow"; a straight 2-6 step pipeline -> "diagram"
 - feedback loop / iteration -> "cycle"; layered architecture / tiers -> "layers"; history / roadmap -> "timeline"
+- several parallel facts or figures side by side (2-6) -> "bento"
 - a trend over time -> "line"; parts of a whole -> "donut"; quantities side by side -> "chart"; one key number -> "stat"
 - before/after or option A vs. B -> "compare"; a command or config -> "code"; one memorable sentence -> "quote"
 - a metaphor, an annotated sketch, a whiteboard that builds up over several scenes -> "canvas" (never for what a
