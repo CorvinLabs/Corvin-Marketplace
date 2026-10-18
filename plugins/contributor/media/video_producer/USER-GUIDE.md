@@ -126,6 +126,19 @@ as they appear. Limits: one capture per workspace at a time (two per host), 50 i
 after re-encoding, viewport only (no full-page captures), Linux and macOS hosts with Chrome or Chromium (not
 Windows; the panel says so when the host cannot capture).
 
+### Step 6c: Reveal an Imported Design Step by Step (Board)
+
+1. Import the board: **Images → Import Penpot board (SVG)** (export the board from Penpot as SVG first).
+2. On the imported image press **Board steps**. Select a step, click the shapes that belong to it, add steps with
+   **Add step** (at most 12), and give a step a short label if the narration should name it (at most 40 characters).
+   **Preview steps** plays the order; **Save steps** stores it. Every shape must be in exactly one step.
+3. Ask for it in the task (*"Walk through our brand board"*). The storyboard can place a board only for designs whose
+   steps are saved; each step appears when the narration names its label.
+
+If the board cannot be shown in a scene, that scene shows the image as a still picture instead and the job says so.
+Very large or heavily scaled designs (more than 240 shapes, for example) can be used as pictures but not as boards;
+the image says why. See `docs/PENPOT-IMPORT.md` for the limits.
+
 ### Step 7: Download
 
 When the status shows ✅ **Complete**, click **Download** to get the MP4.
@@ -236,7 +249,9 @@ When your video is ready, you get:
 - **Scenes:** at most 8 per video (6 when the storyboard is written by the local model); narration per scene is capped at 500 characters
 - **Task description:** up to 4000 characters
 - **Rendering time:** measured on the development host, roughly 1.5 times the video length plus narration time; it runs in the background
-- **Template options:** 15 pre-built slide templates (you can't customize them, but AI picks the best one per scene). What the narration names appears at that moment and is highlighted while it is explained.
+- **Template options:** 19 slide templates (you can't customize them, but AI picks the best one per scene), among them
+  `bento` - a grid of two to six tiles (a number, a statement, an icon or a small trend line), laid out from a fixed
+  table, never placed by coordinates - and `board` for your own imported designs (Step 6c). What the narration names appears at that moment and is highlighted while it is explained.
 
 ---
 

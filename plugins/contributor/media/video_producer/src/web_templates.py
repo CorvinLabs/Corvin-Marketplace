@@ -39,7 +39,7 @@ DEFAULT_TOKENS_PATH = WEB_DIR / "design_tokens.json"
 BASE_CSS_PATH = WEB_DIR / "css" / "base.css"
 
 TEMPLATES = ("hero", "content", "stat", "diagram", "chart", "compare", "quote", "code",
-             "line", "donut", "flow", "timeline", "cycle", "layers", "console_still", "canvas", "still", "bento")
+             "line", "donut", "flow", "timeline", "cycle", "layers", "console_still", "canvas", "still", "bento", "board")
 THEMES = ("dark", "light")
 
 # The "you are here" strip (PLAN-0942 D11): Corvin's layers as the website's
@@ -332,6 +332,8 @@ def validate_scene_data(template: Any, data: Any) -> Dict[str, Any]:
         except ImportError:
             import canvas
         return canvas.validate(data, err=WebSceneError)
+    if template == "board":  # own module (ADR-2260 decision 2): a board-ready design of the bound tenant store
+        return _board_mod().validate(data, err=WebSceneError)
     out: Dict[str, Any] = {"eyebrow": _text(data, "eyebrow", 40, required=False)}
 
     if template == "hero":
@@ -595,6 +597,14 @@ def _flow_columns(d: Dict[str, Any]) -> int:
     return len(_flow_layout(d)[1]) if d.get("nodes") else 0
 
 
+def _board_mod():
+    try:
+        from . import board  # noqa: PLC0415
+    except ImportError:
+        import board  # noqa: PLC0415
+    return board
+
+
 def _locale(data: dict) -> str:
     locale = data.get("locale", "en")
     if locale not in LANGS:
@@ -612,6 +622,8 @@ def reveal_steps(template: str, data: Dict[str, Any]) -> int:
         except ImportError:
             import canvas
         return canvas.reveal_steps(data)
+    if template == "board":
+        return _board_mod().reveal_steps(data)
     if template == "code" and data.get("highlight") is True:
         try:
             from . import code_v2
@@ -648,6 +660,8 @@ def scene_items(template: str, data: Dict[str, Any]) -> List[Tuple[str, int]]:
         except ImportError:
             import canvas
         return canvas.scene_items(d)
+    if template == "board":
+        return _board_mod().scene_items(d)
     if template == "content":
         return [(b, 2 + k) for k, b in enumerate(d["bullets"])]
     if template == "diagram":
@@ -708,6 +722,8 @@ def scene_item_subs(template: str, data: Dict[str, Any]) -> List[str]:
         except ImportError:
             import canvas
         return canvas.scene_item_subs(d)
+    if template == "board":
+        return _board_mod().scene_item_subs(d)
     key = {"diagram": "nodes", "flow": "nodes", "cycle": "steps", "layers": "layers", "timeline": "events"}.get(template)
     if key:
         return [" ".join(x for x in (it.get("sub"), it.get("tag"), it.get("when")) if x) for it in d[key]]
@@ -1354,7 +1370,8 @@ _BUILDERS = {"hero": _hero, "content": _content, "stat": _stat, "diagram": _diag
              "chart": _chart, "compare": _compare, "quote": _quote, "code": _code,
              "line": _line, "donut": _donut, "flow": _flow, "timeline": _timeline, "cycle": _cycle,
              "console_still": _console_still, "still": _user_still, "canvas": _canvas,
-             "layers": _layers, "bento": bento.build}
+             "layers": _layers, "bento": bento.build,
+             "board": lambda d: _board_mod().body(d)}
 
 
 def _stars(seed: int) -> str:
@@ -1509,6 +1526,8 @@ def build_document(
         except ImportError:
             import canvas
         extra_css += canvas.css(d)
+    if template == "board":
+        extra_css += _board_mod().css(d)
     if template in ("console_still", "still") and any(c.get("mark") for c in d.get("callouts") or []):
         extra_css += STILL_PEN_CSS
     if template == "still":

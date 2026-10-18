@@ -1,0 +1,34 @@
+{
+  "bytes": 35341,
+  "caption": "An imported Penpot board",
+  "created": "2026-10-18T00:00:00Z",
+  "height": 1080,
+  "hotspots": [],
+  "id": "ast_b0a2d000",
+  "source": "",
+  "steps": [
+    {
+      "label": "Brand mark",
+      "shapes": [
+        0,
+        1
+      ]
+    },
+    {
+      "shapes": [
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "shapes": [
+        6,
+        7
+      ]
+    }
+  ],
+  "uploaded_by": "fixture",
+  "width": 1920
+}

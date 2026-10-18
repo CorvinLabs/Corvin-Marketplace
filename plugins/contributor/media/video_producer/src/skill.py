@@ -42,6 +42,7 @@ try:
     from . import report as rp
     from . import signals as sg
     from . import canvas
+    from . import penpot_import
 except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
@@ -60,6 +61,7 @@ except ImportError:  # standalone script use (no package context)
     import report as rp
     import signals as sg
     import canvas
+    import penpot_import
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +280,7 @@ Optional per scene: "theme": "dark" (default) or "light".
 BEATS (recommended for every web scene): "beats" = one entry per sentence of narration_text,
 in order, telling the slide what to show while that sentence is spoken:
 - an integer k = this sentence is about item k of the data (bullet, node, bar, segment, step,
-  layer, event, flow node in "nodes" order; compare: 0 = left, 1 = right; canvas: the k-th step): it appears now
+  layer, event, flow node in "nodes" order; compare: 0 = left, 1 = right; canvas: the k-th step; bento: the k-th tile; board: the k-th step): it appears now
   and the eye is led to it;
 - a string = 1-3 words copied verbatim from that sentence, shown as a keyword chip while it is said.
   Use it for "hero", "quote", "stat" and, on any other template, for a sentence that names no item but
@@ -318,6 +320,26 @@ def _still_guide() -> str:
         '              characters; "mark": "circle"|"underline" lets a pen draw on the spot; "tone": "accent"|"accent_hi"|\n'
         '              "success"|"text". Use it when the task is about what one of these images shows.)\n'
         "  Uploaded images (id: caption - spots):\n" + listing + "\n"
+    )
+
+
+def _board_guide() -> str:
+    """The `board` template, offered only for designs that are BOARD-READY (a valid stored model within every board
+    bound, with reveal steps assigned) - built per job from the tenant's store, so the model can place an attached
+    board but never invent one (ADR-2260 decision 6). Labels are what the user typed or the design's own text."""
+    store = asset_store.current()
+    boards = store.board_catalogue() if store is not None else {}
+    if not boards:
+        return ""
+    rows = []
+    for aid, b in boards.items():
+        steps = "; ".join(f"{k}: {lb}" if lb else f"{k}: (no label)" for k, lb in enumerate(b["labels"]))
+        rows.append(f"  {aid}: {b['caption']} - {b['steps']} steps ({steps})")
+    return (
+        '- "board":   {"eyebrow"?, "title"?, "asset"}  (an imported design revealed step by step; you cannot see it.\n'
+        '              "asset" is one of the ids below and nothing else. Its steps appear in the listed order; name a\n'
+        '              step\'s label in the sentence that introduces it, or give "beats" with the step index k.)\n'
+        "  Boards (id: caption - steps):\n" + "\n".join(rows) + "\n"
     )
 
 
@@ -396,7 +418,7 @@ DESIGN RULES (measured from real didactic videos, apply them):
   "shield icon" for security, "chain with four links" for a 4-step process),
   not a vague mood description.
 
-{_TEMPLATE_GUIDE}{_still_guide()}
+{_TEMPLATE_GUIDE}{_still_guide()}{_board_guide()}
 
 CONSTRAINTS (MUST ENFORCE):
 - Total duration ≤ {max_duration_minutes * 60000} ms
@@ -1190,6 +1212,29 @@ def _first_sentence(text: str) -> str:
     return first if len(first) <= 200 else first[:197].rstrip() + "..."
 
 
+def _board_still_trial(scene: Any) -> Optional[Dict[str, Any]]:
+    """The still that stands in for a board (ADR-2260 decisions 6 and 9): the SAME asset as a picture, with the
+    board's own eyebrow and title (or the narration's first sentence). None when the asset is no uploaded image of
+    this tenant either - then the board is not substituted, it walks the ordinary ladder."""
+    if isinstance(scene, Scene):
+        data, narration = scene.data or {}, scene.narration_text or ""
+    else:
+        data, narration = scene.get("data") or {}, str(scene.get("narration_text") or "")
+    if not isinstance(data, dict):
+        return None
+    title = data.get("title") if isinstance(data.get("title"), str) and data.get("title").strip() else None
+    if title is None:
+        first = _first_sentence(" ".join(narration.split()))
+        title = (first if len(first) <= 80 else first[:77].rstrip() + "...") or "Design"
+    trial = {"title": title, "asset": data.get("asset")}
+    if isinstance(data.get("eyebrow"), str) and data["eyebrow"].strip():
+        trial["eyebrow"] = data["eyebrow"]
+    try:
+        return validate_scene_data("still", trial)
+    except (WebSceneError, ValueError, TypeError):
+        return None
+
+
 def _quote_trial(text: str, lang: Optional[str] = None) -> Dict[str, Any]:
     return {"template": "quote", "data": {"quote": _first_sentence(text), "locale": lang or _detect_lang(text)}}
 
@@ -1224,7 +1269,7 @@ def _repair_web_scenes(scenes: List[Dict[str, Any]], report: Dict[str, Any], mod
         "Some web-slide specs in a video storyboard failed validation. Fix ONLY these scenes: keep "
         "their meaning and language, satisfy the contract below exactly (field names, list sizes, "
         "character limits), or switch to a template that fits better. Never invent numbers.\n\n"
-        + _TEMPLATE_GUIDE + _still_guide()
+        + _TEMPLATE_GUIDE + _still_guide() + _board_guide()
         + "\nFAILED SCENES (JSON):\n" + json.dumps(failed, ensure_ascii=False)
         + '\n\nReturn ONLY JSON: {"scenes": [{"id": "...", "template": "...", "data": {...}}]}'
     )
@@ -1336,6 +1381,13 @@ def _apply_web_scene_contract(scenes: List[Dict[str, Any]], strict: bool,
                         degraded = True
                     except (WebSceneError, ValueError, TypeError, OverflowError):
                         pass  # Degradation failed too, fall through to removal
+            if not degraded and template == "board":
+                still = _board_still_trial(scene)
+                if still is not None:
+                    scene["template"], scene["data"] = "still", still
+                    scene.pop("beats", None)  # beats counted the board's steps, not the still's callouts
+                    warnings.append(f"scene {sid}: {e} (shown as a still of the same image)")
+                    degraded = True
             if not degraded:
                 warnings.append(f"scene {sid}: {e} (rendered without web template)")
                 for key in ("template", "data", "theme"):
@@ -1548,6 +1600,7 @@ class _WebRendererSession:
         self._renderer: Optional[WebSlideRenderer] = None
         self._unavailable: Optional[str] = None
         self.layout_log: List[Dict[str, Any]] = []  # one entry per scene whose layout collided
+        self.board_fallbacks: List[Dict[str, Any]] = []  # board scenes shown as a still (ADR-2260 decision 9)
 
     async def render(self, scene: Scene, duration_s: float, out_dir: Path,
                      cues: Optional[_SceneCues] = None, **kw) -> tuple:
@@ -1578,6 +1631,11 @@ class _WebRendererSession:
         except dl.JobCancelled:
             raise
         except Exception as e:  # noqa: BLE001 — specs may come from an LLM: any failure = classic slide
+            if scene.template == "board":
+                # ADR-2260 decision 9: a failing board never leaves a hole and is never the classic slide
+                still = await self._board_to_still(scene, duration_s, out_dir, kw, cues, f"render:{type(e).__name__}")
+                if still is not None:
+                    return still, None
             logger.warning("web slide render failed (%s), using classic slide", type(e).__name__)
             shutil.rmtree(out_dir, ignore_errors=True)
             b = dl.current_budget()
@@ -1597,6 +1655,18 @@ class _WebRendererSession:
         template, data = scene.template, scene.data or {}
         entry = {"scene": scene.id, "index": kw.get("scene_index"), "template": template,
                  "issues": format_issues(frames.layout_issues)[:6], "action": "kept"}
+        if template == "board":
+            # ADR-2260 decision 9: a board's own shapes are never measured (they overlap by design); a collision of
+            # what is left (frame vs header) is answered with the same asset as a still - never content or quote
+            still = await self._board_to_still(scene, duration_s, out_dir, kw, cues, "collision")
+            if still is not None and not still.layout_issues:
+                entry["action"] = "board_to_still"
+                self.layout_log.append(entry)
+                return still
+            self.layout_log.append(entry)
+            if isinstance(kw.get("scene_index"), int):
+                rp.note_degradation("collision_kept", scene=kw["scene_index"])
+            return frames
         text = " ".join((scene.narration_text or "").split())
         tl = getattr(frames, "timeline", None)
         attempts = []
@@ -1647,6 +1717,33 @@ class _WebRendererSession:
         if isinstance(kw.get("scene_index"), int):
             rp.note_degradation("collision_kept", scene=kw["scene_index"])
         return frames
+
+    async def _board_to_still(self, scene: Scene, duration_s: float, out_dir: Path, kw: dict,
+                              cues: Optional["_SceneCues"], reason: str):
+        """Render a board scene as a still of the same asset. Records ``board_to_still`` (not ``web_render_fallback``,
+        which stays the classic-slide event, and not ``collision_replaced``) and returns the frames, or None."""
+        trial = _board_still_trial(scene)
+        if trial is None:
+            return None
+        alt_dir = out_dir.parent / (out_dir.name + "_still")
+        shutil.rmtree(alt_dir, ignore_errors=True)
+        try:
+            alt_tl = cues.timeline("still", trial, use_beats=False) if cues is not None else None
+            alt = await self._renderer.render("still", trial, duration_s, alt_dir, timeline=alt_tl, **kw)
+        except dl.JobCancelled:
+            raise
+        except Exception:  # noqa: BLE001 — the board walks the classic path; the caller records it
+            shutil.rmtree(alt_dir, ignore_errors=True)
+            return None
+        shutil.rmtree(out_dir, ignore_errors=True)
+        alt_dir.rename(out_dir)
+        moved = type(alt)(out_dir / f.name for f in alt)
+        moved.loop_start, moved.schedule, moved.layout_issues = alt.loop_start, alt.schedule, alt.layout_issues
+        moved.timeline, moved.template, moved.data = alt_tl, "still", trial
+        if isinstance(kw.get("scene_index"), int):
+            rp.note_degradation("board_to_still", scene=kw["scene_index"], reason=reason)
+        self.board_fallbacks.append({"scene": kw.get("scene_index"), "reason": reason})
+        return moved
 
     @staticmethod
     def _canvas_rung(entry: Dict[str, Any], kw: dict, action: str, result: str) -> None:
@@ -1910,6 +2007,12 @@ async def orchestrate_video(
                         theme=web_theme if web_style is not None else (scene.theme or web_theme), scene_index=i, total_scenes=total, lang=lang,
                         map_focus=(scene.map or {}).get("focus") if isinstance(scene.map, dict) else None,
                     )
+                    if scene.template == "board" and frames is not None and getattr(frames, "template", None) == "still":
+                        _update_job_progress(
+                            storage, job, "skills_running", pct,
+                            f"Scene {i}/{total}: the board could not be shown step by step - showing its picture instead",
+                            current_scene=i, total_scenes=total,
+                        )
                     tl = getattr(frames, "timeline", None) if frames else None
                     if tl is not None:
                         final_t = getattr(frames, "template", scene.template)
@@ -2019,6 +2122,7 @@ async def orchestrate_video(
                                         if cue_log else None),
                 "web_scenes": renderers_used.count("web"),
                 "web_render_fallbacks": web_fallbacks,
+                "board_fallbacks": web.board_fallbacks,  # board scenes shown as a still (ADR-2260 decision 9)
                 "storyboard_llm": storyboard.llm_backend or "operator",
                 "storyboard_template_repairs": storyboard.template_repairs,
                 "storyboard_template_warnings": storyboard.template_warnings,
@@ -2134,13 +2238,14 @@ def _write_report(report: "rp.ProductionReport", job_dir: Path, forbidden: List[
 
 # Async orchestrator wrapper
 def _snapshot_assets(storyboard, out_root: Path) -> List[str]:
-    """Copy every uploaded image a `still` scene uses into ``<video>/source/assets/`` (image + its
-    public record, never ``uploaded_by``): the video keeps what it showed even when the asset is
-    deleted later, and the asset_hygiene signal measures exactly these files. A missing asset is not
-    copied - its scene fails validation/render and walks the degrade ladder like any other."""
+    """Copy every uploaded image a `still` or `board` scene uses into ``<video>/source/assets/`` (image + its
+    public record, never ``uploaded_by``; for a board also ``design.json`` and the record's ``steps``): the video
+    keeps what it showed even when the asset is deleted later, and the asset_hygiene signal measures exactly these
+    files. A missing asset is not copied - its scene fails validation/render and walks the degrade ladder."""
     store = asset_store.current()
     used = sorted({sc.data.get("asset") for sc in storyboard.scenes
-                   if sc.template == "still" and isinstance(sc.data, dict) and isinstance(sc.data.get("asset"), str)})
+                   if sc.template in ("still", "board") and isinstance(sc.data, dict)
+                   and isinstance(sc.data.get("asset"), str)})
     if store is None or not used:
         return []
     dest = out_root / "source" / "assets"
@@ -2148,12 +2253,17 @@ def _snapshot_assets(storyboard, out_root: Path) -> List[str]:
     for aid in used:
         try:
             doc = store.get(aid)
+            model = store.design(aid)
         except (KeyError, ValueError):
             continue
         dest.mkdir(parents=True, exist_ok=True)
         (dest / f"{aid}.png").write_bytes(doc["png"])
-        public = {k: doc[k] for k in ("id", "caption", "source", "hotspots", "width", "height", "bytes", "created")}
+        keys = ("id", "caption", "source", "hotspots", "width", "height", "bytes", "created", "steps")
+        public = {k: doc[k] for k in keys if k in doc}
         (dest / f"{aid}.json").write_text(json.dumps(public, indent=2, sort_keys=True), encoding="utf-8")
+        if model is not None:
+            (dest / f"{aid}.design.json").write_text(
+                json.dumps(penpot_import.design_to_dict(model), separators=(",", ":"), sort_keys=True), encoding="utf-8")
         copied.append(aid)
     return copied
 

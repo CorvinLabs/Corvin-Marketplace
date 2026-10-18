@@ -564,44 +564,60 @@ def _gradient_svg(g: Gradient, index: int) -> str:
     return f'<{tag} id="g{index}" gradientUnits="{units}" {geo}{tr}>{stops}</{tag}>'
 
 
-def to_svg(design: Design, box: Tuple[float, float] = RENDER_BOX) -> str:
-    """Clean SVG written only from the model's typed fields, scaled to fit ``box`` (never enlarged)."""
-    s = min(1.0, box[0] / design.width, box[1] / design.height)
-    w, h = max(1, round(design.width * s)), max(1, round(design.height * s))
+def _shape_svg(sh: Shape, used: Dict[Gradient, int], extra: str = "") -> str:
+    """One shape as an SVG element, from its typed fields only. ``extra`` is markup the CALLER builds (a class or a
+    reveal index from the board template), never data."""
+    a = [f'fill="url(#g{used[sh.fill_gradient]})"' if sh.fill and sh.fill_gradient is not None
+         else f'fill="{sh.fill}"' if sh.fill else 'fill="none"']
+    if sh.fill and sh.fill_opacity < 1:
+        a.append(f'fill-opacity="{_n(sh.fill_opacity)}"')
+    if sh.stroke:
+        a.append(f'stroke="{sh.stroke}" stroke-width="{_n(sh.stroke_width)}"')
+    if sh.opacity < 1:
+        a.append(f'opacity="{_n(sh.opacity)}"')
+    if sh.matrix != _IDENT:
+        a.append('transform="matrix(%s)"' % " ".join(_n(v) for v in sh.matrix))
+    if extra:
+        a.append(extra)
+    attrs = " ".join(a)
+    if sh.kind == "rect":
+        return (f'<rect x="{_n(sh.x)}" y="{_n(sh.y)}" width="{_n(sh.w)}" height="{_n(sh.h)}" '
+                f'rx="{_n(sh.rx)}" ry="{_n(sh.ry)}" {attrs}/>')
+    if sh.kind == "ellipse":
+        return f'<ellipse cx="{_n(sh.x)}" cy="{_n(sh.y)}" rx="{_n(sh.w)}" ry="{_n(sh.h)}" {attrs}/>'
+    if sh.kind == "path":
+        return f'<path d="{html.escape(sh.d, quote=True)}" {attrs}/>'
+    fam = html.escape(f"'{sh.font_family}', sans-serif" if sh.font_family else "sans-serif", quote=True)
+    tl = f' textLength="{_n(sh.text_length)}" lengthAdjust="spacingAndGlyphs"' if sh.text_length else ""
+    return (f'<text x="{_n(sh.x)}" y="{_n(sh.y)}" dominant-baseline="{sh.baseline}" font-family="{fam}" '
+            f'font-size="{_n(sh.font_size)}" font-weight="{sh.font_weight}" text-anchor="{sh.anchor}" xml:space="preserve"{tl} '
+            f'{attrs}>{html.escape(sh.text, quote=False)}</text>')
+
+
+def _gradients_used(design: Design) -> Dict[Gradient, int]:
     used: Dict[Gradient, int] = {}
     for sh in design.shapes:
         if sh.fill and sh.fill_gradient is not None and sh.fill_gradient not in used:
             used[sh.fill_gradient] = len(used)
+    return used
+
+
+def to_svg(design: Design, box: Tuple[float, float] = RENDER_BOX) -> str:
+    """Clean SVG written only from the model's typed fields, scaled to fit ``box`` (never enlarged).
+
+    It does not rely on every ``Design`` having come from the parser: a field that breaks the validator's patterns
+    is refused here too (ADR-2260 decision 2, the second line), so a hand-built or tampered object cannot write markup
+    through an attribute that is not escaped."""
+    guard_design(design)
+    s = min(1.0, box[0] / design.width, box[1] / design.height)
+    w, h = max(1, round(design.width * s)), max(1, round(design.height * s))
+    used = _gradients_used(design)
     out = [f'<svg xmlns="{SVG_NS}" width="{w}" height="{h}" viewBox="{_n(design.ox)} {_n(design.oy)} {_n(design.width)} {_n(design.height)}">']
     if used:
         out.append("<defs>" + "".join(_gradient_svg(g, i) for g, i in used.items()) + "</defs>")
     out += [f'<rect x="{_n(design.ox)}" y="{_n(design.oy)}" width="{_n(design.width)}" height="{_n(design.height)}" '
            f'fill="{design.background or "#ffffff"}"/>']
-    for sh in design.shapes:
-        a = [f'fill="url(#g{used[sh.fill_gradient]})"' if sh.fill and sh.fill_gradient is not None
-             else f'fill="{sh.fill}"' if sh.fill else 'fill="none"']
-        if sh.fill and sh.fill_opacity < 1:
-            a.append(f'fill-opacity="{_n(sh.fill_opacity)}"')
-        if sh.stroke:
-            a.append(f'stroke="{sh.stroke}" stroke-width="{_n(sh.stroke_width)}"')
-        if sh.opacity < 1:
-            a.append(f'opacity="{_n(sh.opacity)}"')
-        if sh.matrix != _IDENT:
-            a.append('transform="matrix(%s)"' % " ".join(_n(v) for v in sh.matrix))
-        attrs = " ".join(a)
-        if sh.kind == "rect":
-            out.append(f'<rect x="{_n(sh.x)}" y="{_n(sh.y)}" width="{_n(sh.w)}" height="{_n(sh.h)}" '
-                       f'rx="{_n(sh.rx)}" ry="{_n(sh.ry)}" {attrs}/>')
-        elif sh.kind == "ellipse":
-            out.append(f'<ellipse cx="{_n(sh.x)}" cy="{_n(sh.y)}" rx="{_n(sh.w)}" ry="{_n(sh.h)}" {attrs}/>')
-        elif sh.kind == "path":
-            out.append(f'<path d="{html.escape(sh.d, quote=True)}" {attrs}/>')
-        else:
-            fam = html.escape(f"'{sh.font_family}', sans-serif" if sh.font_family else "sans-serif", quote=True)
-            tl = f' textLength="{_n(sh.text_length)}" lengthAdjust="spacingAndGlyphs"' if sh.text_length else ""
-            out.append(f'<text x="{_n(sh.x)}" y="{_n(sh.y)}" dominant-baseline="{sh.baseline}" font-family="{fam}" '
-                       f'font-size="{_n(sh.font_size)}" font-weight="{sh.font_weight}" text-anchor="{sh.anchor}" xml:space="preserve"{tl} '
-                       f'{attrs}>{html.escape(sh.text, quote=False)}</text>')
+    out += [_shape_svg(sh, used) for sh in design.shapes]
     out.append("</svg>")
     return "".join(out)
 
@@ -623,6 +639,311 @@ async def render_png(design: Design, *, timeout_s: float = 15.0) -> bytes:
     document, w, h = to_html(design)
     async with WebSlideRenderer() as r:
         return await r.render_html_png(document, w, h, timeout_s=timeout_s)
+
+
+# ── the stored model (ADR-2260 decision 2) ──────────────────────────────────
+# A design is stored beside its picture as ``design.json`` and is untrusted like an upload when it is read back.
+# ``validate_design`` is the ONLY way a Shape is built from JSON; ``guard_design`` is the second line in ``to_svg``.
+
+DESIGN_VERSION = 1
+_HEX6 = re.compile(r"#[0-9a-f]{6}")
+_KINDS = ("rect", "ellipse", "path", "text")
+_SHAPE_KEYS = frozenset({"kind", "x", "y", "w", "h", "rx", "ry", "d", "text", "fill", "fill_opacity", "stroke",
+                         "stroke_width", "opacity", "font_family", "font_size", "font_weight", "text_length",
+                         "baseline", "anchor", "matrix", "group", "fill_gradient"})
+_DESIGN_KEYS = frozenset({"v", "width", "height", "ox", "oy", "background", "shapes"})
+_GRADIENT_KEYS = frozenset({"kind", "coords", "units", "stops", "matrix"})
+
+
+class DesignError(PenpotImportError):
+    """A stored or hand-built design breaks the model's rules; the message is safe to show."""
+
+
+def _bad(what: str) -> DesignError:
+    return DesignError(f"The stored design is invalid ({what}).")
+
+
+def _fnum(v: Any, what: str, lo: float = -MAX_COORD, hi: float = MAX_COORD) -> float:
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        raise _bad(what)
+    f = float(v)
+    if not math.isfinite(f) or f < lo or f > hi:
+        raise _bad(what)
+    return f + 0.0
+
+
+def _colour_or_none(v: Any, what: str) -> Optional[str]:
+    if v is None:
+        return None
+    if not isinstance(v, str) or not _HEX6.fullmatch(v):
+        raise _bad(what)
+    return v
+
+
+def _matrix6(v: Any, what: str) -> Tuple[float, float, float, float, float, float]:
+    if not isinstance(v, (list, tuple)) or len(v) != 6:
+        raise _bad(what)
+    out = tuple(_fnum(x, what) for x in v)
+    if any(abs(x) >= MAX_COORD for x in out):
+        raise _bad(what)
+    return out  # type: ignore[return-value]
+
+
+def _gradient_from(v: Any) -> Gradient:
+    if not isinstance(v, dict) or set(v) != _GRADIENT_KEYS:
+        raise _bad("gradient fields")
+    if v["kind"] not in ("linear", "radial") or v["units"] not in ("bbox", "user"):
+        raise _bad("gradient kind or units")
+    c = v["coords"]
+    if not isinstance(c, (list, tuple)) or len(c) != 4:
+        raise _bad("gradient coordinates")
+    coords = tuple(_fnum(x, "gradient coordinates") for x in c)
+    if v["kind"] == "radial" and (coords[2] < 0 or coords[3] != 0.0):
+        raise _bad("gradient radius")
+    stops_in = v["stops"]
+    if not isinstance(stops_in, (list, tuple)) or not MIN_STOPS <= len(stops_in) <= MAX_STOPS:
+        raise _bad("gradient stops")
+    stops, last = [], 0.0
+    for st in stops_in:
+        if not isinstance(st, (list, tuple)) or len(st) != 3:
+            raise _bad("gradient stop")
+        off = _fnum(st[0], "gradient offset", 0.0, 1.0)
+        if off < last:
+            raise _bad("gradient offsets decrease")
+        last = off
+        col = _colour_or_none(st[1], "gradient colour")
+        if col is None:
+            raise _bad("gradient colour")
+        stops.append((off, col, _fnum(st[2], "gradient opacity", 0.0, 1.0)))
+    return Gradient(v["kind"], coords, v["units"], tuple(stops), _matrix6(v["matrix"], "gradient transform"))  # type: ignore[arg-type]
+
+
+def _shape_from(v: Any) -> Shape:
+    if not isinstance(v, dict) or set(v) != _SHAPE_KEYS:
+        raise _bad("shape fields")
+    kind = v["kind"]
+    if kind not in _KINDS:
+        raise _bad("shape kind")
+    num = {k: _fnum(v[k], k) for k in ("x", "y")}
+    for k in ("w", "h", "rx", "ry"):
+        num[k] = _fnum(v[k], k, 0.0)
+    d, text = v["d"], v["text"]
+    if not isinstance(d, str) or not isinstance(text, str):
+        raise _bad("path or text")
+    if kind == "path":
+        if not d or len(d) > MAX_PATH or not _PATH_OK.fullmatch(d):
+            raise _bad("path data")
+    elif d:
+        raise _bad("path data on a non-path")
+    if kind == "text":
+        if not text.strip() or len(text) > MAX_TEXT or _CTRL.search(text):
+            raise _bad("text")
+    elif text:
+        raise _bad("text on a non-text")
+    fam = v["font_family"]
+    if not isinstance(fam, str) or _clean_font(fam) != fam:
+        raise _bad("font family")
+    weight = v["font_weight"]
+    if isinstance(weight, bool) or not isinstance(weight, int) or not 100 <= weight <= 900:
+        raise _bad("font weight")
+    if v["baseline"] not in _BASELINES or v["anchor"] not in _ANCHORS:
+        raise _bad("baseline or anchor")
+    group = v["group"]
+    if isinstance(group, bool) or not isinstance(group, int) or not 0 <= group < MAX_SHAPES:
+        raise _bad("group")
+    fill = _colour_or_none(v["fill"], "fill")
+    grad = None if v["fill_gradient"] is None else _gradient_from(v["fill_gradient"])
+    if grad is not None and fill != grad.stops[0][1]:
+        raise _bad("gradient fallback colour")
+    stroke = _colour_or_none(v["stroke"], "stroke")
+    return Shape(kind, x=num["x"], y=num["y"], w=num["w"], h=num["h"], rx=num["rx"], ry=num["ry"], d=d, text=text,
+                 fill=fill, fill_opacity=_fnum(v["fill_opacity"], "fill opacity", 0.0, 1.0), stroke=stroke,
+                 stroke_width=_fnum(v["stroke_width"], "stroke width", 0.0, 1000.0),
+                 opacity=_fnum(v["opacity"], "opacity", 0.0, 1.0), font_family=fam,
+                 font_size=_fnum(v["font_size"], "font size", 0.0, 2000.0), font_weight=weight,
+                 text_length=_fnum(v["text_length"], "text length", 0.0), baseline=v["baseline"], anchor=v["anchor"],
+                 matrix=_matrix6(v["matrix"], "transform"), group=group, fill_gradient=grad)
+
+
+def validate_design(obj: Any) -> Design:
+    """JSON (as loaded) -> Design, field by field, or DesignError. Every number finite and within the parser's own
+    ranges, colours by the parser's pattern, enumerations from their sets, path data through the parser's path check,
+    the parser's count and size caps. Runs on every load of a stored model."""
+    if not isinstance(obj, dict) or set(obj) != _DESIGN_KEYS or obj.get("v") != DESIGN_VERSION:
+        raise _bad("fields or version")
+    width = _fnum(obj["width"], "width", MIN_DIM, MAX_DIM)
+    height = _fnum(obj["height"], "height", MIN_DIM, MAX_DIM)
+    if max(width, height) / min(width, height) > MAX_ASPECT:
+        raise _bad("proportions")
+    shapes_in = obj["shapes"]
+    if not isinstance(shapes_in, list) or len(shapes_in) > MAX_SHAPES:
+        raise _bad("shape count")
+    design = Design(width=width, height=height, background=_colour_or_none(obj["background"], "background"),
+                    ox=_fnum(obj["ox"], "origin"), oy=_fnum(obj["oy"], "origin"))
+    text_total, grads = 0, set()
+    for item in shapes_in:
+        sh = _shape_from(item)
+        design.path_chars += len(sh.d)
+        text_total += len(sh.text)
+        if sh.fill_gradient is not None:
+            grads.add(sh.fill_gradient)
+        design.shapes.append(sh)
+    if design.path_chars > MAX_PATH_TOTAL or text_total > MAX_TEXT_TOTAL or len(grads) > MAX_GRADIENTS:
+        raise _bad("size")
+    if not design.shapes and design.background is None:
+        raise _bad("empty")
+    return design
+
+
+def guard_design(design: Design) -> None:
+    """The second line (ADR-2260 decision 2): refuse any field of a Design object that ``validate_design`` would
+    refuse, whoever built it. Cheap: a round trip through the stored form."""
+    if not isinstance(design, Design) or not all(isinstance(sh, Shape) for sh in design.shapes):
+        raise _bad("not a design")
+    validate_design(design_to_dict(design))
+
+
+def _gradient_dict(g: Gradient) -> Dict[str, Any]:
+    return {"kind": g.kind, "coords": list(g.coords), "units": g.units,
+            "stops": [list(st) for st in g.stops], "matrix": list(g.matrix)}
+
+
+def design_to_dict(design: Design) -> Dict[str, Any]:
+    """The whole typed design - size, origin, background, shapes - as JSON-ready data (no steps, no upload bytes)."""
+    shapes = []
+    for sh in design.shapes:
+        shapes.append({"kind": sh.kind, "x": sh.x, "y": sh.y, "w": sh.w, "h": sh.h, "rx": sh.rx, "ry": sh.ry,
+                       "d": sh.d, "text": sh.text, "fill": sh.fill, "fill_opacity": sh.fill_opacity,
+                       "stroke": sh.stroke, "stroke_width": sh.stroke_width, "opacity": sh.opacity,
+                       "font_family": sh.font_family, "font_size": sh.font_size, "font_weight": sh.font_weight,
+                       "text_length": sh.text_length, "baseline": sh.baseline, "anchor": sh.anchor,
+                       "matrix": list(sh.matrix), "group": sh.group,
+                       "fill_gradient": None if sh.fill_gradient is None else _gradient_dict(sh.fill_gradient)})
+    return {"v": DESIGN_VERSION, "width": design.width, "height": design.height, "ox": design.ox, "oy": design.oy,
+            "background": design.background, "shapes": shapes}
+
+
+# ── the board bound (ADR-2260 decision 10) ──────────────────────────────────
+# Applied when a design is used as a ``board``, never at import: a design over a bound still imports as a picture and
+# as a style source. The values are fixed from measurement (``tests/test_board.py`` renders the worst allowed design -
+# every bound met at once - and compares its frame time with the existing templates').
+# Measured 2026-10-18 at 1920x1080, 30 fps (ratio = worst board ms/frame : median of the other templates): with the
+# transform scale at 16 and strokes at 48 the worst board took 5.8x; scale is the driver (scale 1: 1.6x), stroke width
+# next. Scale 4 + stroke 24: 1.92x (no margin); scale 2 + stroke 16: 1.48x - these are the values.
+BOARD_MAX_SHAPES = 240
+BOARD_MAX_PATH_CHARS = 60_000
+BOARD_MAX_STROKE = 16.0
+BOARD_MAX_MATRIX_SCALE = 2.0       # |a|, |b|, |c|, |d| of a shape's transform
+BOARD_MAX_FONT = 320.0
+BOARD_MAX_TEXT_CHARS = 4_000
+BOARD_MAX_GRADIENTS = 16
+BOARD_MAX_TRANSLUCENT = 120        # shapes with opacity or fill opacity below 1
+BOARD_MAX_TEXT_LENGTH = 60         # text shapes with a textLength adjustment
+MAX_STEPS = 12
+MAX_STEP_LABEL = 40
+
+
+def board_refusal(design: Design) -> Optional[str]:
+    """Why this design cannot be a board (a safe sentence with the count), or None when it is within every bound."""
+    n = len(design.shapes)
+    if n == 0:
+        return "The design has no shapes to reveal."
+    if n > BOARD_MAX_SHAPES:
+        return f"The design has {n} shapes; a board can reveal at most {BOARD_MAX_SHAPES}."
+    if design.path_chars > BOARD_MAX_PATH_CHARS:
+        return f"The design has {design.path_chars} characters of path data; a board allows {BOARD_MAX_PATH_CHARS}."
+    text = sum(len(sh.text) for sh in design.shapes)
+    if text > BOARD_MAX_TEXT_CHARS:
+        return f"The design has {text} characters of text; a board allows {BOARD_MAX_TEXT_CHARS}."
+    if any(sh.stroke and sh.stroke_width > BOARD_MAX_STROKE for sh in design.shapes):
+        return f"A stroke is wider than {BOARD_MAX_STROKE:g}; a board cannot draw it."
+    if any(max(abs(v) for v in sh.matrix[:4]) > BOARD_MAX_MATRIX_SCALE for sh in design.shapes):
+        return f"A shape is scaled by more than {BOARD_MAX_MATRIX_SCALE:g}x; a board cannot draw it."
+    if any(sh.kind == "text" and sh.font_size > BOARD_MAX_FONT for sh in design.shapes):
+        return f"A text is larger than {BOARD_MAX_FONT:g} pixels; a board cannot draw it."
+    grads = {sh.fill_gradient for sh in design.shapes if sh.fill_gradient is not None}
+    if len(grads) > BOARD_MAX_GRADIENTS:
+        return f"The design has {len(grads)} gradients; a board allows {BOARD_MAX_GRADIENTS}."
+    translucent = sum(1 for sh in design.shapes if sh.opacity < 1 or (sh.fill and sh.fill_opacity < 1))
+    if translucent > BOARD_MAX_TRANSLUCENT:
+        return f"The design has {translucent} see-through shapes; a board allows {BOARD_MAX_TRANSLUCENT}."
+    adjusted = sum(1 for sh in design.shapes if sh.kind == "text" and sh.text_length)
+    if adjusted > BOARD_MAX_TEXT_LENGTH:
+        return f"The design has {adjusted} stretched texts; a board allows {BOARD_MAX_TEXT_LENGTH}."
+    return None
+
+
+class StepsError(ValueError):
+    """A step assignment breaks the contract; the message is safe to show."""
+
+
+def _plain_label(value: Any) -> Optional[str]:
+    if value is None or value == "":
+        return None
+    if not isinstance(value, str):
+        raise StepsError("A step label must be text.")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise StepsError("A step label contains an invalid character.") from None
+    out = " ".join(_CTRL.sub("", value).split())
+    if any(c in out for c in "<>&\"\\`{}"):
+        raise StepsError("A step label is plain text: no markup characters.")
+    if len(out) > MAX_STEP_LABEL:
+        raise StepsError(f"A step label is at most {MAX_STEP_LABEL} characters.")
+    return out or None
+
+
+def validate_steps(steps: Any, n_shapes: Optional[int] = None) -> List[Dict[str, Any]]:
+    """An ordered partition of the shapes: 1-12 steps, every shape in exactly one, each step non-empty, an optional
+    plain-text label of at most 40 characters. Without ``n_shapes`` the partition is checked against 0..max (the
+    record carries no shape count; the caller that holds the design checks the count)."""
+    if not isinstance(steps, list) or not 1 <= len(steps) <= MAX_STEPS:
+        raise StepsError(f"A board has 1 to {MAX_STEPS} steps.")
+    out, seen = [], set()
+    for st in steps:
+        if not isinstance(st, dict) or set(st) - {"shapes", "label"} or "shapes" not in st:
+            raise StepsError("A step is {shapes, label}.")
+        idx = st["shapes"]
+        if not isinstance(idx, list) or not idx:
+            raise StepsError("Every step needs at least one shape.")
+        for i in idx:
+            if isinstance(i, bool) or not isinstance(i, int) or i < 0 or i >= MAX_SHAPES:
+                raise StepsError("A step names shapes by their index.")
+            if i in seen:
+                raise StepsError("A shape is in two steps.")
+            seen.add(i)
+        entry: Dict[str, Any] = {"shapes": list(idx)}
+        label = _plain_label(st.get("label"))
+        if label is not None:
+            entry["label"] = label
+        if st.get("label") not in (None, "") and entry.get("label") != st.get("label"):
+            raise StepsError("A step label is plain text.")
+        out.append(entry)
+    total = n_shapes if n_shapes is not None else (max(seen) + 1 if seen else 0)
+    if seen != set(range(total)):
+        raise StepsError("Every shape must be in exactly one step.")
+    return out
+
+
+def derived_label(design: Design, indices: List[int]) -> Optional[str]:
+    """The text of the first text shape of a step (in shape order), cut at 40 characters on a word boundary."""
+    for i in sorted(indices):
+        sh = design.shapes[i]
+        if sh.kind == "text":
+            text = " ".join(sh.text.split())
+            if not text:
+                continue
+            if len(text) <= MAX_STEP_LABEL:
+                return text
+            cut = text[:MAX_STEP_LABEL + 1].rsplit(" ", 1)[0]
+            return (cut if 0 < len(cut) <= MAX_STEP_LABEL else text[:MAX_STEP_LABEL]).rstrip()
+    return None
+
+
+def step_labels(design: Design, steps: List[Dict[str, Any]]) -> List[Optional[str]]:
+    """What the narration can name per step: the label the user typed, else the derived one, else none."""
+    return [st.get("label") or derived_label(design, st["shapes"]) for st in steps]
 
 
 # ── style derivation ────────────────────────────────────────────────────────

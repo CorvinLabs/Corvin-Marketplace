@@ -44,7 +44,13 @@ MAX_CAPTION = 160
 MAX_SPOTS = 8
 MAX_SPOT_DESC = 120
 MAX_JSON_BYTES = 16 * 1024
-_RECORD_KEYS = frozenset({"id", "caption", "uploaded_by", "source", "hotspots", "width", "height", "bytes", "created"})
+MAX_DESIGN_BYTES = 2 * 1024 * 1024  # the typed model of an imported design (ADR-2260 decision 2): 2000 shapes, 400k path chars
+DESIGN_FILE = "design.json"
+# exactly the keys add()/update() write; ``steps`` (ADR-2260 decision 2) is the only optional one: a design without it is
+# UNASSIGNED. Any other key makes the record invalid.
+_BASE_KEYS = frozenset({"id", "caption", "uploaded_by", "source", "hotspots", "width", "height", "bytes", "created"})
+_RECORD_KEYS = _BASE_KEYS | {"steps"}
+_KEEP = object()
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
@@ -62,6 +68,29 @@ class AssetQuotaExceeded(AssetError):
 
 class AssetNotRecorded(AssetError):
     pass
+
+
+def _pi():
+    try:
+        from . import penpot_import  # noqa: PLC0415 - lazy: the store is imported by modules penpot_import imports
+    except ImportError:
+        import penpot_import  # noqa: PLC0415
+    return penpot_import
+
+
+def _encode_design(design: Any) -> bytes:
+    """A design (the typed model or its JSON form) -> the bytes stored as design.json, or AssetError. The model is
+    validated field by field first, so only what ``validate_design`` accepts is ever written."""
+    pi = _pi()
+    try:
+        model = design if isinstance(design, pi.Design) else pi.validate_design(design)
+        pi.guard_design(model)
+    except pi.PenpotImportError as e:
+        raise AssetError(str(e)) from None
+    raw = json.dumps(pi.design_to_dict(model), separators=(",", ":"), sort_keys=True).encode()
+    if len(raw) > MAX_DESIGN_BYTES:
+        raise AssetError("the design is too large to store as a board")
+    return raw
 
 
 _BIDI = {0x200E, 0x200F, 0x061C, *range(0x202A, 0x202F), *range(0x2066, 0x206A)}
@@ -259,12 +288,17 @@ class AssetStore:
                 return aid
 
     def add(self, png_bytes: bytes, *, caption: Any, uploaded_by: Any, source: Any = None,
-            hotspots: Any = None, before_commit: Optional[Callable[[Dict[str, Any]], bool]] = None) -> Dict[str, Any]:
+            hotspots: Any = None, before_commit: Optional[Callable[[Dict[str, Any]], bool]] = None,
+            design: Any = None) -> Dict[str, Any]:
         """Store one image. ``before_commit(doc)`` runs after validation, quota and id allocation and
         BEFORE the asset becomes visible; a falsy return (the host's audit record did not commit)
-        aborts the upload with nothing stored - the audit-first order of ADR-2249 invariant 6."""
+        aborts the upload with nothing stored - the audit-first order of ADR-2249 invariant 6.
+
+        ``design`` (an imported design's typed model, ADR-2260 decision 2) is stored beside the picture as
+        ``design.json``, under the same quota; like the picture it is immutable. It carries no steps."""
         if not isinstance(uploaded_by, str) or not USER_RE.fullmatch(uploaded_by):
             raise AssetError("an asset needs the uploading user's id")
+        design_raw = _encode_design(design) if design is not None else None
         img = reencode_png(png_bytes)
         doc = {"caption": _clean_text(caption, MAX_CAPTION, "the caption"),
                "uploaded_by": uploaded_by, "source": sanitise_provenance(source),
@@ -275,6 +309,8 @@ class AssetStore:
         try:
             staging.mkdir(mode=0o700)
             _atomic_write(staging / "image.png", img["png"])
+            if design_raw is not None:
+                _atomic_write(staging / DESIGN_FILE, design_raw)
             with _exclusive(self.root / ".lock"):
                 if len(self.ids()) >= MAX_ASSETS:
                     raise AssetQuotaExceeded(f"at most {MAX_ASSETS} images per workspace; delete one first")
@@ -294,10 +330,13 @@ class AssetStore:
         re-checks under the store lock, so a race still ends in AssetQuotaExceeded, never over quota."""
         return len(self.ids()) < MAX_ASSETS
 
-    def update(self, asset_id: str, *, caption: Any = None, hotspots: Any = None,
+    def update(self, asset_id: str, *, caption: Any = None, hotspots: Any = None, steps: Any = _KEEP,
                before_commit: Optional[Callable[[Dict[str, Any]], bool]] = None) -> Dict[str, Any]:
-        """Change an asset's caption and/or hotspots (the image never changes). ``None`` keeps a field.
-        ``before_commit(doc)`` runs with the new document before it is written; falsy = nothing changes."""
+        """Change an asset's caption, hotspots and/or board steps (the image and the design never change). ``None``
+        keeps caption/hotspots; ``steps`` is kept unless given, ``steps=None`` clears it (the design is unassigned
+        again). Steps are validated against the stored design: an exact partition of its shapes, and only for a
+        design within the board bound. ``before_commit(doc)`` runs with the new document before it is written;
+        falsy = nothing changes. A record that would not fit the read cap is refused before anything is written."""
         with _exclusive(self.root / ".lock"):
             doc = self.get(asset_id, with_png=False)
             new = dict(doc)
@@ -305,6 +344,20 @@ class AssetStore:
                 new["caption"] = _clean_text(caption, MAX_CAPTION, "the caption")
             if hotspots is not None:
                 new["hotspots"] = _validate_hotspots(hotspots)
+            if steps is None:
+                new.pop("steps", None)
+            elif steps is not _KEEP:
+                pi = _pi()
+                model = self.design(asset_id)
+                if model is None:
+                    raise AssetError("this image has no stored design, so it cannot be a board")
+                why = pi.board_refusal(model)
+                if why:
+                    raise AssetError(why)
+                try:
+                    new["steps"] = pi.validate_steps(steps, len(model.shapes))
+                except pi.StepsError as e:
+                    raise AssetError(str(e)) from None
             raw = _encode_record(new)   # before the audit hook, as in add()
             if before_commit is not None and not before_commit(dict(new)):
                 raise AssetNotRecorded("the change could not be recorded; nothing was changed")
@@ -331,8 +384,12 @@ class AssetStore:
                 or (png is not None and (len(png) > MAX_IMAGE_BYTES or not png.startswith(PNG_MAGIC))):
             raise AssetError("a stored asset is invalid")
         try:
-            if set(doc) != _RECORD_KEYS:   # exactly what add() writes: an unknown or missing key is a tampered record
+            # exactly what add()/update() write: an unknown or missing key is a tampered record
+            if not _BASE_KEYS <= set(doc) <= _RECORD_KEYS:
                 raise AssetError("a stored asset is invalid")
+            if "steps" in doc:
+                if not (d / DESIGN_FILE).is_file() or _pi().validate_steps(doc["steps"]) != doc["steps"]:
+                    raise AssetError("a stored asset is invalid")
             # the cleaners return what the store would have written; a record that differs was not written by it
             if _clean_text(doc["caption"], MAX_CAPTION, "the caption") != doc["caption"] \
                     or _validate_hotspots(doc["hotspots"]) != doc["hotspots"]:
@@ -352,6 +409,53 @@ class AssetStore:
         except (AssetError, KeyError, TypeError, ValueError):
             raise AssetError("a stored asset is invalid") from None
         return {**doc, "png": png} if with_png else dict(doc)
+
+    def design(self, asset_id: str) -> Optional[Any]:
+        """The stored typed model of an imported design, re-validated on every load, or None when the asset has none.
+        A tampered, oversized or linked file is refused (AssetError), never repaired."""
+        d = self._dir(asset_id)
+        if d.is_symlink() or not d.is_dir():
+            raise AssetNotFound(asset_id)
+        p = d / DESIGN_FILE
+        if not os.path.lexists(p):
+            return None
+        pi = _pi()
+        try:
+            obj = json.loads(_read_regular(p, MAX_DESIGN_BYTES).decode("utf-8"))
+            return pi.validate_design(obj)
+        except (OSError, ValueError, pi.PenpotImportError):
+            raise AssetError("a stored design is invalid") from None
+
+    def board(self, asset_id: str) -> Dict[str, Any]:
+        """A board-ready design: the validated model within every board bound, with steps that partition its shapes.
+        Raises AssetError with the reason the user sees ('assign steps first', the bound and the count, ...)."""
+        doc = self.get(asset_id, with_png=False)
+        model = self.design(asset_id)
+        if model is None:
+            raise AssetError("this image has no stored design, so it cannot be a board")
+        pi = _pi()
+        why = pi.board_refusal(model)
+        if why:
+            raise AssetError(why)
+        if "steps" not in doc:
+            raise AssetError("assign steps first: this design has no reveal steps yet")
+        try:
+            steps = pi.validate_steps(doc["steps"], len(model.shapes))
+        except pi.StepsError:
+            raise AssetError("a stored asset is invalid") from None
+        return {"id": asset_id, "caption": doc["caption"], "design": model, "steps": steps,
+                "labels": pi.step_labels(model, steps)}
+
+    def board_catalogue(self) -> Dict[str, Dict[str, Any]]:
+        """Every board-ready design of the tenant: what the storyboard prompt may offer (built per job, from the store)."""
+        out = {}
+        for aid in self.ids():
+            try:
+                b = self.board(aid)
+            except (AssetError, AssetNotFound):
+                continue
+            out[aid] = {"caption": b["caption"], "labels": b["labels"], "steps": len(b["steps"])}
+        return out
 
     def public(self, asset_id: str) -> Dict[str, Any]:
         return self.get(asset_id, with_png=False)

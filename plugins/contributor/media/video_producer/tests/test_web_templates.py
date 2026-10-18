@@ -35,6 +35,8 @@ SAMPLES = {
     "still": {"title": "T", "asset": "ast_5ee1ab1e", "caption": "c",
               "callouts": [{"spot": "save_button", "label": "save", "tone": "success"}, {"spot": "header", "label": "h"}],
               "zoom": {"spot": "save_button", "scale": 1.2}},
+    # ADR-2260 decisions 2-4: the fixture tenant's imported Penpot board (design.json + three steps)
+    "board": {"eyebrow": "e", "title": "T", "asset": "ast_b0a2d000"},
 }
 
 

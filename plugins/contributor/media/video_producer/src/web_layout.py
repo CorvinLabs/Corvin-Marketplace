@@ -21,7 +21,7 @@ TOLERANCE_PX = 2
 
 LAYOUT_JS = r"""(tol) => {
   const W = innerWidth, H = innerHeight;
-  const SKIP = '.stars, .glow, .ring, .amb, defs, script, style';
+  const SKIP = '.stars, .glow, .ring, .amb, .board-art, defs, script, style';  // a board's shapes overlap by design (ADR-2260 d9); its frame is still measured
   const hidden = el => {
     for (let e = el; e && e.nodeType === 1; e = e.parentElement) {
       const cs = getComputedStyle(e);

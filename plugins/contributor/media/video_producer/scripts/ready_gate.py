@@ -176,7 +176,10 @@ def section_b(reports: List[Dict[str, Any]], problems: List[str], *, with_alignm
     rate = decide(ci, at_most=DEGRADED_MAX)
     deg = "pass" if rate == "pass" and not any(hard.values()) else ("fail" if rate == "fail" or any(hard.values())
                                                                     else rate)
-    out.append(item("degradation_rate", deg, ci=ci, threshold_at_most=DEGRADED_MAX, hard_zero_counts=hard))
+    # board_to_still (ADR-2260 decision 9) counts toward the scene share, apart from the hard web_to_pillow failure:
+    # the picture of the board is shown, not the classic slide
+    out.append(item("degradation_rate", deg, ci=ci, threshold_at_most=DEGRADED_MAX, hard_zero_counts=hard,
+                    board_to_still=kinds.count("board_to_still")))
     gate_ok = deg == "pass"
 
     def gated(name: str, status: str, **f: Any) -> None:
