@@ -1,6 +1,6 @@
 # Penpot stack (Strang B) - operations runbook
 
-Optional strand. The Video Producer never needs it; without docker or podman it is not offered and normal rendering is unaffected.
+Optional strand. The Video Producer never needs it. Nothing in the producer offers or starts the stack yet (no UI, no skill call); without docker or podman `detect` exits 3 and normal rendering is unaffected.
 Everything below was run on Linux with rootless podman 4.9.3 + podman-compose 1.0.6 unless marked "not tested".
 Measurements and the MCP/CVE assessment: `PENPOT-STACK-RESULTS.md`.
 

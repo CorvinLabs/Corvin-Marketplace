@@ -114,6 +114,8 @@ Known red tests: none since the 1.5.0 baseline work (ADR-2247 R0, `974bf30`). Th
 
 ### For Using This Plugin
 - **[docs/PENPOT-IMPORT.md](docs/PENPOT-IMPORT.md)** — Penpot boards as styles and images: what is read, what is dropped, limits, audit
+- **[docs/PENPOT-STACK-RUNBOOK.md](docs/PENPOT-STACK-RUNBOOK.md)** — Optional Penpot stack (strand B): start, stop, backup/restore, update path, failure patterns
+- **[docs/PENPOT-STACK-RESULTS.md](docs/PENPOT-STACK-RESULTS.md)** — Measured results for the stack: setup time, RAM, UI text export, MCP verdict, CVE review
 - **[docs/WEB-SLIDES.md](docs/WEB-SLIDES.md)** — All 15 slide templates, data contracts, narration-synced timing
 - **[ADR-2238](../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md)** — Web-slide renderer design (Chromium, deterministic frames, ambient loops)
 - **[ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md)** — Narration quality (OpenAI TTS, fallback chain)
