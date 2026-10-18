@@ -61,6 +61,11 @@ A_CHECKS: List[Tuple[str, str, List[str]]] = [
     # ... and the console answers every target-dependent failure alike (incl. a hang), audits host + hash only
     ("capture_policy_route_uniform_failures_and_audit", "corvinos",
      ["core/console/tests/test_video_producer_capture_e2e.py"]),
+    # ADR-2260: a board renders identically in two browsers, its stored model is validated on every load, the worst
+    # allowed design stays within twice the median frame time, and a failing board becomes a still of the same image
+    ("board_determinism_bounds_and_fallback", "plugin", ["tests/test_board.py"]),
+    ("bento_layout_table_and_matrix", "plugin", ["tests/test_bento.py"]),
+    ("board_routes_steps_erasure_and_video", "corvinos", ["core/console/tests/test_video_producer_board_e2e.py"]),
 ]
 
 
@@ -181,6 +186,9 @@ def section_b(reports: List[Dict[str, Any]], problems: List[str], *, with_alignm
     out.append(item("degradation_rate", deg, ci=ci, threshold_at_most=DEGRADED_MAX, hard_zero_counts=hard,
                     board_to_still=kinds.count("board_to_still")))
     gate_ok = deg == "pass"
+    # board_fallback (ADR-2260 decision 9): on the release corpus no board scene may have fallen back to its picture
+    n_board = kinds.count("board_to_still")
+    out.append(item("board_fallback", "pass" if n_board == 0 else "fail", board_to_still=n_board, threshold=0))
 
     def gated(name: str, status: str, **f: Any) -> None:
         out.append(item(name, status if gate_ok else "invalid",

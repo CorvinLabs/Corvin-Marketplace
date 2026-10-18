@@ -87,7 +87,8 @@ def test_decide_reads_the_bound_not_the_point():
 
 def test_a_clean_corpus_passes_section_b_but_the_verdict_is_still_a_miss_without_the_other_sections(tmp_path):
     rc, v = gate(good_corpus(tmp_path / "c"))
-    for name in ("corpus_complete", "run_validity", "degradation_rate", "layout_clean", "still_time", "mux_integrity"):
+    for name in ("corpus_complete", "run_validity", "degradation_rate", "board_fallback", "layout_clean", "still_time",
+                 "mux_integrity"):
         assert b_status(v, name) == "pass", name
     assert b_status(v, "cue_alignment") == "not_assessed"          # opt-in, never silently passed
     assert rc == 1 and v["ready"] is False and v["may_say_production_ready"] is False
@@ -112,6 +113,14 @@ def test_a_pillow_fallback_fails_degradation_and_invalidates_the_signals_it_woul
     assert b_status(v, "degradation_rate") == "fail"
     for name in ("layout_clean", "still_time", "mux_integrity"):
         assert b_status(v, name) == "invalid", name
+
+
+def test_a_board_shown_as_a_still_fails_the_board_fallback_row_apart_from_pillow(tmp_path):
+    reps = [make_report(f"v{i}") for i in range(8)] + [make_report("x", kinds=["board_to_still"], degraded=[2])]
+    _, v = gate(write_corpus(tmp_path / "c", reps))
+    assert b_status(v, "board_fallback") == "fail"
+    deg = next(x for x in v["B"] if x["check"] == "degradation_rate")
+    assert deg["hard_zero_counts"]["web_to_pillow"] == 0 and deg["board_to_still"] == 1
 
 
 def test_a_kept_collision_fails_layout_clean(tmp_path):
