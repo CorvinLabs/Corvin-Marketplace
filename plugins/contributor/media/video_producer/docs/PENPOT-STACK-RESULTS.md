@@ -81,3 +81,27 @@ Exposure in this setup: frontend published on 127.0.0.1 only; MCP/exporter/postg
 No for the first cut of Strang B; the exporter path is enough and is what the render pipeline needs.
 Reasons: (a) every MCP tool that does real work depends on an open, logged-in browser tab, which a headless render pipeline would have to drive itself (Playwright worked here, but it adds a Chromium dependency and a failure mode); (b) `execute_code` is arbitrary code in the user's session, and MCP has the worst advisory history of the stack (three MCP advisories in 2026 incl. one RCE); (c) the static-asset need (SVG of a board) is already met by `/api/export` in 2.7-3.3 s without a browser.
 Make MCP an explicit opt-in later (agent-driven design edits), behind its own gate, loopback only, with the key in the 0600 secrets area. The check above shows it is technically feasible.
+
+## Gate review 2026-10-18 - per task (E-030, measured; not an operator verdict)
+
+Measured by an agent on 2026-10-18 against the wording of each task's Definition of Done in the knowledge base.
+The spike numbers are from NOTE-0004 (raw data in `claude-playground/penpot-spike-2026-10-18/`); code claims were
+checked with the tests on `origin/main` (`test_penpot_import`, `test_penpot_gradients`, `test_penpot_stack*`,
+`test_penpot_to_json_cli`: 122 passed, 1 opt-in skipped). Verdicts: MET, PARTIAL, NOT MET, NOT CHECKED.
+
+| Task | Verdict | Measured |
+|---|---|---|
+| T-0182 Docker deploy and footprint | NOT MET | Stack healthy in 23.5 s (podman). Idle RAM 3.27 GiB (about 3.4 GB) against < 2 GB; idle CPU 15-17 % against < 5 %; DB 12 MB, volumes 51 MB (< 5 GB, met). Inspect tab and SVG/JSON buttons in the UI not checked. |
+| T-0183 MCP server and WebSocket | NOT MET | HTTP stream: 50/50 calls OK, max 2 ms. WebSocket without token closes with 1008 (expected). Authenticated WebSocket handshake, 30 s hold, 10 WebSocket requests and the audit events not measured. MCP is outside the first cut (ADR-2257). |
+| T-0184 Test template | PARTIAL | Built through the API: 1920x1080 board, 200x200 logo at (100,100) #0066CC, two texts 48 / 32 in #333333, five library colours. Font is sourcesanspro (Penpot default), not Arial or a system default. UI visibility, centring and the Inspect tab not checked. |
+| T-0185 SVG export and JSON converter | PARTIAL | 10/10 exports HTTP 200 and well-formed, identical size. The spike converter dropped 4 rectangles (NOT MET for "no data loss"); the hardened module in `penpot_import.py` reads the real fixture with no drops (`test_real_penpot_export_is_read_completely`). Font assertion not met (sourcesanspro). |
+| T-0186 Gate G0 | NOT MET (strict reading) | K1 runbook and start time met (runbook 94 lines; the lifecycle is `penpot_stack.py`, there is no `setup.sh`). K2 HTTP 50/50 met, WebSocket not measured. K3 10/10 met. K4 NOT MET (RAM and CPU as above). K5 PASSED as a lookup (see CVE section above); image scan not run. Under the DoD rule "any criterion FAIL -> NO-GO" the measured verdict is NO-GO on K4. The DoD says the closing verdict belongs to the operator; it is not recorded here as a decision. |
+| T-0187 Import module hardening | MET | `penpot_import.py` on `origin/main` (commit f2f953f) refuses DOCTYPE/ENTITY, size, nesting, external references, and names unknown Penpot structure. Hostile-input fixtures green. Console-level E2E was not re-run on `origin/main` (see blocker below). |
+| T-0188 Shape model to HTML/SVG renderer | PARTIAL | Renderer emits only the closed model; Chromium test passes, but the pixel comparison excludes the two text boxes (font fallback). "Connection to expressive scenes (PLAN-0947)" is not evidenced: Penpot output reaches the `still` asset path only. |
+| T-0189 Import path in skill and console | PARTIAL | Console upload (`/assets/import-penpot`) and style import are wired; audit events `video_producer.asset_uploaded` and `video_producer.style_imported` are registered in severity and allowlist; the E2E checks the hash chain. Skill invocation is not wired: `src/skill.py` has no Penpot reference. |
+| T-0193 Operations runbook | MET | `docs/PENPOT-STACK-RUNBOOK.md`: backup and restore run for real (evidence section, 2026-10-18), update path described and marked NOT tested. |
+
+Blocker recorded for T-0187: the console loads the plugin from the sibling checkout
+`Corvin-Marketplace/` (`routes/video_producer_api.py::_plugin_locations`), and that checkout's local `main` predates
+f2f953f. The plain-SVG refusal test therefore fails when run against that checkout, and passes with the
+`origin/main` code.
