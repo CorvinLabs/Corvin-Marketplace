@@ -15,7 +15,7 @@
 This plugin is **fully self-contained**. All documentation, concepts, ADRs, and implementation plans live in this directory:
 
 ```
-plugins/contributor/media/video_producer/
+plugins/buildin/media/corvintv/
 ├── src/                          (Implementation)
 ├── tests/                        (Test suite)
 ├── docs/                         (THIS DIRECTORY)

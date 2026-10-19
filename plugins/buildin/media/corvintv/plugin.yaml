@@ -1,25 +1,24 @@
 plugin_id: video_producer
 plugin_type: web_surface
-version: 1.6.0
-display_name: Video Producer
-description: "Create short narrated MP4s from a task description: LLM-written storyboard,
-  per-scene gTTS narration, ffmpeg assembly. Contributor plugin: installs from this
-  checkout, enabling records the operator's consent. See docs/ADR-0953 for the
-  current (consolidated) scope versus earlier design plans."
-
-origin: community
+version: 1.7.0
+display_name: CorvinTV
+description: "CorvinTV (formerly Video Producer): create narrated MP4s from a task description - LLM-written
+  storyboard, narration by OpenAI TTS with edge-tts as the fallback, animated web slides, ffmpeg assembly.
+  First-party plugin of the buildin tier: a fresh installation installs and enables it, and the operator can
+  disable or uninstall it at any time. See USER-GUIDE.md and docs/."
+origin: vetted
 boot_layer: installed
 locality: local
 network_egress: external
 egress_hosts:
-  # gTTS narration (every job) + optional Anthropic storyboard backend, gated
-  # by the console's own L34/L35 pre-spawn checks before each job starts.
-  # Not api.openai.com / googleapis.com -- those were for the never-built
-  # OpenAI-TTS and YouTube-upload paths (ADR-0953).
-  - translate.google.com
-  - api.anthropic.com
-pii_risk: low
-requires_consent: true
+  # Every host a job can reach, each gated by the console's own L34/L35 pre-spawn checks before the job
+  # starts (egress_gate.DEFAULT_ENGINE_HOSTS). Nothing is contacted at boot or in the background.
+  - api.openai.com            # narration tier 1 (needs the operator's OpenAI key)
+  - speech.platform.bing.com  # narration tier 2, edge-tts (Microsoft voices, no key)
+  - api.anthropic.com         # optional storyboard backend
+  - translate.google.com      # only when tts_engine is set to the legacy "gtts"
+pii_risk: medium   # the narration text (derived from the operator's task) goes to the TTS host; never the task's files
+requires_consent: false
 audit_required: true
 infrastructure_plugin: false
 orchestration_support: true
@@ -29,8 +28,8 @@ settings_schema:
     tts_engine:
       type: string
       enum: [openai, auto, gtts]
-      default: gtts
-      description: Text-to-speech engine for narration -- openai (OpenAI TTS), auto (openai, falling back to gtts) or gtts; the same set src/skill.py SUPPORTED_TTS_ENGINES accepts
+      default: auto
+      description: Text-to-speech engine for narration -- auto (OpenAI TTS first, edge-tts when OpenAI declines; the default), openai (OpenAI only, no fallback) or gtts (legacy); the same set src/skill.py SUPPORTED_TTS_ENGINES
     penpot_runtime:
       type: string
       enum: [auto, docker, podman]
@@ -51,7 +50,7 @@ settings_schema:
       default: true
       description: Hash-chain every production step
 console_panel:
-  label: Video Producer
+  label: CorvinTV
   route: video-producer
   icon: Video
   group: marketplace

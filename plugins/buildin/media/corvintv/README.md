@@ -1,16 +1,18 @@
-# Video Producer Plugin — Create Narrated Videos with Animated Slides
+# CorvinTV — Create Narrated Videos with Animated Slides
+
+> **CorvinTV was called "Video Producer" until version 1.6.0.** Same plugin, new name: the registry id (`video_producer`), the console API (`/v1/console/video/...`), the tenant data folder and every audit event name are unchanged, so existing installs, videos and automations keep working. The marketplace listing moved from `buildin/media/corvintv` to `buildin/media/corvintv`; a tenant that still carries the old listing is upgraded at the next boot (CorvinOS `default_plugins.yaml`, `replaces:`).
 
 **What ships live today: turn a task description into a professional narrated MP4 with animated slides and expressive diagrams in the corvin-labs.com design language.**
 
-> **Version 1.6.0 (release candidate — staged release for internal use):** Canvas template (ADR-2249 D1), code annotations with pen marks (D1), asset store (D3/D5), and ready-gate (ADR-2247) are live. No "production ready" claim until the ready-gate corpus verdict is attached. This version documents the live implementation: LLM-written storyboard, OpenAI TTS narration, deterministic web-slide rendering, hand-drawn canvas diagrams, and ffmpeg assembly. See [ADR-2249](../../Corvin-Knowledge/decisions/ADR-2249-video-producer-expressive-scenes-pen-drawn-canvas.md) (expressive scenes), [ADR-2238](../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md) (web slides), and [ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md) (narration quality).
+> **Version 1.7.0 — first-party (buildin) plugin, installed and enabled on every fresh CorvinOS installation.** New: the `board` template (an imported Penpot design revealed step by step while the narration speaks) and `bento` (a grid of two to six tiles); narration is OpenAI TTS with edge-tts as the fallback (Piper is gone: its quality was too poor); fixes found by an end-to-end tech demo. **No "production ready" claim:** the ready gate (ADR-2247) has not reported a full pass; what is measured is in the gate rows and `RELEASE-NOTES.md`. See [ADR-2249](../../../../Corvin-Knowledge/decisions/ADR-2249-video-producer-expressive-scenes-pen-drawn-canvas.md) (expressive scenes), [ADR-2238](../../../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md) (web slides) and [ADR-2211](../../../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md) (narration).
 
 ## How it works
 
 **Pipeline (all four steps happen automatically):**
 
 1. **Storyboard** → LLM writes scenes + narration text (Anthropic API by default; falls back to local Ollama if API forbidden by L35/L34 gates)
-2. **Narration** → OpenAI TTS synthesizes audio for each scene (`tts-1-hd`, voice `onyx`) — clear error message if key missing; fallback chain via `tts_engine: "auto"`
-3. **Slides** → Animated web slides in **corvin-labs.com design** with 15 built-in templates whose reveals and focus follow the narration sentence by sentence (deterministic Chromium rendering, ambient loops, monotone curves, DAG graphs); fallback to Pillow if Chromium unavailable
+2. **Narration** → each scene is spoken by OpenAI TTS (`tts-1-hd`, voice `onyx`); when OpenAI declines (no key, invalid or exhausted key, rate limit, timeout) that scene is spoken by edge-tts instead and the job records `tts_tier_below`. If both decline the job fails with a named error — there is never a silent video. This chain is the default (`tts_engine: "auto"`); `openai` means OpenAI only, without a fallback
+3. **Slides** → Animated web slides in **corvin-labs.com design** with 19 built-in templates whose reveals and focus follow the narration sentence by sentence (deterministic Chromium rendering, ambient loops, monotone curves, DAG graphs); fallback to Pillow if Chromium unavailable
 4. **Assembly** → FFmpeg encodes MP4 at 1920×1080 / 30fps with audio synced to narration
 
 **Result:** a professional 1–3 minute MP4 video ready to share. **No subtitles** (ADR-2211 design decision).
@@ -94,13 +96,13 @@ A *style* — palette, fonts, logo, wordmark, decoration — is a validated, per
 
 ### Web Slide Templates
 
-The plugin ships with **15 built-in templates** (hero, content, line chart, donut, flow graph, timeline, cycle, layers, stat, diagram, compare, quote, code, chart, console still). Each item of a slide appears when the narration names it and is highlighted while it is explained — see [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md) for details. The storyboard LLM automatically picks templates based on the scene content; you don't need to specify them. Unreleased (1.6.0): a `canvas` template (hand-drawn sketch board, see [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md)) is offered to the storyboard model for what no other template can show, and a scene can continue the board of an earlier one.
+The plugin ships with **19 built-in templates** (hero, content, line chart, donut, flow graph, timeline, cycle, layers, stat, diagram, compare, quote, code, chart, console still, canvas, still, bento, board). Each item of a slide appears when the narration names it and is highlighted while it is explained — see [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md) for details. The storyboard LLM automatically picks templates based on the scene content; you don't need to specify them. Unreleased (1.6.0): a `canvas` template (hand-drawn sketch board, see [docs/WEB-SLIDES.md](docs/WEB-SLIDES.md)) is offered to the storyboard model for what no other template can show, and a scene can continue the board of an earlier one.
 
 ## Testing
 
 **Live-path tests** (run these to verify the plugin works):
 ```bash
-cd plugins/contributor/media/video_producer
+cd plugins/buildin/media/corvintv
 # needs pytest, pytest-asyncio, playwright (+ `playwright install chromium`) and ffmpeg
 python -m pytest tests/test_skill.py tests/test_models.py tests/test_storage.py \
         tests/test_web_charts.py tests/test_web_slides_e2e.py -q

@@ -1473,7 +1473,9 @@ def emit_feedback(job_id: str, event_type: str, metrics: Dict[str, Any]):
 
 
 SUPPORTED_TTS_ENGINES = ("openai", "auto", "gtts")
-DEFAULT_TTS_ENGINE = "openai"
+# "auto" = the chain OpenAI -> edge-tts: an exhausted, invalid or missing OpenAI key must not stop a video.
+# "openai" stays selectable for operators who want exactly one voice and a refused job instead of a fallback.
+DEFAULT_TTS_ENGINE = "auto"
 
 
 def _storyboard_from_operator(raw: Any, task: str, max_duration_minutes: int) -> Storyboard:

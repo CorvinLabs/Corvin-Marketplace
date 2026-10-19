@@ -32,7 +32,7 @@ ffmpeg -version
 ## Step 2: Python Dependencies
 
 ```bash
-cd plugins/contributor/media/video_producer
+cd plugins/buildin/media/corvintv
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```

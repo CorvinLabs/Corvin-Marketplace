@@ -7,12 +7,12 @@ name: video-producer release lint
 on:
   push:
     paths:
-      - "plugins/contributor/media/video_producer/**"
+      - "plugins/buildin/media/corvintv/**"
       - "index/plugins.json"
       - ".github/workflows/video-producer-release-lint.yml"
   pull_request:
     paths:
-      - "plugins/contributor/media/video_producer/**"
+      - "plugins/buildin/media/corvintv/**"
       - "index/plugins.json"
       - ".github/workflows/video-producer-release-lint.yml"
 
@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: plugins/contributor/media/video_producer
+        working-directory: plugins/buildin/media/corvintv
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

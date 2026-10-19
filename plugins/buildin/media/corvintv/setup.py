@@ -15,7 +15,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="corvinos-video-producer",
-    version="1.6.0",
+    version="1.7.0",
     description="Create narrated MP4s with animated web slides: LLM storyboard, OpenAI TTS narration, deterministic Chromium rendering, ffmpeg assembly",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -33,6 +33,8 @@ setup(
         "anthropic>=0.40.0",
         "requests>=2.31.0",
         "gTTS>=2.5.0",
+        "openai>=1.0.0",       # TTS tier 1 (ADR-2211)
+        "edge-tts>=7.3.1",     # TTS tier 2; older releases get HTTP 403 from Microsoft
         "Pillow>=10.0.0",
         "numpy>=1.24",
     ],

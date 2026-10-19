@@ -1,4 +1,6 @@
-# Video Producer Plugin — User Guide
+# CorvinTV — User Guide
+
+*CorvinTV was called "Video Producer" until version 1.6.0; the console page is still at `/video-producer`.*
 
 **Quick start:** Open `/video-producer` in CorvinOS Console, describe a video, click "Create", and wait for the MP4.
 
@@ -41,7 +43,7 @@ End with why it matters.
 ## Using the Console Panel
 
 ### Step 1: Open the Panel
-Navigate to **Media** → **Video Producer** (or go to `/video-producer`)
+Navigate to **CorvinTV** in the sidebar (or go to `/video-producer`)
 
 ### Step 2: Describe the Video in the Composer
 Under the video stage, write what you want in the text box (or hold **Space** and speak; release to stop).
@@ -55,7 +57,7 @@ Use the paperclip to attach text, Markdown or PDF files as source material (up t
 
 ### Step 3: Choose the Narration Engine (Optional)
 
-In **Settings** you choose how the video is narrated: **OpenAI** (default, best quality, needs an OpenAI key on the host), **Auto** (tries OpenAI, then free engines, if the key is missing or the API fails) or the legacy **gTTS** engine. The Settings panel also tells you whether OpenAI and the slide renderer (Chromium) are available on this host. Theme, frame rate and slide type are not user-selectable in the console.
+In **Settings** you choose how the video is narrated: **Auto** (the default: every scene is spoken by OpenAI, best quality, and by the free edge-tts voices when OpenAI declines - no key, an invalid or exhausted key, a rate limit or a timeout; the job report says which voice spoke), **OpenAI** (OpenAI only, no fallback: a decline refuses the job) or the legacy **gTTS** engine. There is no offline voice: if both OpenAI and edge-tts are unreachable the job fails with a named error instead of producing a silent video. The Settings panel also tells you whether OpenAI and the slide renderer (Chromium) are available on this host. Theme, frame rate and slide type are not user-selectable in the console.
 
 ### Step 4: Send
 
@@ -78,7 +80,7 @@ By default every video looks like CorvinOS. To make videos that look like *your*
    - **Default theme** — a styled video uses this theme throughout,
    - **Decoration** (Corvin constellation, a soft minimal glow, or none),
    - the **colours** (each swatch has a colour picker; the hints under them show whether text stays readable),
-   - the **fonts** — your deck's fonts are mapped to the three fonts Video Producer bundles, and you can change the mapping,
+   - the **fonts** — your deck's fonts are mapped to the three fonts CorvinTV bundles, and you can change the mapping,
    - the **logo** (remove it, or switch off showing it large at the start), and the optional "made with CorvinOS" credit (off by default).
 3. **Save** (or **Save and set as default**). Pick the style in the chip before sending; a video you revise keeps
    its original style unless you pick another.
@@ -153,7 +155,7 @@ When the status shows ✅ **Complete**, click **Download** to get the MP4.
 
 **Fix:**
 1. Contact your CorvinOS operator to add `OPENAI_API_KEY` to the environment
-2. OR, temporarily switch the narration engine to **Auto** in Settings (free engines take over; quality is lower)
+2. OR leave the narration engine on **Auto** (the default): edge-tts takes over when OpenAI declines; the voice is free but of lower quality
 
 ### ❌ "Rendering failed, using fallback slide"
 

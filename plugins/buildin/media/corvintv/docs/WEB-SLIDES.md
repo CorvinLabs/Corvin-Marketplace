@@ -105,7 +105,7 @@ Every template accepts `eyebrow?` (40), a small mono label above the title.
 | `chart` | `title` (80), `bars` 2-8 of `{label (24), value >= 0}`, `unit?` (8), `decimals?`, `highlight?`, `locale?` | bars grow |
 | `compare` | `title` (80), `left`/`right` each `{title (40), points 1-4 (90)}` | cards rise; right card is accented |
 | `quote` | `quote` (220), `attribution?` (80), `locale?` (typographic quotes) | rise |
-| `code` | `title` (80), `language?` (24), `lines` 1-12 (90 each); **Code v2** (opt in with `highlight: true`, unreleased 1.6.0): `lines` 1-24, `groups?` (`{lines: [first, last], label?}`, one narrated sentence each), `diff?`, `annotations?` 1-4 of `{line, cols?: [first, last], label (36), mark?: "underline" or "circle"}` (a note beside the line; `mark` needs `cols` and a seeded hand-drawn pen stroke draws on exactly those columns at the annotation's beat), `output?` (text you write, never executed) | lines type in; v2: groups reveal and focus, annotations and output are beats |
+| `code` | `title` (80), `language?` (24), `lines` 1-12 (90 each); **Code v2** (opt in with `highlight: true`, 1.6.0): `lines` 1-24, `groups?` (`{lines: [first, last], label?}`, one narrated sentence each), `diff?`, `annotations?` 1-4 of `{line, cols?: [first, last], label (36), mark?: "underline" or "circle"}` (a note beside the line; `mark` needs `cols` and a seeded hand-drawn pen stroke draws on exactly those columns at the annotation's beat), `output?` (text you write, never executed) | lines type in; v2: groups reveal and focus, annotations and output are beats |
 | `line` | `title` (80), `labels` 3-12 (12 each), `series` 1-3 of `{name (24, required with 2+ series), values: one number per label}`, `unit?`, `decimals?`, `highlight?` index, `locale?` | grid fades in, monotone curve draws, points pop along it, end values and a callout appear; ambient pulse ring on the last point |
 | `donut` | `title` (80), `segments` 2-6 of `{label (28), value >= 0}`, `center_value?` (10), `center_label?` (28), `unit?`, `decimals?`, `highlight?`, `locale?` | segments sweep in one after another; the highlighted one is wider and glows; legend with shares (with `unit: "%"` the value column is dropped) |
 | `flow` | `title` (80), `nodes` 2-8 of `{id ([a-z0-9_]{1,16}), label (24), sub? (36)}`, `edges` 1-12 of `{from, to, label? (18)}`, `highlight?` node id | layered left-to-right graph (no cycles, max 5 columns x 4 nodes); columns appear in order, curved edges draw; ambient data pulses travel every edge Node height and type size follow the text (a node grows first, the type shrinks only when its column has no room); the gap between columns widens for a long edge label, and the label of an edge that skips a column sits in the first free gap along the curve instead of on the node in between. |
@@ -113,7 +113,7 @@ Every template accepts `eyebrow?` (40), a small mono label above the title.
 | `cycle` | `title` (60), `caption?` (180), `center?` (24), `steps` 3-6 of `{label (22), sub? (40)}`, `highlight?` | text left, loop right: numbered nodes pop, arcs with arrowheads draw; ambient orbit around the loop |
 | `layers` | `title` (80), `layers` 2-6 of `{label (32), sub? (64), tag? (12)}` (first = top), `highlight?` | a slightly tilted stack builds from the bottom up; ambient shine sweeps the highlighted slab |
 | `console_still` | `title` (80), `asset` (a key of `src/web/assets/console/catalog.json`), `caption?` (120), `callouts?` 0-3 of `{spot, label (32)}`, `zoom?` `{spot, scale 1-1.6}` | a real console screenshot rises, slowly pushes in toward the zoom spot, callout rings pop with labels. `spot` must be a hotspot the catalogue measured for that asset (the storyboard model never sees the image); assets without spots take no callouts or zoom |
-| `canvas` (unreleased 1.6.0) | `title` (80), `eyebrow?`, `sketch?`, `pen?`, `continue_from?` (an earlier canvas scene id), `elements` 1-40 (see below) | a sketch board: shapes and arrows are drawn on stroke by stroke as the narration names them (`step` = one beat), an optional pen dot follows each stroke |
+| `canvas` (1.6.0) | `title` (80), `eyebrow?`, `sketch?`, `pen?`, `continue_from?` (an earlier canvas scene id), `elements` 1-40 (see below) | a sketch board: shapes and arrows are drawn on stroke by stroke as the narration names them (`step` = one beat), an optional pen dot follows each stroke |
 
 Every web template also accepts a scene-level `map: {"focus": channels|agents|engines|compute|data|audit}`:
 a small "you are here" strip at the right edge listing Corvin's layers as the website's
@@ -247,7 +247,7 @@ holds none), so the sync has only run against a local server that answers
 like the Variables API. A live run needs a token with `file_variables:read`
 on a plan that exposes the Variables REST API.
 
-### Canvas vocabulary (unreleased 1.6.0, ADR-2249 D1)
+### Canvas vocabulary (1.6.0, ADR-2249 D1)
 
 Closed vocabulary, 40 elements at most, 400 characters of text in total, 12 steps at most. Anything outside it
 is an error, and **all** errors of a scene are reported at once (one repair round).

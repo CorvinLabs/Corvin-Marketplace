@@ -49,6 +49,14 @@ def _finding(kind: str, where: str, what: str) -> Dict[str, str]:
 
 # ── version ─────────────────────────────────────────────────────────────────────────────────────
 
+def _yaml_manifest(plugin_dir: Path) -> Path:
+    """The plugin.yaml of a plugin dir. The lint fixtures keep theirs as ``plugin.yaml.fixture``: CorvinOS registers
+    every ``plugin.yaml`` under a buildin tree at boot (``bootstrap._builtin_plugin_dirs`` is a recursive glob), so a
+    fixture literally named plugin.yaml inside this buildin plugin would load as a plugin."""
+    real = plugin_dir / "plugin.yaml"
+    return real if real.exists() else plugin_dir / "plugin.yaml.fixture"
+
+
 def versions(plugin_dir: Path) -> Dict[str, Optional[str]]:
     def grab(path: Path, pattern: str) -> Optional[str]:
         if not path.is_file():
@@ -57,7 +65,7 @@ def versions(plugin_dir: Path) -> Dict[str, Optional[str]]:
         return m.group(1) if m else None
     return {
         "plugin.json": json.loads((plugin_dir / "plugin.json").read_text(encoding="utf-8")).get("version"),
-        "plugin.yaml": grab(plugin_dir / "plugin.yaml", r"^version:\s*['\"]?([^'\"\s#]+)"),
+        "plugin.yaml": grab(_yaml_manifest(plugin_dir), r"^version:\s*['\"]?([^'\"\s#]+)"),
         "provider.py": grab(plugin_dir / "provider.py", r"^\s+version\s*=\s*['\"]([^'\"]+)['\"]"),
         "setup.py": grab(plugin_dir / "setup.py", r"\bversion\s*=\s*['\"]([^'\"]+)['\"]"),
     }
