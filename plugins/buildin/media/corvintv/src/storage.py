@@ -49,7 +49,20 @@ STATUS_RANK = {
     "complete": 2, "error": 2, "cancelled": 2,
 }
 # Why a job was closed by someone other than itself - a closed vocabulary, never free text.
-REASONS = frozenset({"interrupted", "cancelled", "child_exit", "budget"})
+REASONS = frozenset({"interrupted", "cancelled", "child_exit", "budget", "start_failed"})
+
+
+def _replace(src: str, dst: Path) -> None:
+    """os.replace - on Windows retried while a reader has ``dst`` open (WinError 5/32): the panel, the
+    cancel loop and the watcher poll the record constantly, and a lost terminal write leaves a job pending."""
+    for attempt in range(40 if os.name == "nt" else 1):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if os.name != "nt" or attempt == 39:
+                raise
+            time.sleep(0.025 * (attempt + 1) if attempt < 8 else 0.25)
 
 
 def _atomic_write_json(path: Path, data: dict) -> None:
@@ -61,7 +74,7 @@ def _atomic_write_json(path: Path, data: dict) -> None:
             json.dump(data, f, indent=2)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp, path)
+        _replace(tmp, path)
     except BaseException:
         try:
             os.unlink(tmp)
@@ -269,7 +282,7 @@ class VideoStorage:
         job_file = self.jobs_dir / f"{job_id}.json"
         if job_file.exists():
             job_file.unlink()
-        for side in (f".{job_id}.rw", f"{job_id}.lock"):
+        for side in (f".{job_id}.rw", f"{job_id}.lock", f"{job_id}.stderr"):
             try:
                 (self.jobs_dir / side).unlink()
             except OSError:
@@ -323,6 +336,10 @@ class VideoStorage:
                 closed.append(job.id)
             # a job process killed before it read its config leaves the task text (0600) behind
             shutil.rmtree(self.jobs_dir / f"{job.id}.run", ignore_errors=True)
+            try:  # and its stderr capture (ProcessJobRunner), which the dead host never reaped
+                (self.jobs_dir / f"{job.id}.stderr").unlink()
+            except OSError:
+                pass
         return closed
 
     def take_interrupted_ids(self) -> List[str]:

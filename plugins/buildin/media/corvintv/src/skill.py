@@ -39,6 +39,7 @@ try:
     from .grounding import render_pack, validate_pack
     from . import grounded_storyboard as gsb
     from . import deadline as dl
+    from . import media_probe
     from . import report as rp
     from . import signals as sg
     from . import canvas
@@ -58,6 +59,7 @@ except ImportError:  # standalone script use (no package context)
     from grounding import render_pack, validate_pack
     import grounded_storyboard as gsb
     import deadline as dl
+    import media_probe
     import report as rp
     import signals as sg
     import canvas
@@ -789,14 +791,8 @@ def _synthesize_narration_chain(text: str, out_path: Path, lang: str) -> str:
 
 
 def _ffprobe_duration(path: Path) -> float:
-    result = dl.run_process(
-        [
-            "ffprobe", "-v", "error", "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1", str(path),
-        ],
-        text=True, check=True, deadline_s=_FFPROBE_TIMEOUT_S, what="ffprobe",
-    )
-    return float(result.stdout.strip())
+    # ffprobe when the host has it; the console's bundled imageio-ffmpeg ships ffmpeg only (media_probe)
+    return media_probe.duration_s(path, deadline_s=_FFPROBE_TIMEOUT_S, what="ffprobe")
 
 
 def _wrap_text(text: str, width: int = 46) -> List[str]:
@@ -817,6 +813,31 @@ def _wrap_text(text: str, width: int = 46) -> List[str]:
 
 _FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 _FONT_BOLD_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+_WIN_FONTS = Path(os.environ.get("WINDIR") or "C:/Windows") / "Fonts"
+# DejaVu is a Linux path: on Windows/macOS every classic slide died "OSError: cannot open resource" (2026-10-19)
+_FONT_CANDIDATES = {
+    False: (_FONT_PATH, "/usr/share/fonts/dejavu/DejaVuSans.ttf", str(_WIN_FONTS / "segoeui.ttf"),
+            str(_WIN_FONTS / "arial.ttf"), "/System/Library/Fonts/Supplemental/Arial.ttf", "/Library/Fonts/Arial.ttf"),
+    True: (_FONT_BOLD_PATH, "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf", str(_WIN_FONTS / "segoeuib.ttf"),
+           str(_WIN_FONTS / "arialbd.ttf"), "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+           "/Library/Fonts/Arial Bold.ttf"),
+}
+
+
+def _slide_font(size: int, bold: bool = False):
+    """The classic slide's font on this host: DejaVu where it exists, else the platform's sans, else Pillow's
+    built-in scalable default - never an exception for a missing file."""
+    from PIL import ImageFont
+
+    for path in _FONT_CANDIDATES[bold]:
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            continue
+    try:
+        return ImageFont.load_default(size=size)  # Pillow >= 10.1
+    except TypeError:
+        return ImageFont.load_default()
 
 
 # Color-to-meaning system (ADR-0004, measured from /home/shumway/projects/videos
@@ -1027,8 +1048,8 @@ def _render_slide_image(
     _draw_vertical_gradient(img, bg_top, bg_bottom)
     draw = ImageDraw.Draw(img)
 
-    title_font = ImageFont.truetype(_FONT_BOLD_PATH, 40)
-    body_font = ImageFont.truetype(_FONT_PATH, 30)
+    title_font = _slide_font(40, bold=True)
+    body_font = _slide_font(30)
 
     def centered_x(text: str, font: "ImageFont.FreeTypeFont") -> int:
         bbox = draw.textbbox((0, 0), text, font=font)
@@ -1078,7 +1099,7 @@ def _render_slide_image(
             img.paste(logo, (x, 28), logo)
             x += logo.width + 14
         if style.wordmark:
-            draw.text((x, 34), style.wordmark, font=ImageFont.truetype(_FONT_BOLD_PATH, 28),
+            draw.text((x, 34), style.wordmark, font=_slide_font(28, bold=True),
                       fill=rgb(pal["text_muted"]))
 
     img.save(out_path)
@@ -1437,7 +1458,7 @@ def _assemble_scene_clip(image_path: Path, audio_path: Path, out_path: Path) -> 
 def _concat_clips(clip_paths: List[Path], out_path: Path, work_dir: Path) -> None:
     """Concat pre-encoded scene clips (same codec/params) via ffmpeg's concat demuxer."""
     filelist = work_dir / "concat.txt"
-    with open(filelist, "w") as f:
+    with open(filelist, "w", encoding="utf-8") as f:  # ffmpeg reads the list as UTF-8, not the locale's cp1252
         for p in clip_paths:
             path = str(p.resolve())
             if "\n" in path or "\r" in path:

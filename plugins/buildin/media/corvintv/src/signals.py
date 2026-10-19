@@ -32,8 +32,10 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set
 
 try:
     from . import deadline as dl
+    from . import media_probe
 except ImportError:  # pragma: no cover - script use
     import deadline as dl
+    import media_probe
 
 VERDICTS = ("pass", "warn", "fail", "skip", "info")
 KINDS = ("runtime", "posthoc")
@@ -167,10 +169,7 @@ def apply_gate(records: List[Dict[str, Any]]) -> None:
 # ── helpers ───────────────────────────────────────────────────────────────────────────────
 
 def _probe(path: Path) -> Dict[str, Any]:
-    r = dl.run_process(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,duration:format=duration",
-                        "-of", "json", str(path)], text=True, check=True, deadline_s=_FFPROBE_S,
-                       what="ffprobe signal")
-    return json.loads(r.stdout or "{}")
+    return media_probe.probe(path, deadline_s=_FFPROBE_S, what="ffprobe signal")
 
 
 def _stream_s(info: Dict[str, Any], kind: str) -> Optional[float]:

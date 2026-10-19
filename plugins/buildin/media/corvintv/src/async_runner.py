@@ -127,6 +127,11 @@ CANCEL_GRACE_S = 5.0
 # it, for a job process that is wedged somewhere no deadline reaches.
 BUDGET_HOST_SLACK_S = 60.0
 _IS_POSIX = os.name == "posix"
+# Windows has no SIGKILL; there ``_kill_group`` ignores the signal and kills the tree (taskkill /F /T)
+_SIGKILL = getattr(signal, "SIGKILL", signal.SIGTERM)
+# what of a failed job process's stderr reaches the host log: its last lines, from its last bytes
+STDERR_TAIL_BYTES = 8192
+STDERR_TAIL_LINES = 5
 
 
 def _kill_group(pid: int, sig: int) -> bool:
@@ -144,13 +149,29 @@ def _kill_group(pid: int, sig: int) -> bool:
     return r.returncode == 0
 
 
+def _stderr_tail(path: Optional[Path]) -> str:
+    """The last lines a job process wrote to stderr - why it died - or "" when there is none."""
+    if path is None:
+        return ""
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            f.seek(max(0, f.tell() - STDERR_TAIL_BYTES))
+            text = f.read().decode("utf-8", "replace")
+    except OSError:
+        return ""
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    return " | ".join(lines[-STDERR_TAIL_LINES:])
+
+
 class _Child:
     __slots__ = ("proc", "storage_base", "cancelled", "over_budget", "started", "lock", "kill_timer",
-                 "budget_timer")
+                 "budget_timer", "stderr_path")
 
-    def __init__(self, proc, storage_base: str, lock=None):
+    def __init__(self, proc, storage_base: str, lock=None, stderr_path: Optional[Path] = None):
         self.proc = proc
         self.storage_base = storage_base
+        self.stderr_path = stderr_path
         self.cancelled = False
         self.over_budget = False
         self.budget_timer: Optional[threading.Timer] = None
@@ -233,7 +254,7 @@ class ProcessJobRunner:
             if _IS_POSIX:
                 # cancelled by the reaper once the leader is reaped, so a late SIGKILL can never
                 # reach a process group that has since been given to someone else
-                child.kill_timer = threading.Timer(self._grace_s, _kill_group, args=(pid, signal.SIGKILL))
+                child.kill_timer = threading.Timer(self._grace_s, _kill_group, args=(pid, _SIGKILL))
                 child.kill_timer.daemon = True
         _kill_group(pid, signal.SIGTERM if _IS_POSIX else signal.SIGINT)
         if child.kill_timer is not None:
@@ -260,7 +281,13 @@ class ProcessJobRunner:
     def _spawn_locked(self, job_id: str, task: str, config: Dict[str, Any], job_lock=None) -> None:
         storage_base = config["storage_base"]
         storage = get_storage(storage_base)
+        if self._entry[1:2] == [str(_JOB_MAIN)] and not _JOB_MAIN.is_file():
+            # the plugin source this module was imported from is gone (a marketplace resync replaced it,
+            # or it moved): ``python <gone>/job_main.py`` would only die with exit code 2
+            raise FileNotFoundError("the CorvinTV job entry point is missing; the plugin source has moved")
         run_dir = storage.jobs_dir / f"{job_id}.run"
+        err_path = storage.jobs_dir / f"{job_id}.stderr"
+        err = None
         if run_dir.exists():
             shutil.rmtree(run_dir, ignore_errors=True)
         os.mkdir(run_dir, 0o700)
@@ -276,8 +303,11 @@ class ProcessJobRunner:
             fd = os.open(cfg, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 json.dump(payload, f)  # TypeError here = a non-JSON config member: refuse, do not guess
+            # the job's own log and any interpreter error: the reaper reports its tail when the job dies
+            err = os.fdopen(os.open(err_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "wb")
             env = dict(os.environ if self._env is None else self._env)
             env["CORVIN_VIDEO_JOB_ID"] = job_id
+            env["PYTHONIOENCODING"] = "utf-8"  # the stderr capture is read as UTF-8 (Windows would write cp1252)
             kw: Dict[str, Any] = {}
             if _IS_POSIX:
                 kw["start_new_session"] = True
@@ -285,19 +315,26 @@ class ProcessJobRunner:
                 kw["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
             # deadline-exempt: the host starts the job process itself; cancel, budget and reap kill its group
             proc = subprocess.Popen([*self._entry, job_id, str(cfg)], stdin=subprocess.DEVNULL, env=env,
-                                    close_fds=True, **kw)
+                                    stdout=err, stderr=err, close_fds=True, **kw)
         except BaseException:
             shutil.rmtree(run_dir, ignore_errors=True)
-            raise
-        child = _Child(proc, storage_base, job_lock)
-        if _IS_POSIX:
+            if err is not None:
+                err.close()
             try:
-                budget_s = dl.job_budget_seconds(int(config.get("max_duration_minutes", 60)))
-            except (TypeError, ValueError):
-                budget_s = dl.MAX_JOB_BUDGET_S
-            child.budget_timer = threading.Timer(budget_s + self.budget_slack_s, self._over_budget, args=(child,))
-            child.budget_timer.daemon = True
-            child.budget_timer.start()
+                os.unlink(err_path)
+            except OSError:
+                pass
+            raise
+        err.close()  # the child holds its own handle
+        child = _Child(proc, storage_base, job_lock, err_path)
+        # every OS: on Windows nothing else stops a job wedged where no deadline reaches (taskkill /F /T)
+        try:
+            budget_s = dl.job_budget_seconds(int(config.get("max_duration_minutes", 60)))
+        except (TypeError, ValueError):
+            budget_s = dl.MAX_JOB_BUDGET_S
+        child.budget_timer = threading.Timer(budget_s + self.budget_slack_s, self._over_budget, args=(child,))
+        child.budget_timer.daemon = True
+        child.budget_timer.start()
         self._active[job_id] = child
         logger.info("[%s] job process %d started", job_id, proc.pid)  # never the task text
         threading.Thread(target=self._reap, args=(job_id, child, run_dir), daemon=True,
@@ -309,7 +346,7 @@ class ProcessJobRunner:
             return
         child.over_budget = True
         logger.error("job process %d exceeded its budget; killing its group", child.proc.pid)
-        _kill_group(child.proc.pid, signal.SIGKILL)
+        _kill_group(child.proc.pid, _SIGKILL)
 
     def _close_job(self, storage_base: Optional[str], job_id: str, status: str, message: str, reason: str) -> None:
         """Give a job that ended without a terminal status one, through the storage's single write
@@ -333,14 +370,25 @@ class ProcessJobRunner:
         if _IS_POSIX:
             # stragglers (an ffmpeg that outlived the job), immediately: the group id stays ours
             # while any member lives, and the window after the last one is microseconds
-            _kill_group(child.proc.pid, signal.SIGKILL)
+            _kill_group(child.proc.pid, _SIGKILL)
         shutil.rmtree(run_dir, ignore_errors=True)   # child never started / died before deleting it
+        tail = _stderr_tail(child.stderr_path) if rc != 0 and not child.cancelled else ""
+        if child.stderr_path is not None:
+            try:
+                os.unlink(child.stderr_path)
+            except OSError:
+                pass
+        if tail:
+            logger.error("[%s] job process rc=%s, last output: %s", job_id, rc, tail)
         if child.cancelled:
             self._close_job(child.storage_base, job_id, "cancelled", "Cancelled.", "cancelled")
         elif child.over_budget:
             self._close_job(child.storage_base, job_id, "error", "The job exceeded its time budget and was stopped.", "budget")
         elif rc != 0:
-            how = f"signal {signal.Signals(-rc).name}" if rc < 0 else f"exit code {rc}"
+            try:
+                how = f"signal {signal.Signals(-rc).name}" if rc < 0 else f"exit code {rc}"
+            except ValueError:  # a real-time signal has no name; the reaper must still close the job
+                how = f"signal {-rc}"
             self._close_job(child.storage_base, job_id, "error", f"The job process ended unexpectedly ({how}).", "child_exit")
         else:
             self._close_job(child.storage_base, job_id, "error", "The job process ended without a result.", "child_exit")
@@ -358,7 +406,7 @@ class ProcessJobRunner:
                 try:
                     self._spawn_locked(*nxt)
                 except Exception as e:  # noqa: BLE001
-                    self._close_job(nxt[2].get("storage_base"), nxt[0], "error", "The job could not be started.", "child_exit")
+                    self._close_job(nxt[2].get("storage_base"), nxt[0], "error", "The job could not be started.", "start_failed")
                     release_job_lock(nxt[3])
                     logger.error("[%s] queued job could not start (%s)", nxt[0], type(e).__name__)
 

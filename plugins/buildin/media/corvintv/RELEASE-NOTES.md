@@ -1,5 +1,25 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## 1.7.0 fixes (2026-10-19) — jobs on Windows and after a marketplace resync
+
+A 1.7.0 job on Windows ended "The job process ended unexpectedly (exit code 2)" or "[WinError 2] The system cannot
+find the file specified". Measured on the reporting host (Windows 11, console from the uv tool install) and fixed:
+- **Exit code 2.** A console that had loaded the plugin before the move to `buildin/media/corvintv` kept starting
+  `job_main.py` from the old marketplace-cache path after the cache was resynced. The console now reloads the plugin
+  from where it is (CorvinOS `video_producer_api`), and the runner refuses to start a job whose entry point is gone
+  instead of spawning a process that can only die. A dying job process's last stderr lines now reach the console log.
+- **No ffprobe.** The console provides ffmpeg from the `imageio-ffmpeg` wheel, which ships no `ffprobe`; every job
+  died at its first scene. Durations and stream facts now come from ffprobe when it exists, else from ffmpeg alone
+  (`src/media_probe.py`).
+- **Classic slide on Windows.** The fallback slide loaded a Linux font path and died `OSError: cannot open resource`;
+  it now uses the platform's sans font (Segoe UI/Arial) or Pillow's built-in one.
+- **Windows job lifecycle.** The host's budget kill now runs on Windows too; a job record write retries while a reader
+  holds the file (`os.replace` → WinError 5); a queued job that cannot start ends `error` instead of staying `pending`
+  (`start_failed` was not an accepted reason); the job's stderr is UTF-8; the ffmpeg concat list is written as UTF-8.
+
+Known limits, unchanged: Chromium that hangs on Windows is not force-killed by the renderer (no `/proc`); under
+`auto` a single OpenAI failure can switch one scene to the edge-tts voice.
+
 ## 1.7.0 — CorvinTV: first-party plugin, OpenAI first and edge-tts second, board and bento (ADR-2267, ADR-2260)
 
 **The Video Producer is now called CorvinTV.** It is a first-party plugin of the marketplace's `buildin` tier and a
