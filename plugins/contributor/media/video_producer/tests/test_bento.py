@@ -2,6 +2,7 @@
 
 import pytest
 
+from src import bento as bento_mod
 from src import skill as skill_mod
 from src import web_templates as wt
 from src.web_templates import WebSceneError, build_document, reveal_steps, scene_items, validate_scene_data
@@ -33,7 +34,8 @@ def _scene(n, featured=None):
 def test_every_table_cell_is_accepted_and_maps_to_its_layout(cell):
     n, featured = cell
     d = validate_scene_data("bento", _scene(n, featured))
-    assert d["layout"] == LAYOUT_TABLE[cell]
+    assert bento_mod.layout_of(d) == LAYOUT_TABLE[cell]
+    assert "layout" not in d, "the layout is derived from the table, never part of the data"
     assert len(d["tiles"]) == n
 
 
@@ -145,3 +147,11 @@ def test_storyboard_guide_offers_bento_and_the_registry_knows_it():
     assert "bento" in wt.TEMPLATES
     assert "bento" in skill_mod.TEMPLATES
     assert '- "bento":' in skill_mod.__dict__.get("SCENE_GUIDE", "") or '- "bento":' in open(skill_mod.__file__, encoding="utf-8").read()
+
+
+def test_normalised_data_validates_again_unchanged():
+    """The job stores the validated data back into the scene and validates it again for the cues: a bento that does not
+    survive that second pass silently becomes a classic slide (found by the Penpot tech demo, 2026-10-18)."""
+    for n, featured in ((2, None), (3, 0), (4, None), (5, 0), (6, None)):
+        d = validate_scene_data("bento", _scene(n, featured))
+        assert validate_scene_data("bento", d) == d

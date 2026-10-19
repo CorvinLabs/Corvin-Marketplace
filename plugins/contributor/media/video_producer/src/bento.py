@@ -58,7 +58,15 @@ def validate(data: Dict[str, Any]) -> Dict[str, Any]:
             f"(allowed: 2, 3, 4, 5, 6 tiles; a featured tile only with 3, 4 or 5)")
     tiles = [_tile(t) for t in raw]
     return {"eyebrow": wt._text(data, "eyebrow", 40, False), "title": wt._text(data, "title", 80, False),
-            "tiles": tiles, "layout": LAYOUTS[key], "featured": featured}
+            "tiles": tiles, "featured": featured}
+
+
+def layout_of(d: Dict[str, Any]) -> str:
+    """The layout of validated data, from the table. It is derived, never stored: the normalised data is stored back
+    into the scene and validated again by the job (cues, repair), and a stored ``layout`` would be a model-writable
+    field that second pass has to refuse - a bento that failed it silently became a classic slide (Penpot tech demo,
+    2026-10-18)."""
+    return LAYOUTS[(len(d["tiles"]), d.get("featured") is not None)]
 
 
 def _tile(t: Any) -> Dict[str, Any]:
@@ -110,21 +118,72 @@ def _spark(values: List[float]) -> str:
     return monotone_path(pts)
 
 
-def _cell(t: Dict[str, Any], k: int, featured: bool) -> str:
+# The grid is a FIXED box (below an eyebrow and a title) so a tile can never grow into the header; every tile's
+# type size is then computed from the cell it really gets, not from one pixel value for all layouts.
+GRID_W, GRID_H, GAP = 1580.0, 600.0, 24.0
+
+
+def cell_box(layout: str, featured: bool, pos: int = 0) -> Tuple[float, float]:
+    """(width, height) in px of the cell of ``layout`` the tile at ``pos`` (placement order, featured first) gets - the
+    arithmetic of the CSS grid below."""
+    g = GAP
+    col = lambda n, gaps=None: (GRID_W - g * (n - 1)) / n  # noqa: E731
+    half = (GRID_H - g) / 2
+    if layout == "two":
+        return col(2), GRID_H
+    if layout == "three":
+        return col(3), GRID_H
+    if layout == "quad":
+        return col(2), half
+    if layout == "six":
+        return col(3), half
+    if layout == "five":  # two cells of three of six columns, then three of two
+        c6 = col(6)
+        return (3 * c6 + 2 * g if pos < 2 else 2 * c6 + g), half
+    if layout == "feature3":
+        unit = (GRID_W - g) / 2.4
+        return (1.4 * unit, GRID_H) if featured else (unit, half)
+    if layout == "feature4":
+        unit = (GRID_W - g) / 2.4
+        return (1.4 * unit, GRID_H) if featured else (unit, (GRID_H - 2 * g) / 3)
+    if layout == "feature5":
+        unit = (GRID_H - g) / 2.1
+        return (GRID_W, 1.1 * unit) if featured else (col(4), unit)
+    raise ValueError(layout)
+
+
+def _lines(text: str, px: float, width: float, em: float = 0.56) -> int:
+    per = max(int(width / (px * em)), 1)
+    return -(-len(text) // per)
+
+
+def _cell(t: Dict[str, Any], k: int, featured: bool, box: Tuple[float, float]) -> str:
     wt = _wt()
+    low = box[1] < 200
+    pad_y, pad_x = (16, 24) if low else (28, 32)
+    iw, ih = box[0] - 2 * pad_x, box[1] - 2 * pad_y
+    lbl_px = 22 if low else 24
     cls = "t r" + (" feat" if featured else "")
+    label_h = 0 if t["kind"] == "statement" else _lines(t["label"], lbl_px, iw, 0.6) * lbl_px * 1.3 + 8
     if t["kind"] == "number":
-        body = f'<div class="num">{wt._fmt(t["value"], t["decimals"], "en")}{wt._e(t["unit"])}</div>'
+        text = f'{wt._fmt(t["value"], t["decimals"], "en")}{t["unit"] or ""}'
+        fs = min(132 if featured else 84, iw / (max(len(text), 1) * 0.6), (ih - label_h - 8) / 1.2)
+        body = f'<div class="num" style="font-size:{max(fs, 24):.0f}px">{wt._e(text)}</div>'
     elif t["kind"] == "statement":
-        body = f'<p class="stmt">{wt._e(t["text"])}</p>'
+        fs = 46 if featured else 32
+        while fs > 18 and _lines(t["text"], fs, iw, 0.6) * fs * 1.25 > ih:
+            fs -= 2
+        body = f'<p class="stmt" style="font-size:{fs}px">{wt._e(t["text"])}</p>'
     elif t["kind"] == "icon":
-        body = (f'<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">'
+        size = max(min(72 if featured else 56, ih - label_h - 8), 28)
+        body = (f'<svg class="ico" style="width:{size:.0f}px;height:{size:.0f}px" viewBox="0 0 24 24" aria-hidden="true">'
                 f'<path d="{ICONS[t["name"]]}"/></svg>')
     else:
-        body = (f'<svg class="spk" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true">'
-                f'<path d="{_spark(t["values"])}"/></svg>')
-    label = "" if t["kind"] == "statement" else f'<div class="lbl">{wt._e(t["label"])}</div>'
-    return f'<div class="{cls}" style="--i:{2 + k}">{body}{label}</div>'
+        h = max(min(ih - label_h - 8, 220 if featured else 120), 24)
+        body = (f'<svg class="spk" style="height:{h:.0f}px" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true">'
+                f'<path vector-effect="non-scaling-stroke" d="{_spark(t["values"])}"/></svg>')
+    label = "" if t["kind"] == "statement" else f'<div class="lbl" style="font-size:{lbl_px}px">{wt._e(t["label"])}</div>'
+    return f'<div class="{cls}" style="--i:{2 + k};padding:{pad_y}px {pad_x}px">{body}{label}</div>'
 
 
 def build(d: Dict[str, Any]) -> str:
@@ -134,14 +193,15 @@ def build(d: Dict[str, Any]) -> str:
     tiles = d["tiles"]
     feat = d.get("featured")
     order = [feat] + [k for k in range(len(tiles)) if k != feat] if feat is not None else list(range(len(tiles)))
-    cells = "".join(_cell(tiles[k], k, k == feat) for k in order)
-    return f'<div class="frame">{wt._header(d)}<div class="bento {d["layout"]}">{cells}</div></div>'
+    layout = layout_of(d)
+    cells = "".join(_cell(tiles[k], k, k == feat, cell_box(layout, k == feat, pos)) for pos, k in enumerate(order))
+    return f'<div class="frame">{wt._header(d)}<div class="bento {layout_of(d)}">{cells}</div></div>'
 
 
 CSS = """
-.bento { display: grid; gap: 24px; width: 100%; flex: 1; min-height: 0; }
-.bento > .t { display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0;
-  padding: 28px 32px; border-radius: 18px; background: var(--bg-card); }
+.bento { display: grid; gap: 24px; width: 1580px; height: 600px; flex: none; margin-top: 40px; }
+.bento > .t { display: flex; flex-direction: column; justify-content: center; gap: 8px; min-height: 0; min-width: 0;
+  border-radius: 18px; background: var(--bg-card); }
 .bento.two { grid-template-columns: 1fr 1fr; }
 .bento.three { grid-template-columns: 1fr 1fr 1fr; }
 .bento.quad { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
@@ -155,12 +215,12 @@ CSS = """
 .bento.feature4 > .feat { grid-row: 1 / 4; }
 .bento.feature5 { grid-template-columns: repeat(4, 1fr); grid-template-rows: 1.1fr 1fr; }
 .bento.feature5 > .feat { grid-column: 1 / 5; }
-.bento .num { font-family: var(--font-heading); font-size: 84px; line-height: 1; color: var(--accent); }
+.bento .num { font-family: var(--font-heading); font-size: 84px; line-height: 1.2; color: var(--accent); }
 .bento .feat .num { font-size: 132px; }
 .bento .stmt { margin: 0; font-size: 32px; line-height: 1.25; }
 .bento .feat .stmt { font-size: 46px; }
 .bento .ico { width: 56px; height: 56px; fill: none; stroke: var(--accent); stroke-width: 1.6;
   stroke-linecap: round; stroke-linejoin: round; }
-.bento .spk { width: 100%; height: 110px; fill: none; stroke: var(--accent); stroke-width: 3; }
-.bento .lbl { font-size: 24px; opacity: .8; }
+.bento .spk { width: 100%; fill: none; stroke: var(--accent); stroke-width: 3; }
+.bento .lbl { opacity: .8; line-height: 1.3; }
 """

@@ -1561,7 +1561,13 @@ def _style_wordmark(style: Any) -> str:
 
 
 def _style_css(style: Any) -> str:
-    return ".credit{font-size:18px;opacity:.7}"
+    css = ".credit{font-size:18px;opacity:.7}"
+    if style.tokens["typography"]["heading_family"] != "Newsreader":
+        # the Corvin look sets its display type tight (line-height 1.02) in a serif whose text box is no taller than the
+        # line; a sans heading from an imported style has a taller text box, so the title and its accent line overlapped
+        # and the title slide was replaced by a quote (measured with the Penpot style: 1.25 is the smallest that clears)
+        css += ".display{line-height:1.25}"
+    return css
 
 
 INTRO_MARK_PX = 150
