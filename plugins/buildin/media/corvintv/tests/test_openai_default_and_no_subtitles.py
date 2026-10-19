@@ -55,12 +55,13 @@ def install_fake_openai(monkeypatch, fail=None, calls=None):
 
 # ── defaults ──
 
-def test_openai_is_the_default_engine_everywhere():
+def test_the_chain_with_openai_first_is_the_default_engine_everywhere():
     import inspect
-    assert skill.DEFAULT_TTS_ENGINE == "openai"
-    assert skill.SUPPORTED_TTS_ENGINES[0] == "openai"
-    assert inspect.signature(skill.orchestrate_video).parameters["tts_engine"].default == "openai"
-    # the host's entry point: a config without tts_engine reaches the orchestrator as "openai"
+    # 1.7.0: the default is the chain OpenAI -> edge-tts ("auto"); the strict single-tier "openai" stays selectable
+    assert skill.DEFAULT_TTS_ENGINE == "auto"
+    assert "openai" in skill.SUPPORTED_TTS_ENGINES and "auto" in skill.SUPPORTED_TTS_ENGINES
+    assert inspect.signature(skill.orchestrate_video).parameters["tts_engine"].default == "auto"
+    # the host's entry point: a config without tts_engine reaches the orchestrator as "auto"
     import asyncio
     seen = {}
 
@@ -74,7 +75,7 @@ def test_openai_is_the_default_engine_everywhere():
         asyncio.run(skill.start_video_production("job_x", "t", {"storage_base": "/nonexistent"}))
     finally:
         skill.orchestrate_video = real
-    assert seen["tts_engine"] == "openai"
+    assert seen["tts_engine"] == "auto"
 
 
 # ── strict engine ──
@@ -129,7 +130,7 @@ STORYBOARD = {"id": "sb1", "scenes": [
 
 
 @pytest.mark.e2e
-async def test_default_job_speaks_with_openai_and_produces_no_subtitles(tmp_path, monkeypatch):
+async def test_default_job_speaks_with_openai_first_and_produces_no_subtitles(tmp_path, monkeypatch):
     if shutil.which("ffmpeg") is None:
         pytest.skip("ffmpeg missing")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key-1234567890")
@@ -141,7 +142,7 @@ async def test_default_job_speaks_with_openai_and_produces_no_subtitles(tmp_path
     # exactly what the console passes when the operator never touched the settings
     result = await skill.start_video_production("job_oa", "t", {"storage_base": base, "max_duration_minutes": 3, "storyboard": STORYBOARD})
 
-    assert result["metadata"]["tts_engine"] == "openai" and result["metadata"]["tts_provider_used"] == "openai"
+    assert result["metadata"]["tts_engine"] == "auto" and result["metadata"]["tts_provider_used"] == "openai"
     spoken = [c["input"] for c in calls if "input" in c]
     assert spoken == [s["narration_text"] for s in STORYBOARD["scenes"]]
     assert all(c["voice"] == "onyx" and c["model"] == "tts-1-hd" for c in calls if "model" in c)
@@ -155,13 +156,14 @@ async def test_default_job_speaks_with_openai_and_produces_no_subtitles(tmp_path
 
 
 @pytest.mark.e2e
-async def test_openai_failure_fails_the_job_it_does_not_change_the_narrator(tmp_path, monkeypatch):
+async def test_strict_openai_engine_failure_fails_the_job_it_does_not_change_the_narrator(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key-1234567890")
     install_fake_openai(monkeypatch, fail=RuntimeError("429 insufficient_quota"))
     base = str(tmp_path / "t"); Path(base).mkdir()
     get_storage(base).save_job(VideoJob(id="job_fail", task="t"))
     with pytest.raises(RuntimeError, match="OpenAI TTS failed"):
-        await skill.start_video_production("job_fail", "t", {"storage_base": base, "max_duration_minutes": 3, "storyboard": STORYBOARD})
+        await skill.start_video_production("job_fail", "t", {"storage_base": base, "max_duration_minutes": 3, "storyboard": STORYBOARD,
+                                                         "tts_engine": "openai"})  # the strict single-tier engine
     job = get_storage(base).get_job("job_fail")
     assert job.status == "error" and "insufficient_quota" in job.error_message
     assert not (Path(base) / "videos" / "job_fail" / "output.mp4").exists()

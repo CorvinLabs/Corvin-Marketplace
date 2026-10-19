@@ -164,7 +164,7 @@ def run_orchestrate(tmp_path, monkeypatch):
 
     monkeypatch.setattr(skill, "_synthesize_narration_openai", fake_tts)
 
-    def run(scenes, spies_for=(), replace=None):
+    def run(scenes, spies_for=(), replace=None, tts_engine="openai"):
         spies = {}
         for name, fn in (replace or {}).items():  # stands in for the edge; the call is still recorded
             spies[name] = []
@@ -187,7 +187,7 @@ def run_orchestrate(tmp_path, monkeypatch):
         base = str(tmp_path / "store")
         get_storage(base).save_job(VideoJob(id="job_callsite", task="t", status="pending"))
         result = asyncio.run(skill.orchestrate_video(
-            job_id="job_callsite", task="t", storage_base=base, web_slides=False,
+            job_id="job_callsite", task="t", storage_base=base, web_slides=False, tts_engine=tts_engine,
             storyboard={"id": "sb_callsite", "didactic_strategy": "rich_visual", "scenes": scenes}))
         return result, spies
 

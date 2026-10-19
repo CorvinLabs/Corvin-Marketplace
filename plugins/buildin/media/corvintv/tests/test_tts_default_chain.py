@@ -144,3 +144,22 @@ def test_live_no_openai_key_at_all_goes_straight_to_edge(tmp_path, monkeypatch):
     out = tmp_path / "edge_nokey.mp3"
     assert skill._synthesize_narration_chain(SENTENCE, out, "de") == "edge"
     assert out.stat().st_size > 2000 and _duration(out) > 1.0
+
+
+def test_a_failing_openai_call_inside_orchestrate_falls_back_and_is_reported_per_scene(run_orchestrate, monkeypatch):
+    """Regression (1.7.0 release gate): the OpenAI tier noted its degradation without a scene index, the report refused
+    it and the whole job died instead of falling to edge-tts. Real chain code, real report, the OpenAI call fails
+    (429) and the second tier is the offline mock: the video is complete and every scene says it was spoken by edge."""
+    monkeypatch.setenv("CORVIN_TTS_OPENAI_KEY", "sk-not-a-real-key-for-the-fallback-test")
+
+    def openai_429(text, out_path, api_key):
+        raise RuntimeError("429 insufficient_quota")
+
+    monkeypatch.setattr(skill, "_openai_speech", openai_429)
+    monkeypatch.setattr(skill, "_TTS_CHAIN", (("openai", skill._tts_tier_openai), ("edge", skill._tts_tier_mock)))
+    scenes = [{"id": f"s{i}", "kind": "example", "duration_ms": 6000, "narration_text": "Ein kurzer Satz.",
+               "visual_description": "d"} for i in (1, 2)]
+    result, _ = run_orchestrate(scenes, tts_engine="auto")
+    assert result["metadata"]["tts_provider_used"] == "edge"  # the second tier of the chain (here the offline stand-in)
+    report = json.loads((Path(result["video_path"]).parent / "report.json").read_text())
+    assert [d["scene"] for d in report["degradations"] if d["kind"] == "tts_tier_below"] == [1, 2]

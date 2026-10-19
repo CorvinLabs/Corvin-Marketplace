@@ -30,6 +30,11 @@ GROUNDED_TEMPLATE_GUIDE = """- "console_still": {"eyebrow"?, "title", "asset", "
               {assets}. You cannot see the images: callouts and zoom may only name a listed spot of that asset;
               the label names what the narration talks about, max 32 characters; "mark": "circle"|"underline"
               lets a pen draw that mark on the spot when its callout appears - use it for the one thing to look at)
+- "bento": {"eyebrow"?, "title"?, "tiles": [2-6 tiles], "featured"?: index} (a grid of tiles, ADR-2260; each tile is
+              {"kind":"number","value","decimals"?,"unit"?,"label"} | {"kind":"statement","text"} |
+              {"kind":"icon","name": one of check|shield|bolt|chart|lock|users|cloud,"label"} |
+              {"kind":"spark","values": [3-12 numbers],"label"}; "featured" only with 3, 4 or 5 tiles; only numbers
+              that SOURCES or the task state; the narration names each tile in the order the tiles are listed)
 - Optional per scene: "map": {"focus": "channels"|"agents"|"engines"|"compute"|"data"|"audit"} — a small
   "you are here" strip of Corvin's layers (Channels, Agents, Engines, Pipelines & Compute, Data, Audit & Compliance)
   with the focus layer lit; use it when the video moves between layers.
@@ -79,7 +84,7 @@ def build_sources_block(pack_text: str, assets: Dict[str, str], task: str = "") 
         "- Pick the visual by the kind of knowledge: a layered structure -> \"layers\"; data or control flow -> "
         "\"flow\" or \"diagram\"; a lifecycle or loop -> \"cycle\" or \"timeline\"; alternatives -> \"compare\"; "
         "a code fact -> \"code\" with at most 8 lines taken verbatim from SOURCES; the real console -> "
-        "\"console_still\". Use \"content\" (bullets) at most once.\n"
+        "\"console_still\"; several parallel facts side by side (2-6) -> \"bento\". Use \"content\" (bullets) at most once.\n"
         + _length_rule(task) +
         "\nAdditional web-slide templates for this video:\n"
         + GROUNDED_TEMPLATE_GUIDE.replace("{assets}", asset_list)
@@ -241,6 +246,8 @@ def repair_grounded_scenes(
     call_llm: Callable[[str], str],
     validate_storyboard: Callable[[Dict[str, Any]], bool],
     validate_scene: Callable[[Dict[str, Any]], bool],
+    *,
+    strict: bool = False,
 ) -> int:
     """One repair round for the failing scenes; mutates ``storyboard_json`` in place.
 
@@ -260,6 +267,9 @@ def repair_grounded_scenes(
         "before).\n"
         + build_sources_block(pack_text, assets)
         + "\nSCENES TO FIX (JSON):\n" + json.dumps(failing, ensure_ascii=False)
+        + ("\nThis is the SECOND attempt: the first rewrite still contained unsupported details or swapped one "
+           "for another. Delete each listed detail from narration_text AND from every field of data; do NOT "
+           "replace it with a different number, name or path - rephrase the sentence without it.\n" if strict else "")
         + "\nUNSUPPORTED DETAILS PER SCENE:\n" + json.dumps(notes, ensure_ascii=False)
         + '\n\nReturn ONLY JSON: {"scenes": [{"id": "...", "narration_text": "...", "visual_description": "...", '
         '"template": "...", "data": {...}, "map": {...}}]}'

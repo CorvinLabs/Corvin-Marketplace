@@ -29,11 +29,11 @@ class TestPluginManifest:
         """Plugin ID must follow naming convention."""
         plugin_id = plugin_manifest["id"]
         assert plugin_id.startswith("plugin:"), f"ID must start with 'plugin:': {plugin_id}"
-        assert "contributor" in plugin_id, f"ID must contain 'contributor': {plugin_id}"
+        assert plugin_id == "plugin:buildin-media-corvintv", plugin_id
 
-    def test_manifest_tier_is_contributor(self, plugin_manifest):
-        """Plugin must be contributor tier."""
-        assert plugin_manifest["tier"] == "contributor", "Video Producer must be contributor tier"
+    def test_manifest_tier_is_buildin(self, plugin_manifest):
+        """CorvinTV is a first-party plugin of the buildin tier (installed and enabled by boot, like the Knowledge Graph)."""
+        assert plugin_manifest["tier"] == "buildin", "CorvinTV must be buildin tier"
 
     def test_manifest_boot_layer_is_installed(self, plugin_manifest):
         """Plugin boot_layer must be 'installed' (not 'bundled' or 'core')."""
@@ -117,7 +117,7 @@ class TestPluginStructure:
 class TestPluginIntegration:
     """Test plugin integration readiness."""
 
-    def test_plugin_tier_is_community(self, plugin_manifest):
-        """Verify plugin is community/contributor tier (not vetted/builtin)."""
-        assert plugin_manifest["tier"] == "contributor"
-        assert plugin_manifest["sla_level"] == "contributor"
+    def test_plugin_tier_is_first_party(self, plugin_manifest):
+        """Verify plugin is first-party: buildin tier, buildin SLA."""
+        assert plugin_manifest["tier"] == "buildin"
+        assert plugin_manifest["sla_level"] == "buildin"

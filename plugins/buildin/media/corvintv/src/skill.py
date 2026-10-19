@@ -656,23 +656,17 @@ def _tts_tier_openai(text: str, out_path: Path, lang: str) -> bool:
         # Classify the error for better logging and fallback messaging
         if "401" in error_msg or "Unauthorized" in error_msg:
             logger.warning("tts chain: openai authentication failed (invalid key), falling back to edge-tts")
-            rp.note_degradation("tts_tier_below", tier="openai", reason="auth_failed")
         elif "429" in error_msg or "rate_limit" in error_msg.lower():
             logger.warning("tts chain: openai rate limit exceeded, falling back to edge-tts")
-            rp.note_degradation("tts_tier_below", tier="openai", reason="rate_limit")
         elif "quota" in error_msg.lower():
             logger.warning("tts chain: openai quota exceeded, falling back to edge-tts")
-            rp.note_degradation("tts_tier_below", tier="openai", reason="quota_exceeded")
         elif "timeout" in error_msg.lower() or "deadline" in error_msg.lower():
             logger.warning("tts chain: openai call timed out, falling back to edge-tts")
-            rp.note_degradation("tts_tier_below", tier="openai", reason="timeout")
         elif "connection" in error_msg.lower() or "network" in error_msg.lower():
             logger.warning("tts chain: openai network error, falling back to edge-tts")
-            rp.note_degradation("tts_tier_below", tier="openai", reason="network_error")
         else:
             logger.warning("tts chain: openai tier declined (%s: %s), falling back to edge-tts",
                           error_type, error_msg)
-            rp.note_degradation("tts_tier_below", tier="openai", reason="api_error")
 
         return False
 
@@ -712,17 +706,14 @@ def _tts_tier_edge(text: str, out_path: Path, lang: str) -> bool:
         return out_path.exists() and out_path.stat().st_size > 0
     except asyncio.TimeoutError:
         logger.warning("tts chain: edge-tts call timed out, no further tier")
-        rp.note_degradation("tts_tier_below", tier="edge", reason="timeout")
         return False
     except Exception as e:  # noqa: BLE001
         error_msg = str(e).lower()
         if "connection" in error_msg or "network" in error_msg:
             logger.warning("tts chain: edge-tts network error, no further tier")
-            rp.note_degradation("tts_tier_below", tier="edge", reason="network_error")
         else:
             logger.warning("tts chain: edge-tts tier declined (%s: %s), no further tier",
                           type(e).__name__, e)
-            rp.note_degradation("tts_tier_below", tier="edge", reason="api_error")
         return False
 
 
