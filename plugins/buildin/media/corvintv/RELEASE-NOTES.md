@@ -1,9 +1,31 @@
-# Video Producer Plugin — Release Notes
+# CorvinTV (formerly Video Producer) — Release Notes
 
-## Unreleased — composed scenes: board and bento (ADR-2260)
+## 1.7.0 — CorvinTV: first-party plugin, OpenAI first and edge-tts second, board and bento (ADR-2267, ADR-2260)
 
-**Proposed version: 1.7.0.** Not bumped: `plugin.json` and `setup.py` stay at 1.6.0 until the operator agrees.
+**The Video Producer is now called CorvinTV.** It is a first-party plugin of the marketplace's `buildin` tier and a
+fresh CorvinOS installation installs **and enables** it (and the Knowledge Graph) at first boot, with no operator step.
+**No "production ready" claim:** the ready gate (ADR-2247) has not reported a full pass; what is measured is in the gate
+rows and below.
 
+What changed for you:
+- **Name and place.** Display name, sidebar entry and marketplace listing say CorvinTV; the listing moved from
+  `contributor/media/video_producer` to `buildin/media/corvintv` (index id `plugin:buildin-media-corvintv`). **Nothing
+  you built on breaks:** the registry id (`video_producer`), the console API (`/v1/console/video/...`), the panel route
+  (`/video-producer`), your data folder and every audit event name are unchanged. An install that still carries the
+  1.6 record is upgraded at the next boot and enabled; an operator who had uninstalled it keeps it uninstalled.
+- **Narration is OpenAI first, edge-tts second - by default.** `tts_engine: auto` is the default. Each scene is spoken
+  by OpenAI TTS; when OpenAI declines (no key, an invalid or exhausted key, a rate limit, a timeout) that scene is spoken
+  by edge-tts and the job report records `tts_tier_below`. If both decline the job fails with a named error - never a
+  silent video. `openai` stays selectable and means OpenAI only. **Piper is gone** (its quality was too poor).
+  Measured against the real services: OpenAI speaks; a fake key is answered `401` by OpenAI and edge-tts takes over;
+  without a key edge-tts speaks (`tests/test_tts_default_chain.py`, opt-in `CORVIN_LIVE_TTS=1`).
+- **The manifest now tells the truth.** It declared Google's translate host while the code talks to OpenAI and Microsoft.
+  Declared egress is now `api.openai.com`, `speech.platform.bing.com`, `api.anthropic.com` (optional storyboard backend)
+  and `translate.google.com` (only the legacy `gtts` engine), `pii_risk: medium` (the narration text, derived from your
+  task, goes to the narration host; never your files). Each host is still gated per job by the console's L34/L35 checks;
+  nothing is contacted at boot.
+- **Dependencies.** `edge-tts` needs 7.3.1 or newer (older releases get HTTP 403 from Microsoft); `setup.py` now lists
+  `openai` and `edge-tts`. `piper-tts` is no longer required.
 - **`board`** - an imported Penpot design revealed step by step while the narration speaks. The import now stores the
   validated design beside its picture (`design.json`, re-validated on every load); the steps are assigned by hand in the
   console (**Assets → Board steps**). Only designs with saved steps are offered to the storyboard. A board that cannot be
@@ -11,12 +33,19 @@
   worst allowed design renders within twice the median frame time. Automatic step grouping is **not** included: its
   measurement (S1) needs real boards and their intended steps from their owner.
 - **`bento`** - a grid of two to six tiles (number, statement, icon, small trend line) laid out from a fixed table; no
-  coordinates. Numbers on bento tiles are checked against the sources like `chart`/`stat`.
+  coordinates. Fixed before release (found by a seven-scene end-to-end tech demo, `tests/test_penpot_techdemo_e2e.py`):
+  a bento scene used to fall back to the classic slide because its validated data did not survive the job's second
+  validation; ten of 32 worst-case layouts overflowed into the title (`tests/test_bento_layout.py` now holds every
+  layout to the browser); and with an imported (sans-serif) style the title slide's two lines overlapped.
 - Ready gate: rows for board determinism and bounds, the bento matrix, the console board routes, and `board_fallback`
   (zero `board_to_still` on the release corpus).
-- Figma: an SVG export goes through the same importer but is unverified (no real Figma export in the tests).
+- Figma: an SVG export goes through the same importer but is **unverified** (no real Figma export in the tests).
 
-## Unreleased — fewer dead stretches in the slides (ADR-2245 / ADR-2247 still_time)
+Known limits: the ready gate has not given a full verdict (`still_time` was the last open row); the hand-assigned board
+steps have no automatic grouping; `security_audit` is `audited: false` (internal adversarial reviews only, no formal
+audit).
+
+## 1.7.0 (also) — fewer dead stretches in the slides (ADR-2245 / ADR-2247 still_time)
 
 Measured on the 9-video gate corpus (79 scenes, silent mock voice, same `still_time` function the gate uses): dead share
 26.0 % -> 14.4 %, scenes with a stretch over 8 s 14 -> 4. Three changes:
