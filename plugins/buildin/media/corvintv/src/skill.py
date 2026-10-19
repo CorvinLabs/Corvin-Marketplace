@@ -256,7 +256,7 @@ Templates and their data (plain text only, never HTML; keep texts short):
              (a stack, first = top: architecture layers, tiers)
 - "bento":   {"eyebrow"?, "title"?, "tiles": [2-6 tiles], "featured"?: index}
              (a grid of tiles; tile kinds: {"kind":"number","value","decimals"?,"unit"?,"label"},
-              {"kind":"statement","text"}, {"kind":"icon","name": one of check|shield|bolt|chart|lock|users|cloud,"label"},
+              {"kind":"statement","text"}, {"kind":"icon","name": one of check|shield|bolt|chart|lock|users|cloud|chain|magnifier|document|warning|arrow|loop,"label"},
               {"kind":"spark","values": [3-12 numbers],"label"}; "featured" only with 3, 4 or 5 tiles;
               only real numbers from the task)
 - "timeline": {"eyebrow"?, "title", "events": [2-6 {"when", "label", "sub"?}], "current"?: index}

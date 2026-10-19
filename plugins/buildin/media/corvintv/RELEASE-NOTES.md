@@ -37,6 +37,8 @@ What changed for you:
   a bento scene used to fall back to the classic slide because its validated data did not survive the job's second
   validation; ten of 32 worst-case layouts overflowed into the title (`tests/test_bento_layout.py` now holds every
   layout to the browser); and with an imported (sans-serif) style the title slide's two lines overlapped.
+  The icon tile now draws every icon of the classic slide set (check, shield, chain, magnifier, document, warning, arrow,
+  loop) plus bolt, chart, lock, users and cloud - 13 in all (`tests/test_bento_dod.py`).
 - Ready gate: rows for board determinism and bounds, the bento matrix, the console board routes, and `board_fallback`
   (zero `board_to_still` on the release corpus).
 - Figma: an SVG export goes through the same importer but is **unverified** (no real Figma export in the tests).

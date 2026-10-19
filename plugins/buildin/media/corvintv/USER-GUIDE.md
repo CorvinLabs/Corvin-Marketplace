@@ -252,7 +252,7 @@ When your video is ready, you get:
 - **Task description:** up to 4000 characters
 - **Rendering time:** measured on the development host, roughly 1.5 times the video length plus narration time; it runs in the background
 - **Template options:** 19 slide templates (you can't customize them, but AI picks the best one per scene), among them
-  `bento` - a grid of two to six tiles (a number, a statement, an icon or a small trend line), laid out from a fixed
+  `bento` - a grid of two to six tiles (a number, a statement, an icon - one of 13: check, shield, bolt, chart, lock, users, cloud, chain, magnifier, document, warning, arrow, loop - or a small trend line), laid out from a fixed
   table, never placed by coordinates - and `board` for your own imported designs (Step 6c). What the narration names appears at that moment and is highlighted while it is explained.
 
 ---

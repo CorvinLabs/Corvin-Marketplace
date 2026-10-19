@@ -161,11 +161,40 @@ def _frame(video, t, out):
     return Image.open(out).convert("RGB")
 
 
-def _ink(img):
-    """Bright pixels in the grid area (below the header), against the slide's own background."""
-    small = img.crop((0, 300, 1920, 1080)).resize((480, 195)).convert("L")
-    bg = small.getpixel((2, 2))
-    return sum(abs(p - bg) > 40 for p in small.getdata())
+async def _tile_rects(data, theme="dark"):
+    """Pixel rectangles of the tiles (data order, featured placed first by the layout) from the real layout in Chromium."""
+    from playwright.async_api import async_playwright
+    doc = build_document("bento", data, duration_s=12, theme=theme)
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await (await browser.new_context(viewport={"width": 1920, "height": 1080})).new_page()
+        await page.set_content(doc)
+        rects = await page.evaluate("""() => [...document.querySelectorAll('.bento .t')].map(e => {
+            const r = e.getBoundingClientRect(); return {i: +getComputedStyle(e).getPropertyValue('--i') - 2,
+                                                         x: r.x, y: r.y, w: r.width, h: r.height}; })""")
+        await browser.close()
+    return {r["i"]: (r["x"], r["y"], r["w"], r["h"]) for r in rects}
+
+
+def _tile_ink(img, rect):
+    """Pixels inside the tile's rectangle that differ from the slide background (the tile's card and content)."""
+    x, y, w, h = rect
+    bg = img.getpixel((3, 3))
+    crop = img.crop((int(x) + 4, int(y) + 4, int(x + w) - 4, int(y + h) - 4)).resize((max(int(w) // 4, 1), max(int(h) // 4, 1)))
+    return sum(max(abs(c[i] - bg[i]) for i in range(3)) > 24 for c in crop.getdata())
+
+
+async def _assert_tiles_reveal_in(video, start, cue_at, rects, order, tmp_path):
+    """``order`` = tile indices in the order they must appear; ``cue_at[k]`` the cue time of tile k. At each cue time the
+    tile's own area goes from (almost) empty to filled, and a tile whose cue is later is still empty at that moment."""
+    for pos, k in enumerate(order):
+        t = start + cue_at[k]
+        before = _tile_ink(_frame(video, t - 0.3, tmp_path / f"b{pos}.png"), rects[k])
+        after = _tile_ink(_frame(video, t + 1.2, tmp_path / f"a{pos}.png"), rects[k])
+        assert after > 40 and before < after * 0.2, f"tile {k} was not revealed at its cue: ink {before} -> {after}"
+        for later in order[pos + 1:]:
+            ahead = _tile_ink(_frame(video, t + 0.9, tmp_path / f"c{pos}_{later}.png"), rects[later])
+            assert ahead < 0.2 * max(after, 40), f"tile {later} (cue {cue_at[later]:.1f}s) showed at {cue_at[k]:.1f}s: ink {ahead}"
 
 
 async def test_the_mp4_shows_tile_n_and_not_yet_tile_n_plus_one_at_the_cues(store, tmp_path):  # noqa: F811
@@ -179,16 +208,8 @@ async def test_the_mp4_shows_tile_n_and_not_yet_tile_n_plus_one_at_the_cues(stor
     ats = [it["at"] for it in md["cues"][1]["items"]]
     assert len(ats) == 4 and all(a is not None for a in ats) and ats == sorted(ats)
     assert all(b - a > 1.0 for a, b in zip(ats, ats[1:])), ats          # far enough apart to sample between them
-
-    ink_after = [_ink(_frame(video, start + a + 0.9, tmp_path / f"after{k}.png")) for k, a in enumerate(ats)]
-    ink_before = [_ink(_frame(video, start + a - 0.3, tmp_path / f"before{k}.png")) for k, a in enumerate(ats)]
-    for k in range(4):
-        assert ink_after[k] > ink_before[k] + 20, f"tile {k} did not appear at its cue: {ink_before} -> {ink_after}"
-    for k in range(1, 4):
-        # nothing of tile k is on screen yet while tile k-1 is settled: the frame just before the cue is no fuller than
-        # the settled frame of the tile before it
-        assert ink_before[k] <= ink_after[k - 1] + 20, f"tile {k} showed before its cue: {ink_after} / {ink_before}"
-    assert ink_after == sorted(ink_after)
+    rects = await _tile_rects(validate_scene_data("bento", BENTO["data"]))
+    await _assert_tiles_reveal_in(video, start, ats, rects, [0, 1, 2, 3], tmp_path)
 
 
 # ── the hardened XML parser: an ENTITY without a DOCTYPE ───────────────────────────────────────────────────────────────
@@ -197,3 +218,57 @@ def test_an_entity_declaration_without_a_doctype_is_refused():
     raw = (b'<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><!ENTITY a "b"><rect width="4" height="4"/></svg>')
     with pytest.raises(pi.PenpotImportError, match="document type"):
         pi.parse_design(raw)
+
+
+# ── "icon (the existing set)": every icon the classic slide set draws is a bento icon ───────────────────────────────────
+
+def test_every_icon_of_the_classic_slide_set_is_a_bento_icon_and_the_guides_list_exactly_the_set():
+    from src import bento as bento_mod
+    from src import grounded_storyboard as gs
+    from src import skill as skill_mod
+    classic = set(skill_mod._ICON_KEYWORDS.values())
+    assert classic <= set(bento_mod.ICONS), classic - set(bento_mod.ICONS)
+    listed = "|".join(bento_mod.ICONS)
+    assert f"one of {listed}," in skill_mod._TEMPLATE_GUIDE
+    assert f"one of {listed}," in gs.GROUNDED_TEMPLATE_GUIDE
+
+
+@pytest.mark.parametrize("name", sorted(__import__("src.bento", fromlist=["ICONS"]).ICONS))
+def test_every_bento_icon_validates_and_draws_its_glyph(name):
+    from src import bento as bento_mod
+    data = validate_scene_data("bento", {"tiles": [{"kind": "icon", "name": name, "label": "x"}, STATEMENT]})
+    html = build_document("bento", data, duration_s=6)
+    assert f'd="{bento_mod.ICONS[name]}"' in html
+
+
+# ── without beats the narration decides: tiles appear in the order the narration NAMES them ─────────────────────────────
+
+NAMED_ORDER = ("First look at traffic, which keeps growing week by week. Then uptime, at ninety nine point nine percent. "
+               "After that tenants isolated, every single one. Last, Audit chain intact, verified every day.")
+
+
+async def test_without_beats_the_tiles_appear_in_the_order_the_narration_names_them(store, tmp_path):  # noqa: F811
+    import copy
+    scene = copy.deepcopy(BENTO)
+    scene.pop("beats")
+    scene["narration_text"] = NAMED_ORDER
+    result = await _run(store, "job_bento_named", storyboard={"id": "sb_named", "didactic_strategy": "rich_visual",
+                                                              "scenes": [HERO, scene]})
+    md = result["metadata"]
+    cue = md["cues"][1]
+    assert cue["beats_source"] == "fallback" and md["layout_collisions"] == []   # no beats were given: the narration drives
+    at = {it["label"]: it["at"] for it in cue["items"]}
+    expected = sorted(at, key=lambda lbl: NAMED_ORDER.lower().index(lbl.lower()))
+    assert expected == ["traffic", "uptime", "tenants isolated", "Audit chain intact"]    # differs from the data order
+    assert sorted(at, key=at.get) == expected, at
+    assert [lbl for lbl in at] != expected                                                # (so this is not the data order)
+
+    video = Path(result["video_path"])
+    report = json.loads((video.parent / "report.json").read_text())
+    start = float(report["scenes"][0]["audio_s"])
+    labels = ["uptime", "Audit chain intact", "tenants isolated", "traffic"]           # data order of BENTO's tiles
+    cue_at = [at[lbl] for lbl in labels]
+    assert all(b - a > 1.0 for a, b in zip(sorted(cue_at), sorted(cue_at)[1:])), cue_at
+    rects = await _tile_rects(validate_scene_data("bento", scene["data"]))
+    order = [labels.index(lbl) for lbl in expected]                                    # tile indices in narration order
+    await _assert_tiles_reveal_in(video, start, cue_at, rects, order, tmp_path)

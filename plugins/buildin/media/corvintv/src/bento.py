@@ -32,6 +32,14 @@ ICONS: Dict[str, str] = {
     "lock": "M6 11h12v9H6zM9 11V8a3 3 0 0 1 6 0v3",
     "users": "M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20c0-3.3 2.7-6 6-6s6 2.7 6 6",
     "cloud": "M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4 4 0 0 1 0 9z",
+    # the rest of the classic slide icon set (skill._ICON_KEYWORDS), so "icon from the existing set" holds for every
+    # name that set draws (ADR-2260 decision 5)
+    "chain": "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+    "magnifier": "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM16 16l5 5",
+    "document": "M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6",
+    "warning": "M12 3L2 20h20zM12 10v5M12 17.5v.5",
+    "arrow": "M4 12h15M13 6l6 6-6 6",
+    "loop": "M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5",
 }
 MAX_TILE_VALUE = 1e9
 

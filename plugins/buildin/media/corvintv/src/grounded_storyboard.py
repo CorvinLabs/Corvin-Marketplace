@@ -32,7 +32,7 @@ GROUNDED_TEMPLATE_GUIDE = """- "console_still": {"eyebrow"?, "title", "asset", "
               lets a pen draw that mark on the spot when its callout appears - use it for the one thing to look at)
 - "bento": {"eyebrow"?, "title"?, "tiles": [2-6 tiles], "featured"?: index} (a grid of tiles, ADR-2260; each tile is
               {"kind":"number","value","decimals"?,"unit"?,"label"} | {"kind":"statement","text"} |
-              {"kind":"icon","name": one of check|shield|bolt|chart|lock|users|cloud,"label"} |
+              {"kind":"icon","name": one of check|shield|bolt|chart|lock|users|cloud|chain|magnifier|document|warning|arrow|loop,"label"} |
               {"kind":"spark","values": [3-12 numbers],"label"}; "featured" only with 3, 4 or 5 tiles; only numbers
               that SOURCES or the task state; the narration names each tile in the order the tiles are listed)
 - Optional per scene: "map": {"focus": "channels"|"agents"|"engines"|"compute"|"data"|"audit"} — a small
