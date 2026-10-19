@@ -37,7 +37,8 @@ async def test_a_model_can_choose_bento_and_it_renders_as_a_web_scene(store, tmp
     assert md["storyboard_template_repairs"] == 0 and md["storyboard_template_warnings"] == []
     calls = [json.loads(line) for line in log.read_text().splitlines()]
     assert [c["repair"] for c in calls] == [False]          # no repair round was needed
-    assert '"bento"' in calls[0]["prompt"] or "bento" in calls[0]["prompt"]
+    # (the CLI stand-in logs only the tail of the prompt; that the guide offers bento is asserted in test_bento.py)
+    assert calls[0]["stdin_len"] > 1000 and not calls[0]["repair"]
 
 
 async def test_an_invalid_bento_is_repaired_once(store, tmp_path, monkeypatch):  # noqa: F811

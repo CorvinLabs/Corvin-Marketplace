@@ -146,7 +146,7 @@ def test_every_layout_renders_with_its_class():
 def test_storyboard_guide_offers_bento_and_the_registry_knows_it():
     assert "bento" in wt.TEMPLATES
     assert "bento" in skill_mod.TEMPLATES
-    assert '- "bento":' in skill_mod.__dict__.get("SCENE_GUIDE", "") or '- "bento":' in open(skill_mod.__file__, encoding="utf-8").read()
+    assert '- "bento":' in skill_mod._TEMPLATE_GUIDE      # the guide the storyboard model reads, not just any file text
 
 
 def test_normalised_data_validates_again_unchanged():
