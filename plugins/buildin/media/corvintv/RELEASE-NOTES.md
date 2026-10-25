@@ -1,5 +1,17 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## 1.7.1 — CorvinTV declares its learning loop (CorvinOS ADR-0906)
+
+`plugin.yaml` gains a `learning_loops:` entry, `scene_feedback`, owned by the skill `os.video_producer` under
+which the console records the operator's per-scene approvals and 1-5 ratings. CorvinOS validates the entry when
+the plugin is installed or updated and copies it onto the plugin's registry record; the Learning Loops panel then
+lists the loop and measures it from those events (executions and ratings of `os.video_producer`). Nothing about
+rendering, narration or the job runner changes in this release.
+
+An installed CorvinTV 1.7.0 gets the declaration through Update in the console's Plugins panel; the update keeps the
+settings and the enabled state. `tests/test_learning_loop_declaration.py` checks the entry against the schema
+CorvinOS enforces, because the host drops an invalid entry silently.
+
 ## 1.7.0 fixes (2026-10-19) — jobs on Windows and after a marketplace resync
 
 A 1.7.0 job on Windows ended "The job process ended unexpectedly (exit code 2)" or "[WinError 2] The system cannot

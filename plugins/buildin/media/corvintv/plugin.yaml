@@ -1,6 +1,6 @@
 plugin_id: video_producer
 plugin_type: web_surface
-version: 1.7.0
+version: 1.7.1
 display_name: CorvinTV
 description: "CorvinTV (formerly Video Producer): create narrated MP4s from a task description - LLM-written
   storyboard, narration by OpenAI TTS with edge-tts as the fallback, animated web slides, ffmpeg assembly.
