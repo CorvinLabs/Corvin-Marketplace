@@ -56,3 +56,17 @@ console_panel:
   group: marketplace
   element_kind: react-component
   component: VideoProducerPage
+# Learning loops this plugin contributes (CorvinOS ADR-0906). The operator's per-scene approvals and ratings are
+# learning events of the owner skill; the console measures this loop from those events and shows the
+# plugin's row on Learnings -> Learning Loops. The Learning tab of a finished video is where they are given.
+learning_loops:
+  - id: scene_feedback
+    description: Operator approvals and 1-5 ratings of produced scenes, read back as measured quality of the production variants
+    event_source: FeedbackEvent.quality_rating
+    feedback_types:
+      - outcome_feedback
+      - confidence_score
+    aggregation: rolling_mean_7d
+    health_threshold: null
+    dormancy_alert_hours: 168
+    owner_skill: os.video_producer
