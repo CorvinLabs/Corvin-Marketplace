@@ -11,7 +11,7 @@
 **Pipeline (all four steps happen automatically):**
 
 1. **Storyboard** → LLM writes scenes + narration text (Anthropic API by default; falls back to local Ollama if API forbidden by L35/L34 gates)
-2. **Narration** → each scene is spoken by OpenAI TTS (`tts-1-hd`, voice `onyx`); when OpenAI declines (no key, invalid or exhausted key, rate limit, timeout) that scene is spoken by edge-tts instead and the job records `tts_tier_below`. If both decline the job fails with a named error — there is never a silent video. This chain is the default (`tts_engine: "auto"`); `openai` means OpenAI only, without a fallback
+2. **Narration** → each scene is spoken by OpenAI TTS (`tts-1-hd`, voice `onyx`); when OpenAI declines (no key, invalid or exhausted key, rate limit, timeout) that scene is spoken by edge-tts instead and the job records `tts_tier_below`; if edge-tts declines too, gTTS (Google Translate voice, no key, needs network, the text goes to Google) is the last resort. If all decline the job fails with a named error — there is never a silent video. This chain is the default (`tts_engine: "auto"`); `openai` means OpenAI only, without a fallback
 3. **Slides** → Animated web slides in **corvin-labs.com design** with 19 built-in templates whose reveals and focus follow the narration sentence by sentence (deterministic Chromium rendering, ambient loops, monotone curves, DAG graphs); fallback to Pillow if Chromium unavailable
 4. **Assembly** → FFmpeg encodes MP4 at 1920×1080 / 30fps with audio synced to narration
 

@@ -619,7 +619,7 @@ def _synthesize_narration(text: str, out_path: Path, lang: str) -> None:
 
 
 # --------------------------------------------------------------------------
-# TTS fallback chain (ADR-2211): openai -> edge-tts. Piper is deliberately NOT a tier (operator decision 2026-10-17).
+# TTS fallback chain (ADR-2211): openai -> edge-tts -> gtts (last resort). Piper is deliberately NOT a tier (operator decision 2026-10-17).
 # Each tier returns True on success, False on "decline" (missing key/package,
 # network error, timeout) — a decline falls through to the next tier, it
 # never raises past the chain. "mock" is the only tier that cannot decline
@@ -719,6 +719,34 @@ def _tts_tier_edge(text: str, out_path: Path, lang: str) -> bool:
         return False
 
 
+# The host admits (or refuses) translate.google.com per job through its L35 egress gate and passes the answer in the
+# job config as ``tts_gtts_allowed``. A job runs in its own process, so one flag is enough; default True = standalone use.
+_GTTS_TIER_ALLOWED = True
+
+
+def _tts_tier_gtts(text: str, out_path: Path, lang: str) -> bool:
+    """Tier 3: gTTS (Google Translate public endpoint, no API key, needs network, one voice per language).
+
+    Last-resort voice so a host with neither an OpenAI key nor a working edge-tts still narrates.
+    The text goes to Google, which is why it ranks last. Declines (never raises) on a missing package,
+    network error or timeout; the chain then fails the job with NoVoiceAvailable.
+    """
+    if not _GTTS_TIER_ALLOWED:
+        logger.info("tts chain: gTTS skipped (translate.google.com is not admitted by the host's egress gate)")
+        return False
+    try:
+        import gtts  # noqa: F401
+    except ImportError:
+        logger.info("tts chain: gTTS package not installed, no further tier")
+        return False
+    try:
+        _synthesize_narration(text, out_path, lang)
+        return out_path.exists() and out_path.stat().st_size > 0
+    except Exception as e:  # noqa: BLE001 - any gTTS/network/timeout failure declines gracefully
+        logger.warning("tts chain: gTTS tier declined (%s: %s), no further tier", type(e).__name__, e)
+        return False
+
+
 def _tts_tier_mock(text: str, out_path: Path, lang: str) -> bool:
     """Test seam only (never in ``_TTS_CHAIN``): a silent placeholder WAV, duration estimated
     from text length (~150 words/minute), so an offline test drives the real pipeline."""
@@ -751,6 +779,7 @@ _TTS_CALL_TIMEOUT_S = 90
 _TTS_CHAIN = (
     ("openai", _tts_tier_openai),
     ("edge", _tts_tier_edge),
+    ("gtts", _tts_tier_gtts),
 )
 
 
@@ -765,8 +794,9 @@ def _synthesize_narration_chain(text: str, out_path: Path, lang: str) -> str:
     Fallback chain (graceful degradation):
     1. OpenAI TTS (if API key configured, best quality but needs Internet + API quota)
     2. Edge TTS (free Microsoft voices, needs Internet)
+    3. gTTS (Google Translate voice, no key, needs Internet; last resort, one voice per language)
 
-    Only these two engines narrate (operator decision 2026-10-17: no Piper). If both fail the job
+    Only these engines narrate (operator decision 2026-10-17: no Piper). If all fail the job
     raises NoVoiceAvailable. This should be rare:
     - No OpenAI key is OK (falls through to edge-tts)
     - An exhausted/invalid OpenAI key is OK (the tier declines, edge-tts takes over)
@@ -786,7 +816,8 @@ def _synthesize_narration_chain(text: str, out_path: Path, lang: str) -> str:
         "No narration voice is available. All TTS providers declined:\n"
         "  • OpenAI TTS: requires OPENAI_API_KEY or CORVIN_TTS_OPENAI_KEY (API error, timeout, auth failure, quota exceeded)\n"
         "  • Edge TTS: requires Internet connection (network timeout, API error)\n"
-        "To fix: check network connectivity and that edge-tts >= 7.3.1 is installed, or set an OpenAI TTS key."
+        "  • gTTS: requires Internet connection and the gTTS package\n"
+        "To fix: check network connectivity and that gTTS >= 2.5.0 or edge-tts >= 7.3.1 is installed, or set an OpenAI TTS key."
     )
 
 
@@ -2253,6 +2284,8 @@ async def start_video_production(
 
 
 async def _orchestrate_from_config(job_id: str, task: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    global _GTTS_TIER_ALLOWED
+    _GTTS_TIER_ALLOWED = bool(config.get("tts_gtts_allowed", True))
     return await orchestrate_video(
         job_id=job_id,
         task=task,

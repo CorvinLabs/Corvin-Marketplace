@@ -16,7 +16,7 @@ egress_hosts:
   - api.openai.com            # narration tier 1 (needs the operator's OpenAI key)
   - speech.platform.bing.com  # narration tier 2, edge-tts (Microsoft voices, no key)
   - api.anthropic.com         # optional storyboard backend
-  - translate.google.com      # only when tts_engine is set to the legacy "gtts"
+  - translate.google.com      # narration tier 3, gTTS (last resort in "auto"; the only tier when tts_engine is "gtts")
 pii_risk: medium   # the narration text (derived from the operator's task) goes to the TTS host; never the task's files
 requires_consent: false
 audit_required: true

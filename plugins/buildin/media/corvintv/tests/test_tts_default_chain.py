@@ -35,8 +35,8 @@ def test_the_default_engine_is_the_chain_everywhere_it_is_declared():
     assert "default: auto" in block.split("penpot_runtime:")[0]
 
 
-def test_the_chain_has_exactly_two_tiers_in_this_order_and_no_piper_anywhere():
-    assert [name for name, _ in skill._TTS_CHAIN] == ["openai", "edge"]
+def test_the_chain_has_exactly_three_tiers_in_this_order_and_no_piper_anywhere():
+    assert [name for name, _ in skill._TTS_CHAIN] == ["openai", "edge", "gtts"]
     for f in ("requirements.txt", "setup.py"):  # the dependency lines, not the comment that explains the removal
         code = "\n".join(line.split("#", 1)[0] for line in (PLUGIN / f).read_text().splitlines())
         assert "piper" not in code.lower(), f
@@ -47,9 +47,9 @@ def test_the_chain_has_exactly_two_tiers_in_this_order_and_no_piper_anywhere():
 
 def test_the_runtime_dependencies_of_both_tiers_are_declared_with_a_working_edge_floor():
     reqs = (PLUGIN / "requirements.txt").read_text()
-    assert "openai>=" in reqs and "edge-tts>=7.3.1" in reqs   # < 7.3.1 gets HTTP 403 from Microsoft
+    assert "openai>=" in reqs and "edge-tts>=7.3.1" in reqs and "gTTS>=2.5.0" in reqs   # < 7.3.1 gets HTTP 403 from Microsoft
     setup = (PLUGIN / "setup.py").read_text()
-    assert '"openai>=' in setup and '"edge-tts>=7.3.1"' in setup
+    assert '"openai>=' in setup and '"edge-tts>=7.3.1"' in setup and '"gTTS>=2.5.0"' in setup
 
 
 def test_the_declared_egress_hosts_are_the_hosts_a_job_can_really_reach():
@@ -89,6 +89,57 @@ async def test_a_job_started_without_a_tts_engine_runs_the_chain_and_falls_back_
     assert result["metadata"]["tts_engine"] == "auto"
     report = json.loads((Path(result["video_path"]).parent / "report.json").read_text())
     assert any(d["kind"] == "tts_tier_below" and d.get("tier") == "edge" for d in report["degradations"]), report["degradations"]
+
+
+# ── offline: the gTTS last-resort tier ──────────────────────────────────────
+
+def _fake_gtts(monkeypatch, calls):
+    import sys
+    import types
+
+    class FakeGTTS:
+        def __init__(self, text, lang, timeout):
+            calls.append((text, lang))
+
+        def save(self, path):
+            Path(path).write_bytes(b"ID3" + b"\0" * 4096)
+
+    monkeypatch.setitem(sys.modules, "gtts", types.SimpleNamespace(gTTS=FakeGTTS))
+
+
+def test_gtts_speaks_when_openai_and_edge_both_decline(tmp_path, monkeypatch):
+    calls = []
+    _fake_gtts(monkeypatch, calls)
+    monkeypatch.setattr(skill, "_GTTS_TIER_ALLOWED", True)
+    monkeypatch.setattr(skill, "_TTS_CHAIN", (("openai", lambda t, o, l: False), ("edge", lambda t, o, l: False),
+                                              ("gtts", skill._tts_tier_gtts)))
+    out = tmp_path / "n.mp3"
+    assert skill._synthesize_narration_chain("Hallo Welt.", out, "de") == "gtts"
+    assert calls == [("Hallo Welt.", "de")] and out.stat().st_size > 0
+
+
+def test_gtts_declines_when_the_host_does_not_admit_google_and_the_job_fails_loudly(tmp_path, monkeypatch):
+    calls = []
+    _fake_gtts(monkeypatch, calls)
+    monkeypatch.setattr(skill, "_GTTS_TIER_ALLOWED", False)
+    monkeypatch.setattr(skill, "_TTS_CHAIN", (("openai", lambda t, o, l: False), ("edge", lambda t, o, l: False),
+                                              ("gtts", skill._tts_tier_gtts)))
+    with pytest.raises(skill.NoVoiceAvailable):
+        skill._synthesize_narration_chain("Hallo.", tmp_path / "n.mp3", "de")
+    assert calls == []   # nothing was sent to Google
+
+
+def test_gtts_declines_on_a_network_error_instead_of_raising(tmp_path, monkeypatch):
+    import sys
+    import types
+
+    class Boom:
+        def __init__(self, *a, **k):
+            raise ConnectionError("no network")
+
+    monkeypatch.setitem(sys.modules, "gtts", types.SimpleNamespace(gTTS=Boom))
+    monkeypatch.setattr(skill, "_GTTS_TIER_ALLOWED", True)
+    assert skill._tts_tier_gtts("x", tmp_path / "n.mp3", "en") is False
 
 
 # ── live: the real services ─────────────────────────────────────────────────
