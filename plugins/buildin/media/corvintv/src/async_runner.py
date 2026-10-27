@@ -285,6 +285,10 @@ class ProcessJobRunner:
             # the plugin source this module was imported from is gone (a marketplace resync replaced it,
             # or it moved): ``python <gone>/job_main.py`` would only die with exit code 2
             raise FileNotFoundError("the CorvinTV job entry point is missing; the plugin source has moved")
+        if not (_JOB_MAIN.parent / "__init__.py").is_file():
+            raise FileNotFoundError("the CorvinTV plugin source is incomplete (no __init__.py); it is being replaced")
+        if not Path(self._entry[0]).is_file():
+            raise FileNotFoundError("the Python interpreter for the job process is gone")
         run_dir = storage.jobs_dir / f"{job_id}.run"
         err_path = storage.jobs_dir / f"{job_id}.stderr"
         err = None
@@ -389,7 +393,9 @@ class ProcessJobRunner:
                 how = f"signal {signal.Signals(-rc).name}" if rc < 0 else f"exit code {rc}"
             except ValueError:  # a real-time signal has no name; the reaper must still close the job
                 how = f"signal {-rc}"
-            self._close_job(child.storage_base, job_id, "error", f"The job process ended unexpectedly ({how}).", "child_exit")
+            # the stderr tail says WHY (config unreadable, import failed ...); job_main never prints the task
+            why = f" {tail[-300:]}" if tail else ""
+            self._close_job(child.storage_base, job_id, "error", f"The job process ended unexpectedly ({how}).{why}", "child_exit")
         else:
             self._close_job(child.storage_base, job_id, "error", "The job process ended without a result.", "child_exit")
         logger.info("[%s] job process exited rc=%s", job_id, rc)

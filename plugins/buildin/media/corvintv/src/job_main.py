@@ -40,6 +40,7 @@ JOB_PARENT_POLL_S = 0.2
 _PKG = "corvin_video_producer_job"
 
 logger = logging.getLogger("video_producer.job")
+EXIT_USAGE = 2  # bad argv or unreadable config; the reason is on stderr, which the host reports
 
 
 def _drop_script_dir_from_path() -> None:
@@ -89,17 +90,17 @@ def main(argv: Optional[List[str]] = None, *, before_run: Optional[Callable[[Any
     """``before_run(skill_module)`` is a test seam (e.g. swap the TTS chain); production passes none."""
     argv = list(sys.argv[1:] if argv is None else argv)
     if len(argv) != 2:
-        print("usage: job_main.py <job_id> <config.json>", file=sys.stderr)
-        return 2
+        print(f"job_main: usage: job_main.py <job_id> <config.json> (got {len(argv)} argument(s))", file=sys.stderr)
+        return EXIT_USAGE
     job_id, cfg_path = argv[0], Path(argv[1])
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     run_dir = cfg_path.parent
     try:
         payload = _read_private_json(cfg_path)
     except Exception as e:  # noqa: BLE001
-        print(f"job {job_id}: unreadable config ({type(e).__name__})", file=sys.stderr)
+        print(f"job {job_id}: unreadable config ({type(e).__name__}: {e})", file=sys.stderr)
         shutil.rmtree(run_dir, ignore_errors=True)
-        return 2
+        return EXIT_USAGE
 
     ppid = os.getppid()
     try:
@@ -128,6 +129,9 @@ def main(argv: Optional[List[str]] = None, *, before_run: Optional[Callable[[Any
         return 0
     except Exception as e:  # noqa: BLE001 - the orchestrator already persisted its own failure
         logger.error("[%s] job process failed: %s", job_id, type(e).__name__)
+        return 1
+    except BaseException as e:  # noqa: BLE001 - SystemExit/KeyboardInterrupt from a library must still say why
+        logger.error("[%s] job process aborted: %s", job_id, type(e).__name__)
         return 1
     finally:
         shutil.rmtree(run_dir, ignore_errors=True)
