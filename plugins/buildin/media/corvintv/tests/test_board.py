@@ -10,6 +10,7 @@ import tempfile
 import time
 from pathlib import Path
 
+import sys
 import pytest
 from PIL import Image
 
@@ -116,6 +117,7 @@ def test_to_svg_refuses_a_hand_built_shape_that_would_write_markup():
         pi.to_svg(d)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need a privilege on Windows")
 def test_a_symlinked_design_json_is_refused(tenant, tmp_path):
     aid, _ = _add_design(tenant, steps=THREE)
     p = tenant.root / aid / "design.json"

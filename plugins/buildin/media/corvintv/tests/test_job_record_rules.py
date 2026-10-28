@@ -114,6 +114,7 @@ def _model(events):
     return st, pct
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="needs the fork start method (POSIX only)")
 def test_property_200_sequences_two_processes(tmp_path):
     rng = random.Random(20261010)
     ctx = mp.get_context("fork")

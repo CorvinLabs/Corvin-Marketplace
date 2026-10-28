@@ -110,14 +110,14 @@ class TestOpenAIFallback:
         with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key"}):
             with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
                 out_path = Path(f.name)
-                out_path.write_bytes(b"fake mp3 data")
-                try:
-                    with patch("skill._openai_speech") as mock_speech:
-                        result = _tts_tier_openai("hello", out_path, "en")
-                        assert result is True, "Should succeed when OpenAI works"
-                        mock_speech.assert_called_once()
-                finally:
-                    out_path.unlink()
+            out_path.write_bytes(b"fake mp3 data")  # handle closed first: Windows cannot unlink an open file
+            try:
+                with patch("skill._openai_speech") as mock_speech:
+                    result = _tts_tier_openai("hello", out_path, "en")
+                    assert result is True, "Should succeed when OpenAI works"
+                    mock_speech.assert_called_once()
+            finally:
+                out_path.unlink()
 
 
 class TestEdgeTTSFallback:
@@ -189,11 +189,11 @@ class TestFallbackChain:
         for fn in fns.values():
             fn.assert_called_once()
 
-    def test_the_production_chain_is_openai_then_edge_only_and_has_no_mock(self):
+    def test_the_production_chain_is_openai_edge_gtts_and_has_no_mock(self):
         """Pins the real order: a silent mock tier in production would ship mute videos (review 2026-10-10)."""
         import skill
-        assert [name for name, _ in skill._TTS_CHAIN] == ["openai", "edge"]
-        assert [fn for _, fn in skill._TTS_CHAIN] == [_tts_tier_openai, _tts_tier_edge]
+        assert [name for name, _ in skill._TTS_CHAIN] == ["openai", "edge", "gtts"]
+        assert [fn for _, fn in skill._TTS_CHAIN] == [_tts_tier_openai, _tts_tier_edge, skill._tts_tier_gtts]
 
 
 class TestLanguageVariants:

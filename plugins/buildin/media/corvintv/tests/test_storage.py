@@ -136,7 +136,7 @@ class TestVideoStorage:
 
         path = temp_storage.get_video_path("job1")
         assert path is not None
-        assert str(path) == "/path/to/video.mp4"
+        assert path.as_posix() == "/path/to/video.mp4"
 
     def test_get_video_path_nonexistent_returns_none(self, temp_storage):
         """Test getting video path for nonexistent job."""

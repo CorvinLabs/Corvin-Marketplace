@@ -204,6 +204,7 @@ def test_infinite_values_are_reported_not_a_crash(figma_server, tokens_file):
     assert r.returncode == 0 and "skipped 'motion/rise-ms'" in r.stdout
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX file modes do not exist on Windows")
 def test_file_mode_is_preserved(figma_server, tokens_file):
     import os
     os.chmod(tokens_file, 0o644)

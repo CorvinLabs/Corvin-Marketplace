@@ -1,6 +1,7 @@
 """Asset store (ADR-2249 D3, T-0111): what a stored image is, what is refused, what survives erasure."""
 import io
 import json
+import sys
 import os
 import struct
 import threading
@@ -125,6 +126,7 @@ def test_an_id_that_is_not_ast_8hex_never_touches_a_path(store, evil):
             call(evil)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need a privilege on Windows")
 def test_a_symlinked_asset_or_file_is_never_followed(store, tmp_path):
     rec = add(store)
     secret = tmp_path / "secret.txt"

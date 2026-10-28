@@ -7,6 +7,7 @@ the real knowledge base.
 """
 
 import json
+import sys
 import os
 import subprocess
 from pathlib import Path
@@ -186,6 +187,7 @@ def test_budget_is_respected(world):
     assert len(g.render_pack(pack)) <= 1200 + 200  # sections have a 600-char floor; never unbounded
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need a privilege on Windows")
 def test_symlinked_decision_is_refused(world, tmp_path):
     kb, _code, roots = world
     target = tmp_path / "secret.md"

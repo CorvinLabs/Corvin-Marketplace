@@ -23,7 +23,7 @@ def test_every_scene_of_a_video_is_voiced_in_the_videos_language(run_orchestrate
 
 
 def test_the_production_voice_chain_has_no_silent_tier():
-    assert [name for name, _ in skill._TTS_CHAIN] == ["openai", "edge"]
+    assert [name for name, _ in skill._TTS_CHAIN] == ["openai", "edge", "gtts"]
 
 
 def test_when_every_voice_declines_the_job_fails_instead_of_going_mute(monkeypatch, tmp_path):

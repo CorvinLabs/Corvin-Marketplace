@@ -1,6 +1,7 @@
 """Per-tenant style store (PLAN-0945 P2)."""
 
 import json
+import sys
 import os
 
 import pytest
@@ -66,6 +67,7 @@ def test_swapped_logo_is_revalidated(store):
         store.load(st.id)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need a privilege on Windows")
 def test_symlinked_style_dir_and_files_are_not_followed(store, tmp_path):
     st = make_style(id=store.new_id())
     store.save(st)
@@ -95,6 +97,7 @@ def test_default_follows_the_style_and_dies_with_it(store):
         store.set_default("sty_00000000")
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX file modes do not exist on Windows")
 def test_files_are_private(store):
     st = make_style(id=store.new_id())
     store.save(st)
