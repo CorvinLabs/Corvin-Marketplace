@@ -27,7 +27,6 @@ def test_report_round_trip_schema_and_size(tmp_path):
     r.begin("setup")
     r.begin("storyboard")
     r.note_llm_usage({"input_tokens": 1200, "output_tokens": 800, "cache_read_input_tokens": 5})
-    r.note_llm_usage({"prompt_eval_count": 10, "eval_count": 20})  # Ollama's shape
     r.note_llm_usage(None)
     r.begin("scenes")
     r.scene(1, tts_tier="openai", audio_s=3.21, renderer="web", template="hero")
@@ -38,8 +37,8 @@ def test_report_round_trip_schema_and_size(tmp_path):
     assert path.name == "report.json" and data["schema"] == 1 and data["status"] == "complete"
     assert [s["name"] for s in data["stages"]] == ["setup", "storyboard", "scenes"]
     assert all(isinstance(s["seconds"], float) for s in data["stages"])
-    assert data["llm_usage"] == {"calls": 3, "calls_without_usage": 1, "input_tokens": 1210,
-                                 "output_tokens": 820, "cache_read_tokens": 5, "cache_write_tokens": 0}
+    assert data["llm_usage"] == {"calls": 2, "calls_without_usage": 1, "input_tokens": 1200,
+                                 "output_tokens": 800, "cache_read_tokens": 5, "cache_write_tokens": 0}
     # a reason keeps the class only: no path, no message
     assert data["degradations"] == [{"kind": "web_to_pillow", "scene": 1, "reason": "WebRenderError"}]
     assert data["degraded_scenes"] == {"n": 1, "of": 1, "indexes": [1]}
@@ -83,12 +82,12 @@ def test_note_degradation_reaches_the_running_jobs_report_and_is_a_no_op_outside
     rep = rp.ProductionReport("job_ctx")
     tok = rp.set_current(rep)
     try:
-        rp.note_degradation("storyboard_backend_fallback", source="claude_cli", target="ollama")
+        rp.note_degradation("storyboard_backend_fallback", source="claude_cli", target="anthropic")
         rp.note_llm_usage({"input_tokens": 3, "output_tokens": 4})
     finally:
         rp.reset_current(tok)
     rp.note_degradation("grounding_lost", reason="after")  # gone again
-    assert rep.degradations == [{"kind": "storyboard_backend_fallback", "from": "claude_cli", "to": "ollama"}]
+    assert rep.degradations == [{"kind": "storyboard_backend_fallback", "from": "claude_cli", "to": "anthropic"}]
     assert rep.llm_usage["input_tokens"] == 3
 
 

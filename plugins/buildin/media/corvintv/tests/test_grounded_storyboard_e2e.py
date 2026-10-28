@@ -97,7 +97,6 @@ def _stored_text(base: str) -> str:
 
 async def test_grounded_video_uses_the_pack_and_shows_console_and_map(store, tmp_path, monkeypatch, caplog):
     log = _fake_claude(tmp_path, monkeypatch, GOOD)
-    monkeypatch.setattr(skill.requests, "post", lambda *a, **k: pytest.fail("fell back to Ollama"))
     caplog.set_level(logging.DEBUG)
     result = await _run(store, "job_g1", storyboard_backend="claude_cli", storyboard_model="claude-sonnet-5-5",
                         grounding_pack=PACK)
@@ -158,42 +157,15 @@ async def test_without_a_pack_the_prompt_is_the_ordinary_one(store, tmp_path, mo
     assert "SOURCES" not in prompt and "console_still" not in prompt and "Maximum 8 scenes" in prompt
 
 
-async def test_a_local_backend_never_gets_the_pack(store, monkeypatch):
-    seen = []
-
-    class _Resp:
-        def raise_for_status(self):
-            pass
-
-        def json(self):
-            return {"response": json.dumps({**GOOD, "scenes": GOOD["scenes"][2:]})}
-
-    def post(url, json=None, **kw):
-        seen.append(json["prompt"])
-        return _Resp()
-
-    monkeypatch.setattr(skill.requests, "post", post)
-    result = await _run(store, "job_g5", storyboard_backend="ollama", grounding_pack=PACK, web_slides=False)
-    assert result["metadata"]["grounding"] == {"status": "unavailable", "reason": "local_storyboard_model"}
-    assert all("SOURCES" not in p and "verify_chain" not in p for p in seen)
-
-
-async def test_remote_failure_never_sends_the_pack_to_the_local_model(store, tmp_path, monkeypatch):
-    _fake_claude(tmp_path, monkeypatch, GOOD, exit_code=1)
-    seen = []
-
-    class _Resp:
-        def raise_for_status(self):
-            pass
-
-        def json(self):
-            return {"response": json.dumps({**GOOD, "scenes": GOOD["scenes"][2:]})}
-
-    monkeypatch.setattr(skill.requests, "post", lambda url, json=None, **kw: (seen.append(json["prompt"]), _Resp())[1])
-    result = await _run(store, "job_g6", storyboard_backend="claude_cli", storyboard_model="m",
-                        grounding_pack=PACK, web_slides=False)
-    assert result["metadata"]["grounding"] == {"status": "unavailable", "reason": "remote_storyboard_failed"}
-    assert seen and all("SOURCES" not in p for p in seen)
+async def test_remote_failure_ends_the_job_and_there_is_no_local_model_to_leak_the_pack_to(store, tmp_path, monkeypatch):
+    log = _fake_claude(tmp_path, monkeypatch, GOOD, exit_code=1)
+    with pytest.raises(Exception):
+        await _run(store, "job_g6", storyboard_backend="claude_cli", storyboard_model="m",
+                   grounding_pack=PACK, web_slides=False)
+    job = get_storage(store).get_job("job_g6")
+    assert job.status == "error" and "internet connection" in job.error_message
+    assert not hasattr(skill, "_OLLAMA_URL")
+    assert _calls(log)  # the only route that was tried is the (gated) Claude one
 
 
 async def test_malformed_pack_is_ignored_and_host_status_is_recorded(store, tmp_path, monkeypatch):

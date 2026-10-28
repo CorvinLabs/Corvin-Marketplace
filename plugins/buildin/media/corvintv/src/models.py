@@ -177,7 +177,7 @@ class Storyboard:
     # (system/architecture, 300-400 chars/scene, diagrams carry the content).
     # Defaults to "rich_visual" for storyboards predating this field.
     didactic_strategy: str = "rich_visual"
-    # Which LLM actually wrote it ("claude_cli:<model>", "ollama:<model>", ...);
+    # Which LLM actually wrote it ("claude_cli:<model>", "anthropic:<model>", ...);
     # None for an operator-supplied storyboard. Job metadata, not serialised.
     llm_backend: Optional[str] = None
     # Web-slide specs the LLM got wrong: how many one repair pass fixed, and

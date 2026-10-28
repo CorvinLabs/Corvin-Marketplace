@@ -172,7 +172,6 @@ CLAUDE_STORYBOARD = {"id": "sb_cli", "didactic_strategy": "rich_visual", "scenes
 
 async def test_claude_cli_backend_writes_the_storyboard(store, tmp_path, monkeypatch):
     log = _fake_claude(tmp_path, monkeypatch, CLAUDE_STORYBOARD)
-    monkeypatch.setattr(skill.requests, "post", lambda *a, **k: pytest.fail("fell back to Ollama"))
     result = await _run(store, "job_cli", storyboard_backend="claude_cli", storyboard_model="claude-sonnet-5-5")
 
     md = result["metadata"]
@@ -225,19 +224,14 @@ async def test_a_repair_that_is_still_invalid_keeps_the_classic_slide_and_says_w
     assert len(md["storyboard_template_warnings"]) == 1 and "center_value" in md["storyboard_template_warnings"][0]
 
 
-async def test_claude_cli_failure_falls_back_to_local_and_is_reported(store, tmp_path, monkeypatch):
+async def test_claude_cli_failure_fails_the_job_with_an_actionable_message(store, tmp_path, monkeypatch):
+    """No local fallback: Claude Code failing (offline, not signed in) ends the job, and says what to do."""
     _fake_claude(tmp_path, monkeypatch, CLAUDE_STORYBOARD, exit_code=1)
-
-    class _Resp:
-        def raise_for_status(self):
-            pass
-
-        def json(self):
-            return {"response": json.dumps(CLAUDE_STORYBOARD)}
-
-    monkeypatch.setattr(skill.requests, "post", lambda *a, **k: _Resp())
-    result = await _run(store, "job_cli_fb", storyboard_backend="claude_cli", storyboard_model="claude-sonnet-5-5")
-    assert result["metadata"]["storyboard_llm"] == f"ollama:{skill._OLLAMA_MODEL}"
+    with pytest.raises(Exception):
+        await _run(store, "job_cli_fb", storyboard_backend="claude_cli", storyboard_model="claude-sonnet-5-5")
+    job = get_storage(store).get_job("job_cli_fb")
+    assert job.status == "error"
+    assert "internet connection" in job.error_message and "Claude Code" in job.error_message
 
 
 async def test_browser_unavailable_falls_back_to_classic_slides_and_says_so(store, monkeypatch):

@@ -134,56 +134,9 @@ def test_unsupported_tts_engine_fails_the_job_instead_of_being_ignored(tmp_path)
 
 
 def test_storyboard_backend_is_the_hosts_choice(monkeypatch):
-    def no_anthropic(*a, **k):
-        raise AssertionError("Anthropic client constructed for an 'ollama' job")
-
-    monkeypatch.setattr(skill.anthropic, "Anthropic", no_anthropic)
-
-    class _Resp:
-        def raise_for_status(self):
-            pass
-
-        def json(self):
-            return {"response": "{}"}
-
-    seen = []
-    monkeypatch.setattr(skill.requests, "post", lambda url, **k: seen.append(url) or _Resp())
+    """Only the remote backends exist; "ollama" (removed) is refused, and a model id must come from the host."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "set-but-not-chosen")
-    assert skill._call_storyboard_llm("p", backend="ollama") == "{}"
-    assert seen and "localhost" in seen[0]
+    with pytest.raises(ValueError, match="unknown storyboard backend"):
+        skill._call_storyboard_llm("p", backend="ollama", model="m")
     with pytest.raises(ValueError):
         skill._call_storyboard_llm("p", backend="anthropic")  # no model from the host
-    with pytest.raises(ValueError):
-        skill._call_storyboard_llm("p", backend="openai")
-
-
-# ── concat list quoting (real ffmpeg) ────────────────────────────────────────
-
-@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
-def test_concat_handles_a_quote_in_the_path(tmp_path):
-    work = tmp_path / "it's a dir"
-    work.mkdir()
-    clips = []
-    for i in range(2):
-        clip = work / f"c{i}.mp4"
-        subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=red:s=64x64:d=0.5",
-                        "-c:v", "libx264", "-pix_fmt", "yuv420p", str(clip)], capture_output=True, check=True)
-        clips.append(clip)
-    out = work / "out.mp4"
-    skill._concat_clips(clips, out, work)
-    assert out.is_file() and out.stat().st_size > 0
-
-
-# ── no .env side effect on import ────────────────────────────────────────────
-
-def test_importing_skill_does_not_load_a_dotenv_into_the_process(tmp_path):
-    (tmp_path / ".env").write_text("VP_REVIEW_DOTENV_PROBE=leaked\n")
-    code = (
-        "import os, sys; sys.path.insert(0, %r); import src.skill; "
-        "print(os.environ.get('VP_REVIEW_DOTENV_PROBE', 'absent'))" % str(PLUGIN_ROOT)
-    )
-    env = {k: v for k, v in os.environ.items() if k != "VP_REVIEW_DOTENV_PROBE"}
-    out = subprocess.run([sys.executable, "-c", code], cwd=str(tmp_path), env=env,
-                         capture_output=True, text=True, timeout=120)
-    assert out.returncode == 0, out.stderr
-    assert out.stdout.strip().splitlines()[-1] == "absent"

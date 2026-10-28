@@ -1,5 +1,14 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## Unreleased — Ollama removed; CorvinTV needs to be online with Claude Code
+
+The local Ollama storyboard fallback (`qwen3:1.7b` on `localhost:11434`) is gone. The storyboard is written by Claude
+only: the Anthropic API with a key, else the host's Claude Code login (`storyboard_backend` `anthropic` /
+`claude_cli`, default `claude_cli`). The console refuses a job up front (503) when neither is available and (403)
+when the L35/L34 gates refuse the route; a call that fails mid-job (offline, Claude Code not running) ends the job
+with "needs an internet connection and a running Claude Code". A pack-grounded storyboard is no longer degraded to a
+local model, so `grounding.reason: local_storyboard_model` and the Ollama usage shape are gone too.
+
 ## 1.7.1 — CorvinTV declares its learning loop (CorvinOS ADR-0906)
 
 `plugin.yaml` gains a `learning_loops:` entry, `scene_feedback`, owned by the skill `os.video_producer` under
@@ -508,7 +517,7 @@ console, and the console's fresh-install lifecycle spec against this repository 
 - **Repair pass:** invalid web-slide specs go back to the model once with the exact errors
 - **Faster & better:** Claude Sonnet generates storyboards in ~14s with 8/8 valid templates (vs. qwen3's ~65s with some failures)
 - **Gated by L35/L34:** Only runs if egress policy allows `api.anthropic.com` and data classification permits `claude_code` engine
-- **Fallback to Ollama:** If API is forbidden, storyboards run locally
+- **Fallback to Ollama:** removed (see Unreleased) — there is no local storyboard model any more
 - **Model choice:** Automatically uses newest Claude Sonnet version via `model_selector.tier_model("sonnet")`
 
 #### Documentation Overhaul

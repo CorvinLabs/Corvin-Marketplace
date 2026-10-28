@@ -161,7 +161,7 @@ class ProductionReport:
     def note_llm_usage(self, usage: Optional[Dict[str, Any]]) -> None:
         """Add one model call's reported usage. Accepts the Claude CLI / Anthropic shape
         (``input_tokens``, ``output_tokens``, ``cache_read_input_tokens``,
-        ``cache_creation_input_tokens``) and Ollama's (``prompt_eval_count``, ``eval_count``)."""
+        ``cache_creation_input_tokens``)."""
         u = self.llm_usage
         u["calls"] += 1
         if not isinstance(usage, dict):
@@ -173,8 +173,8 @@ class ProductionReport:
                 if isinstance(v, int) and not isinstance(v, bool) and v >= 0:
                     return v
             return 0
-        got = {"input_tokens": n("input_tokens", "prompt_eval_count"),
-               "output_tokens": n("output_tokens", "eval_count"),
+        got = {"input_tokens": n("input_tokens"),
+               "output_tokens": n("output_tokens"),
                "cache_read_tokens": n("cache_read_input_tokens"),
                "cache_write_tokens": n("cache_creation_input_tokens")}
         if not any(got.values()):

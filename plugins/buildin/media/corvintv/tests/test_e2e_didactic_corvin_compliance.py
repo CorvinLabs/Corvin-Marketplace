@@ -2,7 +2,7 @@
 
 This is the e2e-wiring-proof + e2e-driven-iteration test for the didactic
 integration (narration_validator, didactic-constrained prompt, vector-icon
-renderer). It deliberately does NOT mock the pipeline: real Ollama inference
+renderer). It deliberately does NOT mock the pipeline: real Claude storyboard generation
 (qwen3:1.7b, local, no API key), real gTTS synthesis, real Pillow rendering,
 real ffmpeg assembly — because a mocked "E2E" test proves the mock works, not
 the pipeline.
@@ -26,6 +26,7 @@ Testing feedback applied (session memory):
     not just a unit test that imports and calls it directly.
 """
 
+import os
 import re
 import shutil
 import subprocess
@@ -52,19 +53,8 @@ from src.models import VideoJob
 
 
 SKILL_PY = Path(__file__).parent.parent / "src" / "skill.py"
-OLLAMA_REACHABLE = shutil.which("curl") is not None
+CLAUDE_CODE_AVAILABLE = bool(os.environ.get("CORVIN_CLAUDE_BIN")) or shutil.which("claude") is not None
 FFMPEG_AVAILABLE = shutil.which("ffmpeg") is not None
-
-
-def _ollama_up() -> bool:
-    try:
-        r = subprocess.run(
-            ["curl", "-s", "-m", "2", "http://localhost:11434/api/tags"],
-            capture_output=True, timeout=3,
-        )
-        return r.returncode == 0 and b"models" in r.stdout
-    except Exception:
-        return False
 
 
 # ===========================================================================
@@ -254,8 +244,8 @@ class TestFullPipelineCorvinCompliance:
 
     @pytest.mark.asyncio
     async def test_produces_real_video_about_corvin_compliance(self, tmp_path):
-        if not _ollama_up():
-            pytest.skip("Ollama not reachable on localhost:11434 — cannot generate a real storyboard")
+        if not CLAUDE_CODE_AVAILABLE:
+            pytest.skip("Claude Code not available — cannot generate a real storyboard")
         if not FFMPEG_AVAILABLE:
             pytest.skip("ffmpeg not on PATH — cannot assemble a real video")
 
@@ -281,7 +271,8 @@ class TestFullPipelineCorvinCompliance:
             storage_base=storage_base,
             tts_engine="gtts",
             max_duration_minutes=3,
-            storyboard_backend="ollama",
+            storyboard_backend="claude_cli",
+            storyboard_model="claude-sonnet-5-5",
         )
 
         # --- Primitive-level proof: the job's own validator ran and the

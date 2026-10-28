@@ -147,14 +147,14 @@ the narration names it (ADR-2245, see "How a scene becomes a web slide").
 | `web_fps` | `30` | sampling rate of the animation (12-60) |
 | `web_tokens_path` | bundled file | alternative design-token file, validated like the bundled one |
 | `storyboard` | — | an operator-written storyboard; skips the LLM, same validation, web-slide contract enforced strictly (an invalid scene fails the job before any work) |
-| `storyboard_backend` | `ollama` | where the storyboard LLM call goes: `claude_cli` (the host's Claude Code login, `claude -p` with no tools, no MCP, no settings, no saved session, prompt over stdin, run in an empty temp dir; binary from `CORVIN_CLAUDE_BIN` or PATH), `anthropic` (API key) or `ollama` (local `qwen3:1.7b`). A failed remote call falls back to Ollama; the job's `storyboard_llm` metadata names the backend that actually answered |
+| `storyboard_backend` | `claude_cli` | where the storyboard LLM call goes: `claude_cli` (the host's Claude Code login, `claude -p` with no tools, no MCP, no settings, no saved session, prompt over stdin, run in an empty temp dir; binary from `CORVIN_CLAUDE_BIN` or PATH), or `anthropic` (API key). A failed call ends the job with an actionable message (no local fallback); the job's `storyboard_llm` metadata names the backend that actually answered |
 | `storyboard_model` | — | model id for `claude_cli` / `anthropic` (the console passes the newest Sonnet) |
 
 These are plugin API keys, set by the host in the job config. The CorvinOS
 console route passes only `storyboard_backend`/`storyboard_model`: the
 Anthropic API with a key, else `claude_cli` when the CLI exists — both only
 when L35 admits api.anthropic.com and L34 admits the task under the
-`claude_code` engine — else `ollama`. Measured on the real prompt
+`claude_code` engine — else the job is refused. Measured on the real prompt
 (2026-10-08): qwen3:1.7b ~65 s with invalid or repeated templates, Sonnet 5.5
 ~14 s / ~$0.03 and Opus 5.5 ~17-42 s / ~$0.06 with 8 of 8 valid and 7-8
 distinct templates — hence Sonnet. A remote model may write up to 8 scenes,

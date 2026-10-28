@@ -80,9 +80,10 @@ print('narration + assembly OK:', out.stat().st_size, 'bytes ->', out)
 
 ## Step 4: Anthropic API Key (optional)
 
-The storyboard step prefers Anthropic when the HOST (the CorvinOS console,
-not this plugin) decides the job's egress policy allows it; otherwise it
-falls back to a local Ollama instance automatically. Setting
+The storyboard step needs Claude: the Anthropic API when a key is set, else the
+host's Claude Code login — and only when the HOST (the CorvinOS console, not this
+plugin) decides the job's egress policy allows it. There is no local fallback:
+offline, or without Claude Code, the console refuses the job. Setting
 `ANTHROPIC_API_KEY` in the *console's* environment is a host-level decision,
 not something this plugin configures on its own — see the main CorvinOS
 docs for `tenant.corvin.yaml`'s egress policy.

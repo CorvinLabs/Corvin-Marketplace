@@ -17,7 +17,6 @@ from typing import Optional, Dict, Any, List
 import uuid
 
 import anthropic
-import requests
 
 # No .env loading here: this module runs inside the host's shared console
 # process, and a dotenv load would put every token in the host's .env into
@@ -99,12 +98,6 @@ def _update_job_progress(
     emit_job_progress(job.id, status, percent, message)
 
 
-_OLLAMA_URL = "http://localhost:11434/api/generate"
-# Small model: this host runs Ollama on CPU only (no GPU) — qwen2.5:14b took
-# >90s per call in testing, qwen3:1.7b returns a usable storyboard in ~11s.
-_OLLAMA_MODEL = "qwen3:1.7b"
-
-
 _CLAUDE_CLI_TIMEOUT_S = 300
 _STORYBOARD_API_TIMEOUT_S = 240
 _CLAUDE_MODEL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._\-\[\]]{0,79}")
@@ -147,64 +140,48 @@ def _call_claude_cli(prompt: str, model: str) -> str:
     return out["result"]
 
 
-def _call_storyboard_llm(prompt: str, backend: str = "ollama", model: Optional[str] = None,
-                         report: Optional[Dict[str, Any]] = None, local_fallback: bool = True) -> str:
+_NEEDS_CLAUDE_MSG = ("CorvinTV writes its storyboard with Claude: it needs an internet connection and a running "
+                     "Claude Code (signed in) or an ANTHROPIC_API_KEY. Connect, start Claude Code, and start the job again.")
+
+
+def _call_storyboard_llm(prompt: str, backend: str = "claude_cli", model: Optional[str] = None,
+                         report: Optional[Dict[str, Any]] = None) -> str:
     """
-    Call an LLM to turn the prompt into a storyboard JSON string.
+    Call Claude to turn the prompt into a storyboard JSON string.
 
     ``backend`` is decided by the HOST, which ran its data-flow / egress gates
     for exactly that destination before starting the job: "claude_cli" (the
-    host's Claude Code login, needs ``model``), "anthropic" (API key, needs
-    ``model``) or "ollama" (local). The plugin never upgrades a job to a
-    remote backend on its own. A remote call that fails falls back to the
-    local Ollama instance (strictly less egress). Both paths are real
-    inference — no mocked/fabricated storyboard content. ``report["backend"]``
-    receives the backend that actually answered.
+    host's Claude Code login, needs ``model``) or "anthropic" (API key, needs
+    ``model``). There is no local fallback: when the call fails (offline, Claude
+    Code not running or not signed in) the job fails with an actionable message.
+    ``report["backend"]`` receives the backend that answered.
     """
-    if backend not in ("claude_cli", "anthropic", "ollama"):
+    if backend not in ("claude_cli", "anthropic"):
         raise ValueError(f"unknown storyboard backend {backend!r}")
-    if backend != "ollama" and not model:
+    if not model:
         raise ValueError(f"storyboard backend {backend!r} needs a model id from the host")
     if report is None:
         report = {}
-    if backend == "claude_cli":
-        try:
+    try:
+        if backend == "claude_cli":
             text = _call_claude_cli(prompt, model)
             report["backend"] = f"claude_cli:{model}"
             return text
-        except Exception as e:  # noqa: BLE001
-            logger.warning("claude CLI storyboard call failed (%s), falling back to local Ollama", type(e).__name__)
-    if backend == "anthropic":
-        try:
-            client = anthropic.Anthropic(timeout=_STORYBOARD_API_TIMEOUT_S, max_retries=1)
-            # the SDK's timeout is per attempt and per socket read: this bounds the whole call
-            message = dl.run_sync(
-                lambda: client.messages.create(model=model, max_tokens=6000,
-                                               messages=[{"role": "user", "content": prompt}]),
-                deadline_s=_STORYBOARD_API_TIMEOUT_S * 2 + 10, what="anthropic storyboard call")
-            report["backend"] = f"anthropic:{model}"
-            u = getattr(message, "usage", None)
-            rp.note_llm_usage({k: getattr(u, k, None) for k in ("input_tokens", "output_tokens",
-                               "cache_read_input_tokens", "cache_creation_input_tokens")} if u is not None else None)
-            return message.content[0].text
-        except Exception as e:  # noqa: BLE001
-            logger.warning("Anthropic storyboard call failed (%s), falling back to local Ollama", type(e).__name__)
-    if backend != "ollama" and not local_fallback:
-        # A grounded prompt must not land on the small local model: its context window
-        # truncates the SOURCES silently (PLAN-0942 D2).
-        raise RuntimeError(f"remote storyboard backend {backend!r} unavailable")
-
-    response = dl.run_sync(
-        lambda: requests.post(_OLLAMA_URL, json={"model": _OLLAMA_MODEL, "prompt": prompt, "stream": False,
-                                                 "format": "json"}, timeout=180),
-        deadline_s=200, what="ollama storyboard call")
-    response.raise_for_status()
-    report["backend"] = f"ollama:{_OLLAMA_MODEL}"
-    if backend != "ollama":
-        rp.note_degradation("storyboard_backend_fallback", source=backend, target="ollama")
-    body = response.json()
-    rp.note_llm_usage(body)
-    return body["response"]
+        client = anthropic.Anthropic(timeout=_STORYBOARD_API_TIMEOUT_S, max_retries=1)
+        # the SDK's timeout is per attempt and per socket read: this bounds the whole call
+        message = dl.run_sync(
+            lambda: client.messages.create(model=model, max_tokens=6000,
+                                           messages=[{"role": "user", "content": prompt}]),
+            deadline_s=_STORYBOARD_API_TIMEOUT_S * 2 + 10, what="anthropic storyboard call")
+        report["backend"] = f"anthropic:{model}"
+        u = getattr(message, "usage", None)
+        rp.note_llm_usage({k: getattr(u, k, None) for k in ("input_tokens", "output_tokens",
+                           "cache_read_input_tokens", "cache_creation_input_tokens")} if u is not None else None)
+        return message.content[0].text
+    except Exception as e:  # noqa: BLE001
+        logger.warning("%s storyboard call failed (%s)", backend, type(e).__name__)
+        raise RuntimeError(f"The storyboard could not be written ({backend}: {type(e).__name__}). "
+                           + _NEEDS_CLAUDE_MSG) from e
 
 
 _SYSTEM_KEYWORDS = ("system", "architecture", "pipeline", "flow", "layer", "chain", "stack", "kette", "architektur")
@@ -364,7 +341,7 @@ def _brand_neutral_prompt(prompt: str) -> str:
 async def generate_storyboard_with_llm(
     task: str,
     max_duration_minutes: int = 60,
-    backend: str = "ollama",
+    backend: str = "claude_cli",
     model: Optional[str] = None,
     didactic_strategy: Optional[str] = None,
     grounding: Optional[Dict[str, Any]] = None,
@@ -382,13 +359,10 @@ async def generate_storyboard_with_llm(
     """
     # A hard ceiling of 100 exists for the API contract, but the *requested* count
     # stays small and duration-independent: max_duration_minutes is a ceiling the
-    # storyboard must not exceed, not a target, and the local Ollama CPU fallback
-    # (no GPU on this host) needs a small scene count to finish in reasonable time.
-    # A remote model writes a longer storyboard in seconds; the CPU-only local
-    # fallback needs the small count.
-    max_scenes = 6 if backend == "ollama" else 8
-    # PLAN-0942: a host-gated grounding pack is used with a remote model only.
-    grounded = grounding is not None and backend != "ollama"
+    # storyboard must not exceed, not a target.
+    max_scenes = 8
+    # PLAN-0942: a host-gated grounding pack is used with a remote model.
+    grounded = grounding is not None
     if grounded:
         max_scenes = gsb.GROUNDED_MAX_SCENES
 
@@ -459,8 +433,7 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
             gsb.build_sources_block(pack_text, console_assets(), task) + "\nCONSTRAINTS (MUST ENFORCE):", 1,
         )
         try:
-            raw = _call_storyboard_llm(grounded_prompt, backend=backend, model=model, report=report,
-                                       local_fallback=False)
+            raw = _call_storyboard_llm(grounded_prompt, backend=backend, model=model, report=report)
         except Exception as e:  # noqa: BLE001 — remote down: the ordinary path, recorded as unavailable
             logger.warning("grounded storyboard unavailable (%s); writing an ungrounded one", type(e).__name__)
             sb = await generate_storyboard_with_llm(task, max_duration_minutes, backend=backend, model=model,
@@ -1155,7 +1128,7 @@ def _ground_storyboard(storyboard_json: Dict[str, Any], pack: Dict[str, Any], pa
             repaired += gsb.repair_grounded_scenes(
                 storyboard_json, failures, pack_text, console_assets(),
                 call_llm=lambda p: _call_storyboard_llm(p, backend=backend, model=used_model or model,
-                                                        report={}, local_fallback=False),
+                                                        report={}),
                 validate_storyboard=lambda sb: validate_storyboard_dict(sb, max_duration_minutes).valid,
                 validate_scene=_scene_ok,
                 strict=bool(attempt),
@@ -1804,7 +1777,7 @@ async def orchestrate_video(
     storage_base: str,
     tts_engine: str = DEFAULT_TTS_ENGINE,
     max_duration_minutes: int = 60,
-    storyboard_backend: str = "ollama",
+    storyboard_backend: str = "claude_cli",
     storyboard_model: Optional[str] = None,
     storyboard: Optional[Dict[str, Any]] = None,
     web_slides: bool = True,
@@ -1892,10 +1865,7 @@ async def orchestrate_video(
                 grounding=pack, brand_neutral=web_style is not None,
             )
             if storyboard.grounding is None:
-                if pack is not None:  # a pack, but the backend is local
-                    storyboard.grounding = {"status": "unavailable", "reason": "local_storyboard_model"}
-                    rp.note_degradation("grounding_lost", reason="local_storyboard_model")
-                elif isinstance(grounding_status, dict) and grounding_status.get("status") in ("refused", "unavailable"):
+                if isinstance(grounding_status, dict) and grounding_status.get("status") in ("refused", "unavailable"):
                     storyboard.grounding = {"status": grounding_status["status"],
                                             "reason": str(grounding_status.get("reason", ""))[:60]}
                     if grounding_status["status"] == "unavailable":
@@ -2292,7 +2262,7 @@ async def _orchestrate_from_config(job_id: str, task: str, config: Dict[str, Any
         storage_base=config["storage_base"],
         tts_engine=config.get("tts_engine", DEFAULT_TTS_ENGINE),
         max_duration_minutes=config.get("max_duration_minutes", 60),
-        storyboard_backend=config.get("storyboard_backend", "ollama"),
+        storyboard_backend=config.get("storyboard_backend", "claude_cli"),
         storyboard_model=config.get("storyboard_model"),
         storyboard=config.get("storyboard"),
         web_slides=config.get("web_slides", True),
