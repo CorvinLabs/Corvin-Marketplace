@@ -77,7 +77,7 @@ Marketplace workflow `video-producer-release-lint.yml`).
 - `OPENAI_API_KEY` or `CORVIN_TTS_OPENAI_KEY` — OpenAI TTS key for narration (required for `openai` engine, default)
 
 **Optional:**
-- `ANTHROPIC_API_KEY` — for Anthropic storyboard generation (if absent, the host's Claude Code login is used; if that is missing too, the job is refused)
+- `ANTHROPIC_API_KEY` — fallback for storyboard generation. In the CorvinOS console the host's Claude Code login (the subscription CorvinOS itself runs on) always comes first and the CLI is started without this key; the key is used only when the host has no Claude Code CLI. If neither exists, the job is refused. A failing CLI call reports the CLI's own message in the job error.
 
 ### Settings
 

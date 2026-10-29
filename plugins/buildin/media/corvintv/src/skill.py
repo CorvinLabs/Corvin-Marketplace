@@ -105,12 +105,47 @@ _STORYBOARD_SYSTEM = ("You write didactic explainer-video storyboards. Follow th
                       "format exactly and reply with one JSON object only.")
 
 
+def _known_claude_locations() -> List[str]:
+    """Off-PATH install locations of the Claude Code CLI (a service / job process often runs with a
+    stripped PATH). The host's own resolver is preferred - it is what the console chat spawns - and this
+    short list is the standalone fallback, Windows npm / native-installer dirs included."""
+    home = os.path.expanduser("~")
+    out = [os.path.join(home, ".local", "bin", "claude"), "/usr/local/bin/claude", "/opt/homebrew/bin/claude",
+           os.path.join(home, ".claude", "local", "claude")]
+    for var, rel in (("APPDATA", ("npm", "claude.cmd")), ("APPDATA", ("npm", "claude.exe")),
+                     ("USERPROFILE", (".local", "bin", "claude.exe"))):
+        base = os.environ.get(var)
+        if base:
+            out.append(os.path.join(base, *rel))
+    return out
+
+
 def claude_cli_path() -> Optional[str]:
-    """The Claude Code CLI the host runs: its canonical pin CORVIN_CLAUDE_BIN, else PATH."""
+    """The Claude Code CLI the host runs, resolved the way the host resolves it: its canonical pin
+    CORVIN_CLAUDE_BIN, else PATH, else the host's known install locations."""
     pinned = (os.environ.get("CORVIN_CLAUDE_BIN") or "").strip()
     if pinned:
         return pinned if os.path.isfile(pinned) and os.access(pinned, os.X_OK) else None
-    return shutil.which("claude")
+    found = shutil.which("claude")
+    if found:
+        return found
+    try:
+        import helper_model  # type: ignore  # CorvinOS bridges/shared, when on the host's sys.path
+        cand = helper_model.resolve_claude_bin()
+        if cand and os.path.isfile(cand) and os.access(cand, os.X_OK):
+            return cand
+    except Exception:  # noqa: BLE001 - standalone use: fall through to the local list
+        pass
+    for cand in _known_claude_locations():
+        if os.path.isfile(cand) and os.access(cand, os.X_OK):
+            return cand
+    return None
+
+
+def _as_text(v: Any) -> str:
+    if isinstance(v, bytes):
+        return v.decode("utf-8", "replace")
+    return v if isinstance(v, str) else ""
 
 
 def _call_claude_cli(prompt: str, model: str) -> str:
@@ -124,15 +159,20 @@ def _call_claude_cli(prompt: str, model: str) -> str:
         raise RuntimeError("claude CLI not found (CORVIN_CLAUDE_BIN or PATH)")
     if not isinstance(model, str) or not _CLAUDE_MODEL_RE.fullmatch(model):
         raise ValueError("invalid model id for the claude CLI")
+    # The subscription CorvinOS itself runs on: an API key in the environment would make the CLI bill
+    # that key instead of the signed-in Claude Code login.
+    env = {k: v for k, v in os.environ.items() if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")}
     with tempfile.TemporaryDirectory(prefix="vp-storyboard-") as cwd:
         proc = dl.run_process(
             [exe, "-p", "--model", model, "--output-format", "json", "--tools", "",
              "--setting-sources", "", "--strict-mcp-config", "--no-session-persistence",
              "--disable-slash-commands", "--system-prompt", _STORYBOARD_SYSTEM],
-            input=prompt, text=True, deadline_s=_CLAUDE_CLI_TIMEOUT_S, cwd=cwd, what="claude CLI storyboard call",
+            input=prompt, text=True, deadline_s=_CLAUDE_CLI_TIMEOUT_S, cwd=cwd, env=env, what="claude CLI storyboard call",
         )
     if proc.returncode != 0:
-        raise RuntimeError(f"claude CLI exited {proc.returncode}")
+        # The job log is not always reachable (Windows service host): put the CLI's own words in the error.
+        tail = _scrub_secrets(" ".join(_as_text(proc.stderr).split()) or " ".join(_as_text(proc.stdout).split()))
+        raise RuntimeError(f"claude CLI exited {proc.returncode}" + (f": {tail}" if tail else ""))
     out = json.loads(proc.stdout)
     rp.note_llm_usage(out.get("usage"))
     if out.get("is_error") or not isinstance(out.get("result"), str):
@@ -180,7 +220,7 @@ def _call_storyboard_llm(prompt: str, backend: str = "claude_cli", model: Option
         return message.content[0].text
     except Exception as e:  # noqa: BLE001
         logger.warning("%s storyboard call failed (%s)", backend, type(e).__name__)
-        raise RuntimeError(f"The storyboard could not be written ({backend}: {type(e).__name__}). "
+        raise RuntimeError(f"The storyboard could not be written ({backend}: {type(e).__name__}: {_scrub_secrets(e)}). "
                            + _NEEDS_CLAUDE_MSG) from e
 
 
