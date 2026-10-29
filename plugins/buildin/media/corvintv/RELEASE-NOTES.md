@@ -1,6 +1,15 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
-## Unreleased — Ollama removed; CorvinTV needs to be online with Claude Code
+## 1.7.2 — storyboard runs on the host's Claude Code subscription; the error says why
+
+CorvinTV now uses the Claude Code login CorvinOS itself runs on: the console prefers the CLI over an
+`ANTHROPIC_API_KEY`, and the CLI is started without that key so it cannot bill it. The CLI is found the way the host
+finds it (pin, PATH, the known install directories incl. the Windows npm and installer paths) instead of by PATH only.
+A failed storyboard call now reports the CLI's own message (exit code and a scrubbed stderr tail) in the job error, so an
+operator without log access can see the cause. No change to rendering or narration. The version is raised so an instance
+that compares versions sees the new code.
+
+## Ollama removed; CorvinTV needs to be online with Claude Code (1.7.1 line)
 
 The local Ollama storyboard fallback (`qwen3:1.7b` on `localhost:11434`) is gone. The storyboard is written by Claude
 only: the Anthropic API with a key, else the host's Claude Code login (`storyboard_backend` `anthropic` /

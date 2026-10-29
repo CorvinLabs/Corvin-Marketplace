@@ -15,7 +15,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="corvinos-video-producer",
-    version="1.7.1",
+    version="1.7.2",
     description="Create narrated MP4s with animated web slides: LLM storyboard, OpenAI TTS narration, deterministic Chromium rendering, ffmpeg assembly",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
