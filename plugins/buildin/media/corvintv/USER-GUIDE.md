@@ -147,6 +147,15 @@ When the status shows ✅ **Complete**, click **Download** to get the MP4.
 
 ---
 
+## Cinematic films
+
+Besides slide videos CorvinTV makes **cinematic films**: a few long animated shots with a moving camera, narrated beat by
+beat, in the look of the *From Spark to Foundation* series. Switch **Cinematic film** on above the text box, choose the
+length (2 to 10 minutes) and describe what the film is about: who it is for, which two or three ideas must be understood,
+and an example (said as an example; the film invents no numbers). Attach a **Penpot SVG** (Export as SVG) and the film
+shows it as a design: it wipes in on the beat that talks about it and the camera moves onto it. How it works, what makes
+the result beautiful and the limits: [docs/CINEMATIC.md](docs/CINEMATIC.md).
+
 ## Troubleshooting
 
 ### ❌ "OpenAI API Error" or "Missing API Key"

@@ -1,5 +1,32 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## 1.8.0 — cinematic films, with your Penpot designs in them
+
+CorvinTV makes a second kind of video: a **cinematic film**. Instead of a sequence of slides, a few long continuous acts
+built from moving figures (a coast at night, a knowledge map, ribbons of light, gates, gears, terrain, and your own
+designs), narrated beat by beat, with the camera drifting through every shot and every visual event on the word that
+causes it. It is the look of the seven-part series *From Spark to Foundation*, now reachable by every user.
+
+- **How:** Video panel → *Cinematic film*, length 2-10 minutes; or `POST /v1/console/video/jobs` with `mode: "cinematic"`
+  (`cinematic_minutes`, `cinematic_langs`, `designs`). Details and the rules that make the result look good:
+  [docs/CINEMATIC.md](docs/CINEMATIC.md).
+- **Penpot:** attach SVG exports as *designs*; the film shows them with the `art` figure (left-to-right wipe, glow, rounded
+  corners, camera moves) and may use only the names you supplied. Designs pass the closed Penpot importer and reach the
+  browser as `data:` images only.
+- **Safety:** the screenplay is validated (every finding at once, one repair round); screenplay text and designs are
+  JSON data in the page with `<`, `>`, `&` and line separators escaped; the capture browser may load nothing but the
+  page and `data:` URLs; fonts are bundled so a film looks the same everywhere.
+- **Two languages, one picture:** a shared timeline keeps the languages identical in length (`language_sync_diff_ms` is
+  recorded); only acts with visible text are drawn once per language.
+- **Changed elsewhere:** `skill._call_storyboard_llm` takes `max_tokens` (the slide storyboard keeps 6 000); the console
+  job request gains `mode`, `cinematic_minutes`, `cinematic_langs`, `designs` and the `job_started` audit record carries
+  `mode`. A plain request is unchanged.
+- **Not in this release:** revising a film in place (a new brief makes a new film); the quality signals of the slide
+  pipeline (layout collisions, cue timing) do not apply to films; Capture (website screenshots) is not offered in films.
+- **Tests:** `tests/test_cinematic.py` (24), `tests/test_cinematic_job_e2e.py` (3: real job process, Chromium, ffmpeg, Penpot
+  design visible in the frames, per-language captions, repair round, failure case); the console endpoint is covered by
+  four tests in CorvinOS.
+
 ## 1.7.2 — storyboard runs on the host's Claude Code subscription; the error says why
 
 CorvinTV now uses the Claude Code login CorvinOS itself runs on: the console prefers the CLI over an

@@ -4,7 +4,7 @@
 
 **What ships live today: turn a task description into a professional narrated MP4 with animated slides and expressive diagrams in the corvin-labs.com design language.**
 
-> **Version 1.7.2 — first-party (buildin) plugin, installed and enabled on every fresh CorvinOS installation.** New: the `board` template (an imported Penpot design revealed step by step while the narration speaks) and `bento` (a grid of two to six tiles); narration is OpenAI TTS with edge-tts as the fallback (Piper is gone: its quality was too poor); fixes found by an end-to-end tech demo. **No "production ready" claim:** the ready gate (ADR-2247) has not reported a full pass; what is measured is in the gate rows and `RELEASE-NOTES.md`. See [ADR-2249](../../../../Corvin-Knowledge/decisions/ADR-2249-video-producer-expressive-scenes-pen-drawn-canvas.md) (expressive scenes), [ADR-2238](../../../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md) (web slides) and [ADR-2211](../../../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md) (narration).
+> **Version 1.8.0 — first-party (buildin) plugin, installed and enabled on every fresh CorvinOS installation.** New: **cinematic films** (`mode: "cinematic"`: a few long animated acts with a moving camera, narrated beat by beat, your Penpot SVG designs shown in them; see [docs/CINEMATIC.md](docs/CINEMATIC.md)); earlier: the `board` template (an imported Penpot design revealed step by step while the narration speaks) and `bento` (a grid of two to six tiles); narration is OpenAI TTS with edge-tts as the fallback (Piper is gone: its quality was too poor); fixes found by an end-to-end tech demo. **No "production ready" claim:** the ready gate (ADR-2247) has not reported a full pass; what is measured is in the gate rows and `RELEASE-NOTES.md`. See [ADR-2249](../../../../Corvin-Knowledge/decisions/ADR-2249-video-producer-expressive-scenes-pen-drawn-canvas.md) (expressive scenes), [ADR-2238](../../../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md) (web slides) and [ADR-2211](../../../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md) (narration).
 
 ## How it works
 
@@ -115,6 +115,7 @@ Known red tests: none since the 1.5.0 baseline work (ADR-2247 R0, `974bf30`). Th
 ## Documentation
 
 ### For Using This Plugin
+- **[docs/CINEMATIC.md](docs/CINEMATIC.md)** — Cinematic films: how to make one, what makes them beautiful, Penpot designs in a film, limits
 - **[docs/PENPOT-IMPORT.md](docs/PENPOT-IMPORT.md)** — Penpot boards as styles and images: what is read, what is dropped, limits, audit
 - **[docs/PENPOT-STACK-RUNBOOK.md](docs/PENPOT-STACK-RUNBOOK.md)** — Optional Penpot stack (strand B): start, stop, backup/restore, update path, failure patterns
 - **[docs/PENPOT-STACK-RESULTS.md](docs/PENPOT-STACK-RESULTS.md)** — Measured results for the stack: setup time, RAM, UI text export, MCP verdict, CVE review

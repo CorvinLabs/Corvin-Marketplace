@@ -185,7 +185,7 @@ _NEEDS_CLAUDE_MSG = ("CorvinTV writes its storyboard with Claude: it needs an in
 
 
 def _call_storyboard_llm(prompt: str, backend: str = "claude_cli", model: Optional[str] = None,
-                         report: Optional[Dict[str, Any]] = None) -> str:
+                         report: Optional[Dict[str, Any]] = None, max_tokens: int = 6000) -> str:
     """
     Call Claude to turn the prompt into a storyboard JSON string.
 
@@ -210,7 +210,7 @@ def _call_storyboard_llm(prompt: str, backend: str = "claude_cli", model: Option
         client = anthropic.Anthropic(timeout=_STORYBOARD_API_TIMEOUT_S, max_retries=1)
         # the SDK's timeout is per attempt and per socket read: this bounds the whole call
         message = dl.run_sync(
-            lambda: client.messages.create(model=model, max_tokens=6000,
+            lambda: client.messages.create(model=model, max_tokens=max_tokens,
                                            messages=[{"role": "user", "content": prompt}]),
             deadline_s=_STORYBOARD_API_TIMEOUT_S * 2 + 10, what="anthropic storyboard call")
         report["backend"] = f"anthropic:{model}"
@@ -2296,6 +2296,12 @@ async def start_video_production(
 async def _orchestrate_from_config(job_id: str, task: str, config: Dict[str, Any]) -> Dict[str, Any]:
     global _GTTS_TIER_ALLOWED
     _GTTS_TIER_ALLOWED = bool(config.get("tts_gtts_allowed", True))
+    if config.get("mode") == "cinematic":  # a film of animated acts instead of slides (cinematic/produce.py)
+        try:
+            from .cinematic.produce import produce_cinematic  # noqa: PLC0415
+        except ImportError:
+            from cinematic.produce import produce_cinematic  # noqa: PLC0415
+        return await produce_cinematic(job_id, task, config)
     return await orchestrate_video(
         job_id=job_id,
         task=task,
