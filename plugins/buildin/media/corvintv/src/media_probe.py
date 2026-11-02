@@ -6,8 +6,8 @@ install), and that wheel ships ffmpeg ONLY. Every job on such a host died at its
 
 ``probe`` answers in ffprobe's JSON shape (``streams[].codec_type/duration``, ``format.duration``) either way,
 so callers do not care which tool measured. Without ffprobe: the container duration and the stream kinds come
-from ffmpeg's input header, each stream's own duration from a stream-copy pass to the null muxer (no decode;
-the last ``time=`` it reports is the stream's end).
+from ffmpeg's input header, each stream's own duration from a stream-copy pass that lists every packet (no decode;
+the largest ``pts + duration`` is the stream's end, as ffprobe reports it).
 """
 from __future__ import annotations
 
@@ -37,7 +37,40 @@ def _ffmpeg_text(args: List[str], deadline_s: float, what: str) -> str:
     return r.stderr or ""
 
 
+_TB_RE = re.compile(r"^#tb\s+0:\s*(\d+)/(\d+)")
+_FRAMECRC_CAP = 64 * 1024 * 1024  # one line per packet: an hour of 30 fps video is ~7 MB
+
+
+def _stream_end_framecrc(path: Path, kind: str, deadline_s: float, what: str) -> Optional[float]:
+    """The stream's end as ffprobe reports it: the largest ``pts + duration`` over its packets. A stream-copy pass
+    to ``framecrc`` lists every packet without decoding. (The ``time=`` of a copy pass is the last DTS, which with
+    B-frames trails the real end by the reorder delay: 2.88 s for a 3.0 s clip.)"""
+    r = dl.run_process(["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error", "-i", str(path), "-map", f"0:{kind}:0",
+                        "-c", "copy", "-f", "framecrc", "-"], text=True, check=False, deadline_s=deadline_s, what=what,
+                       max_output=_FRAMECRC_CAP)
+    if r.truncated or r.returncode != 0:
+        return None
+    tb: Optional[float] = None
+    end: Optional[int] = None
+    for line in (r.stdout or "").splitlines():
+        m = _TB_RE.match(line)
+        if m:
+            tb = int(m.group(1)) / int(m.group(2))
+        elif line.startswith("0,"):
+            f = [x.strip() for x in line.split(",")]
+            try:
+                e = int(f[2]) + int(f[3])
+            except (IndexError, ValueError):
+                continue
+            end = e if end is None or e > end else end
+    return end * tb if (end is not None and tb) else None
+
+
 def _stream_end(path: Path, kind: str, deadline_s: float, what: str) -> Optional[float]:
+    exact = _stream_end_framecrc(path, kind, deadline_s, what)
+    if exact is not None:
+        return exact
+    # fallback (output too large, unreadable listing): the last progress time of a copy pass, up to the reorder delay short
     text = _ffmpeg_text(["-i", str(path), "-map", f"0:{kind}:0", "-c", "copy", "-f", "null", "-"], deadline_s, what)
     times = [_hms(*m.groups()[1:]) for m in _TIME_RE.finditer(text) if not m.group(1)]
     return times[-1] if times else None

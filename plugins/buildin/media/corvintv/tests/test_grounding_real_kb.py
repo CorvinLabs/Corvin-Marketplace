@@ -6,6 +6,7 @@ NBAC/A2A drafts for "audit chain". Skipped where the sibling checkouts do not ex
 """
 
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -36,7 +37,9 @@ def test_audit_chain_pack_carries_the_current_mechanism():
     assert "sha256(prev_hash || canonical_record_json)[:16]" in text  # the formula, from the code
     assert all(s["status"] == "accepted" for s in pack["sections"])
     assert pack["sections"][0]["truth"] == "live"
-    assert "/.corvin/" not in text and "/home/" not in text
+    # the scrubber turns a home path into "~"; the generic "~/.corvin/" and "<repo-root>/.corvin/" in the code's own
+    # docstrings are not a leak, a path that reaches /.corvin/ through a real directory is
+    assert "/home/" not in text and not re.search(r"[\w.\-]/\.corvin/", text)
     assert len(text) <= g.DEFAULT_BUDGET_CHARS + 400
 
 
