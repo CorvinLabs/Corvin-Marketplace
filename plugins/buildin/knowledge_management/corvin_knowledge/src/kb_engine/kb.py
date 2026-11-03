@@ -56,6 +56,10 @@ except ModuleNotFoundError:     # Windows: no fcntl; the lock below falls back t
 # O_NOFOLLOW does not exist on Windows; the explicit is_symlink() refusal before every open is
 # then the only guard (Windows creates symlinks only with a privilege an attacker rarely has)
 O_NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
+# Windows: os.open() defaults to TEXT mode and turns every LF written through the fd into CRLF -
+# that corrupted the git index kb swaps in and the lock body kb later recognises by content
+# (index.lock was never released). Every raw fd kb writes is opened binary; 0 on POSIX.
+O_BINARY = getattr(os, "O_BINARY", 0)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.dont_write_bytecode = True   # never leave scripts/__pycache__ in the KB working tree
@@ -555,7 +559,7 @@ def kb_lock(repo: Path):
     kb.mkdir(exist_ok=True)
     if (kb / ".lock").is_symlink():
         raise SystemExit("refused: kb/.lock is a symlink")
-    fd = os.open(kb / ".lock", os.O_RDWR | os.O_CREAT | O_NOFOLLOW, 0o644)
+    fd = os.open(kb / ".lock", os.O_RDWR | os.O_CREAT | O_NOFOLLOW | O_BINARY, 0o644)
     try:
         deadline = time.time() + float(os.environ.get("KB_LOCK_TIMEOUT", "120"))
         while True:
@@ -1048,7 +1052,7 @@ class _IndexLock:
     def acquire(self, timeout: float = 15.0) -> None:
         seed = _gitpath(self.repo, f"kb-lockseed-{os.getpid()}")
         seed.unlink(missing_ok=True)
-        fd = os.open(seed, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        fd = os.open(seed, os.O_CREAT | os.O_EXCL | os.O_WRONLY | O_BINARY, 0o644)
         try:
             os.write(fd, _lock_body(self.nonce))
             os.fsync(fd)
@@ -1071,7 +1075,7 @@ class _IndexLock:
 
     def swap_in(self, data: bytes) -> None:
         tmp = _gitpath(self.repo, f"kb-swap-{os.getpid()}")
-        fd = os.open(tmp, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o644)
+        fd = os.open(tmp, os.O_CREAT | os.O_TRUNC | os.O_WRONLY | O_BINARY, 0o644)
         try:
             os.write(fd, data)
             os.fsync(fd)
@@ -2359,7 +2363,7 @@ def review_calibrate(repo: Path, ref: str, *, lead_question: str, reviewer: str,
             for rel, f, kind, mut in options:
                 got = mut((tmp / rel).read_text(encoding="utf-8", errors="replace").split("\n"))
                 if got:
-                    (tmp / rel).write_text("\n".join(got[0]), encoding="utf-8")
+                    (tmp / rel).write_text("\n".join(got[0]), encoding="utf-8", newline="\n")
                     seed = dict(kind=kind, file=rel, line=got[1])
                     break
             if seed is None:
@@ -3604,7 +3608,10 @@ def index(repo: Path) -> dict:
     g = repo / "kb/graph"
     g.mkdir(parents=True, exist_ok=True)
     n_rel = 0
-    with open(g / "entities.jsonl", "w") as fe, open(g / "relations.jsonl", "w") as fr:
+    # UTF-8 + LF on every platform: the console panel reads these as UTF-8, and Windows' locale
+    # codec (cp1252) cannot encode every title (ensure_ascii=False below)
+    with open(g / "entities.jsonl", "w", encoding="utf-8", newline="\n") as fe, \
+            open(g / "relations.jsonl", "w", encoding="utf-8", newline="\n") as fr:
         for e in ents:
             row = dict(uid=e.uid, id=e.id, type=e.type, title=e.title, status=M.effective_status(e, idx),
                        source=e.source.name, path=str(e.path),

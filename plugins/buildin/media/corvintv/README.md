@@ -4,14 +4,14 @@
 
 **What ships live today: turn a task description into a professional narrated MP4 with animated slides and expressive diagrams in the corvin-labs.com design language.**
 
-> **Version 1.8.0 — first-party (buildin) plugin, installed and enabled on every fresh CorvinOS installation.** New: **cinematic films** (`mode: "cinematic"`: a few long animated acts with a moving camera, narrated beat by beat, your Penpot SVG designs shown in them; see [docs/CINEMATIC.md](docs/CINEMATIC.md)); earlier: the `board` template (an imported Penpot design revealed step by step while the narration speaks) and `bento` (a grid of two to six tiles); narration is OpenAI TTS with edge-tts as the fallback (Piper is gone: its quality was too poor); fixes found by an end-to-end tech demo. **No "production ready" claim:** the ready gate (ADR-2247) has not reported a full pass; what is measured is in the gate rows and `RELEASE-NOTES.md`. See [ADR-2249](../../../../Corvin-Knowledge/decisions/ADR-2249-video-producer-expressive-scenes-pen-drawn-canvas.md) (expressive scenes), [ADR-2238](../../../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md) (web slides) and [ADR-2211](../../../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md) (narration).
+> **Version 1.8.0 — native engines only. First-party (buildin) plugin, installed and enabled on every fresh CorvinOS installation.** The storyboard is written by the native Claude Code engine (the host's signed-in `claude` CLI) and nothing else - no local model, no API-key path, no fallback; every scene is narrated by the CorvinOS voice chain, the same one chat TTS uses (OpenAI → edge-tts → Piper). CorvinTV has no LLM SDK and no TTS engine of its own any more. Also new in 1.8.0: **cinematic films** (`mode: "cinematic"`: a few long animated acts with a moving camera, narrated beat by beat through the same CorvinOS voice chain, your Penpot SVG designs shown in them; see [docs/CINEMATIC.md](docs/CINEMATIC.md)); earlier: the `board` template (an imported Penpot design revealed step by step while the narration speaks) and `bento` (a grid of two to six tiles). See `RELEASE-NOTES.md`. **No "production ready" claim:** the ready gate (ADR-2247) has not reported a full pass; what is measured is in the gate rows and `RELEASE-NOTES.md`. See [ADR-2249](../../../../Corvin-Knowledge/decisions/ADR-2249-video-producer-expressive-scenes-pen-drawn-canvas.md) (expressive scenes), [ADR-2238](../../../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md) (web slides) and [ADR-2211](../../../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md) (narration).
 
 ## How it works
 
 **Pipeline (all four steps happen automatically):**
 
-1. **Storyboard** → Claude writes scenes + narration text (Anthropic API with a key, else the host's Claude Code login; both gated by L35/L34; there is no local fallback — CorvinTV needs to be online with Claude Code available)
-2. **Narration** → each scene is spoken by OpenAI TTS (`tts-1-hd`, voice `onyx`); when OpenAI declines (no key, invalid or exhausted key, rate limit, timeout) that scene is spoken by edge-tts instead and the job records `tts_tier_below`; if edge-tts declines too, gTTS (Google Translate voice, no key, needs network, the text goes to Google) is the last resort. If all decline the job fails with a named error — there is never a silent video. This chain is the default (`tts_engine: "auto"`); `openai` means OpenAI only, without a fallback
+1. **Storyboard** → the native Claude Code engine writes scenes + narration text: one tool-less `claude -p` call of the host's signed-in Claude Code CLI (the binary the console resolves, `CORVIN_CLAUDE_BIN`; the model the console routes this work to, Sonnet). It is the only engine: a host without the CLI has the job refused before it starts, and a CLI that fails mid-job ends the job `error` with `ClaudeEngineUnavailable` and the reason — never another engine. The CLI runs on the host's Claude Code subscription: it is started without `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN`, and a failing call puts the CLI's own message (secrets scrubbed) into the job error
+2. **Narration** → each scene is spoken by the **CorvinOS voice chain** (`corvin_console.native_tts` → `say.py`), exactly like chat TTS: OpenAI first, edge-tts when OpenAI declines, Piper (local, offline) last; the operator pin `CORVIN_TTS_PROVIDER`, the voice settings of the tenant profile and `CORVIN_TTS_LOCAL_ONLY` apply unchanged. The job report names the tier that spoke each scene and records `tts_tier_below` when it was not the chain's head (or the pin). If no tier speaks the job fails with a named error (`NoVoiceAvailable`, with the chain's reasons) — there is never a silent video
 3. **Slides** → Animated web slides in **corvin-labs.com design** with 19 built-in templates whose reveals and focus follow the narration sentence by sentence (deterministic Chromium rendering, ambient loops, monotone curves, DAG graphs); fallback to Pillow if Chromium unavailable
 4. **Assembly** → FFmpeg encodes MP4 at 1920×1080 / 30fps with audio synced to narration
 
@@ -73,19 +73,20 @@ Marketplace workflow `video-producer-release-lint.yml`).
 
 ### Environment (on the host running CorvinOS)
 
-**Required for best quality:**
-- `OPENAI_API_KEY` or `CORVIN_TTS_OPENAI_KEY` — OpenAI TTS key for narration (required for `openai` engine, default)
+**Required:**
+- The Claude Code CLI, signed in (`claude` once in a terminal). The console finds it like its own chat does (`CORVIN_CLAUDE_BIN`, PATH, the known install locations, the Windows `claude.cmd` shim) and hands the job that exact binary. No `ANTHROPIC_API_KEY` is used.
 
-**Optional:**
-- `ANTHROPIC_API_KEY` — fallback for storyboard generation. In the CorvinOS console the host's Claude Code login (the subscription CorvinOS itself runs on) always comes first and the CLI is started without this key; the key is used only when the host has no Claude Code CLI. If neither exists, the job is refused. A failing CLI call reports the CLI's own message in the job error.
+**Narration** is configured where chat TTS is configured, because it is the same chain: an OpenAI TTS key (console Setup / `CORVIN_TTS_OPENAI_KEY` / `OPENAI_API_KEY`) for the best voice, edge-tts (installed with CorvinOS) without a key, Piper voice models for offline use; `CORVIN_TTS_PROVIDER` pins one, `CORVIN_TTS_LOCAL_ONLY=1` keeps the narration on Piper.
 
 ### Settings
 
-**In the CorvinOS console** only the narration engine is user-selectable (Settings panel); the panel also reports whether OpenAI and Chromium are available on the host. The other options below are plugin API keys for a host that calls the plugin directly — the console passes none of them, so console jobs always use web slides with the default theme.
+**In the CorvinOS console** the Settings panel shows the narration chain (one engine, `auto` = the CorvinOS voice chain, with each tier's readiness) and whether Chromium is available on the host. The other options below are plugin API keys for a host that calls the plugin directly — the console passes none of them, so console jobs always use web slides with the default theme.
 
 | Setting | Default | Options | Purpose |
 |---------|---------|---------|---------|
-| `tts_engine` | `openai` | `openai` \| `auto` \| `gtts` | Which narrator to use (console + API; see [ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md)) |
+| `tts_engine` | `auto` | `auto` | The CorvinOS voice chain (since 1.8.0 the only engine; a stored pre-1.8 `openai`/`gtts` also means `auto`) |
+| `storyboard_backend` | `claude_cli` | `claude_cli` | API only: the native Claude Code engine (any other value is refused) |
+| `storyboard_model` | `sonnet` | model id | API only: the model the host routes storyboards to (the console passes its Sonnet tier) |
 | `web_slides` | `true` | boolean | API only: animated web slides (Chromium) vs. classic Pillow slides |
 | `web_theme` | `dark` | `dark` \| `light` | API only: colour scheme of the web slides |
 | `web_fps` | `30` | integer 12–60 | API only: render frame rate (higher = longer render time) |
@@ -110,6 +111,8 @@ python -m pytest tests/test_skill.py tests/test_models.py tests/test_storage.py 
 
 Last run (2026-10-09, dev host): 91 passed in 160 s. `tests/test_web_slides_e2e.py` drives the real pipeline (fake `claude` binary, real Chromium, real ffmpeg) and is the end-to-end proof; there is no separate "job end to end" test.
 
+Native engines (1.8.0): `tests/test_native_tts_and_no_subtitles.py` drives the narration through a real subprocess with the host's TTS surface; the live proof — a fresh CorvinOS home, a real console, the real `claude` CLI and the real voice chain producing a real MP4 — is CorvinOS `core/console/tests/test_corvintv_native_live_e2e.py` (`CLAUDE_LIVE_E2E=1`).
+
 Known red tests: none since the 1.5.0 baseline work (ADR-2247 R0, `974bf30`). The four red status-code tests of that run tested a copy of the routes written inside their own test file; that file was deleted (the real routes are tested in CorvinOS), and `test_icon_renderer_is_called_from_render_slide_image` was made a behavioural test.
 
 ## Documentation
@@ -121,7 +124,7 @@ Known red tests: none since the 1.5.0 baseline work (ADR-2247 R0, `974bf30`). Th
 - **[docs/PENPOT-STACK-RESULTS.md](docs/PENPOT-STACK-RESULTS.md)** — Measured results for the stack: setup time, RAM, UI text export, MCP verdict, CVE review
 - **[docs/WEB-SLIDES.md](docs/WEB-SLIDES.md)** — All 15 slide templates, data contracts, narration-synced timing
 - **[ADR-2238](../../Corvin-Knowledge/decisions/ADR-2238-video-producer-deterministic-web-slide-renderer-html-css.md)** — Web-slide renderer design (Chromium, deterministic frames, ambient loops)
-- **[ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md)** — Narration quality (OpenAI TTS, fallback chain)
+- **[ADR-2211](../../Corvin-Knowledge/decisions/ADR-2211-video-producer-openai-tts-default-and-layout-collision-resolution.md)** — Narration quality (since 1.8.0 the CorvinOS voice chain carries it)
 
 ### For Developers / Contributing
 - **[docs/PLUGIN-DEVELOPMENT-GUIDE.md](docs/PLUGIN-DEVELOPMENT-GUIDE.md)** — How to extend this plugin or build similar ones

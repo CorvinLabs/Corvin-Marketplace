@@ -36,7 +36,7 @@ have to rediscover them.
 | The camera moves all the time (slow push-ins, parallax: sky 0.1, sea 0.4) | `cam` tweens (`cx`, `cy`, `zoom`, `rot`) and a `par` factor per figure; the prompt asks for camera moves |
 | Metaphor first, almost no text, **no subtitles, no pointing dot** | Visible text only through `caption`; the prompt forbids the dot and subtitles; there is no subtitle track |
 | One consistent look: night palette, amber accent, soft glow, vignette | Fixed palette and `grade`; fonts (Newsreader, Instrument Sans) are embedded in the page, so the film looks the same on every machine |
-| Calm, even narration: tts-1-hd voice, -16 LUFS | The plugin's TTS chain (OpenAI, edge-tts, gTTS) and `loudnorm=I=-16` in the encode |
+| Calm, even narration: tts-1-hd voice, -16 LUFS | The CorvinOS TTS chain (the same as chat: say.py via `corvin_console.native_tts`, OpenAI -> edge-tts -> Piper, operator pin and tenant profile honoured) and `loudnorm=I=-16` in the encode |
 | German and English identical in picture and length | One shared timeline: a beat's slot is the longer of its spoken lengths; only acts with a `caption` are drawn once per language, the rest once |
 | Frames identical on every run | The engine uses no clock and no random: a frame is a pure function of (act, time, language) |
 
@@ -62,10 +62,10 @@ reveal, not the Penpot prototype. See [PENPOT-IMPORT.md](PENPOT-IMPORT.md).
 
 ## What happens in a job
 
-1. **Screenplay.** The director (Claude: the host's Claude Code login or an API key, like the slide storyboard) writes
+1. **Screenplay.** The director (the native Claude Code engine: the host's signed-in `claude` CLI, like the slide storyboard; no API-key path, no fallback) writes
    acts and beats in every requested language. The result is validated; **all** findings go back in **one** repair
    round; if it is still wrong the job ends with the findings as its error.
-2. **Speech.** One clip per beat and language (cached by text), converted to 24 kHz mono.
+2. **Speech.** One clip per beat and language (cached by text) through the CorvinOS TTS chain, converted to 24 kHz mono. No voice -> `NoVoiceAvailable` ends the job.
 3. **Timeline.** Beat times and act lengths on the 24 fps grid; `max_duration_minutes` is enforced on the real length.
 4. **Frames.** One page with the engine, fonts, acts and designs; headless Chromium draws every frame (network blocked,
    only `data:` images). Progress is reported per 48 frames and can be cancelled.
@@ -79,7 +79,7 @@ the video output; the report is `report.json`. The audit trail records `video_pr
 ## Limits and honest notes
 
 - Needs the same things as a slide video (ffmpeg, Chromium via Playwright, a narration voice) **and** Claude for the
-  screenplay. Offline, the job ends with a clear message.
+  screenplay (the native Claude Code CLI). Without it, the job ends with `ClaudeEngineUnavailable` and the CLI's own reason.
 - The figure library is a coastal night world plus abstract figures (constellations, ribbons, gates, gears, terrain, …).
   It is strong for explaining ideas and weak for literal product walkthroughs: for those, attach designs and let the
   camera and reveals do the work.

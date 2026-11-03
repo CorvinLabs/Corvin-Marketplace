@@ -2,7 +2,7 @@
   "id": "plugin:buildin-knowledge_management-corvin_knowledge",
   "type": "plugin",
   "name": "Corvin-Knowledge: Knowledge Graph",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "author": "CorvinLabs (Shumway + Claude)",
   "license": "Apache-2.0",
   "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",

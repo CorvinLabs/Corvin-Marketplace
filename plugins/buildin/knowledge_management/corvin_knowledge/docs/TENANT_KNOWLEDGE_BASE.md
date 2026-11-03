@@ -1,4 +1,4 @@
-# Tenant knowledge base (since 1.1.0; enabled at first boot since 1.2.0)
+# Tenant knowledge base (since 1.1.0; enabled at first boot since 1.2.0; Windows + multi-tenant since 1.3.0)
 
 Every CorvinOS installation gets this plugin as a **standard plugin**
 (`core/console/corvin_console/default_plugins.yaml` in CorvinOS): the first boot installs it
@@ -79,11 +79,15 @@ engine runs without `fcntl` (`msvcrt` lock, Windows process-liveness probe, no `
 | Platform | Status |
 |---|---|
 | Linux | verified, including a fresh-install E2E |
-| Windows | the `msvcrt` lock path is executed by a test on Linux (fcntl blocked, msvcrt stand-in). The Windows-only liveness probe and a run on real Windows are not verified |
+| Windows | verified on Windows 11 (1.3.0): fresh-install live E2E (boot -> KB -> board -> gates with a real model), `tests/test_tenant_kb.py` incl. a CRLF checkout and two consecutive writes. Before 1.3.0 a Windows KB was never created (CRLF engine refused) and its first write corrupted `.git/index` |
 | macOS | POSIX path, the same as Linux. Not run on a Mac |
 
 ## Limits
 
-* One projected tenant per host process: `CORVIN_KB_TENANT` (default `_default`), the same as
-  for the maintainers' KB.
+* Every tenant has its own KB (`<CORVIN_HOME>/tenants/<tenant>/knowledge`) and its own binding; a
+  tenant never reads another tenant's KB. A host process projects ITS tenant (`CORVIN_TENANT_ID`):
+  the audit chain accepts only the process tenant's records, so a second tenant runs its own host.
+  An operator KB (`CORVIN_KB_REPO` / sibling checkout) binds only `CORVIN_KB_TENANT` (default `_default`).
+* Agents reach `kb.py` only by its exact absolute path (the CorvinOS path gate pins the engine
+  hashes, for the session's own tenant KB). The ADR / Concept gate skills are rendered with that path.
 * A new KB has no remote. The panel's sync button needs a `remote_url` you set yourself.

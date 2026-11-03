@@ -177,17 +177,19 @@ async def produce_cinematic(job_id: str, task: str, config: Dict[str, Any]) -> D
     budget = dl.JobBudget(dl.job_budget_seconds(max_minutes))
     budget_token = dl.set_current_budget(budget)
     dl.register_job_budget(job_id, budget)
-    backend = config.get("storyboard_backend", "claude_cli")
+    backend = config.get("storyboard_backend") or sk.STORYBOARD_BACKEND
     tts_engine = config.get("tts_engine", sk.DEFAULT_TTS_ENGINE)
-    report = rp.ProductionReport(job_id, configured_tts=tts_engine,
+    report = rp.ProductionReport(job_id, configured_tts=tts_engine if tts_engine in sk.SUPPORTED_TTS_ENGINES
+                                 else str(tts_engine),
                                  storyboard_backend="operator" if config.get("direction") else backend, style_id=None)
     report_token = rp.set_current(report)
     report_texts: List[str] = [task]
     out_root = storage.videos_dir / job_id
     try:
         report.begin("setup")
-        if tts_engine not in sk.SUPPORTED_TTS_ENGINES:
-            raise ValueError(f"TTS engine {tts_engine!r} is not available (supported: {', '.join(sk.SUPPORTED_TTS_ENGINES)})")
+        # one narration engine: the CorvinOS TTS chain (a pre-1.8 value means it too, anything else is refused)
+        tts_engine = sk._normalise_tts_engine(tts_engine)
+        report.configured_tts = tts_engine
         if shutil.which("ffmpeg") is None:
             raise RuntimeError("ffmpeg binary not found on PATH - required for real video assembly")
         fps = int(config.get("cinematic_fps", stage.FPS))
@@ -234,15 +236,9 @@ async def produce_cinematic(job_id: str, task: str, config: Dict[str, Any]) -> D
             async with sem:
                 budget.check("narration")
                 if not mp3.exists() or mp3.stat().st_size < 200:
-                    chain = (sk._synthesize_narration_chain if tts_engine == "auto" else None)
-                    if chain is not None:
-                        providers.append(await asyncio.to_thread(chain, text, mp3, lg))
-                    elif tts_engine == "openai":
-                        await asyncio.to_thread(sk._synthesize_narration_openai, text, mp3, lg)
-                        providers.append("openai")
-                    else:
-                        await asyncio.to_thread(sk._synthesize_narration, text, mp3, lg)
-                        providers.append("gtts")
+                    # every beat is spoken by the CorvinOS TTS chain (say.py via corvin_console.native_tts),
+                    # exactly like a slide scene; no voice -> NoVoiceAvailable ends the job
+                    providers.append(await asyncio.to_thread(sk._synthesize_narration_chain, text, mp3, lg))
                 if not wav.exists():
                     await asyncio.to_thread(lambda: dl.run_process(
                         ["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3), "-ar", "24000", "-ac", "1", "-c:a", "pcm_s16le",
@@ -315,7 +311,8 @@ async def produce_cinematic(job_id: str, task: str, config: Dict[str, Any]) -> D
         meta = {
             "mode": "cinematic", "duration_seconds": duration_seconds, "resolution": "1920x1080", "fps": fps,
             "file_size_mb": round(video_path.stat().st_size / 1048576, 2), "scenes": len(acts), "beats": n_beats,
-            "tts_engine": tts_engine, "tts_provider_used": distinct.pop() if len(distinct) == 1 else "mixed",
+            "tts_engine": tts_engine, "tts_chain": "corvinos",
+            "tts_provider_used": distinct.pop() if len(distinct) == 1 else "mixed",
             "language": langs[0], "languages": langs, "language_files": {lg: p.name for lg, p in outputs.items()},
             "language_sync_diff_ms": round(spread_ms, 1), "designs": sorted(art), "screenplay_repaired": info.get("repaired", 0),
             "storyboard_llm": backend_label, "renderers": ["cinematic"],

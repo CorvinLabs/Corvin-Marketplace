@@ -8,7 +8,7 @@
   "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
   "tier": "buildin",
   "category": "media",
-  "description": "CorvinTV (formerly Video Producer): turn a task description into a professional narrated video - LLM storyboard, narration by OpenAI TTS with edge-tts as the fallback, animated web slides (corvin-labs.com design, 19 templates, incl. board: an imported Penpot design revealed step by step, and bento) whose reveals and focus follow the spoken words, then MP4. Deterministic headless-Chromium rendering with a Pillow fallback. See docs/WEB-SLIDES.md, USER-GUIDE.md.",
+  "description": "CorvinTV (formerly Video Producer): turn a task description into a professional narrated video - storyboard by the native Claude Code engine (the host's signed-in claude CLI, no other LLM), narration by the CorvinOS voice chain (the same as chat: OpenAI, edge-tts, Piper), animated web slides (corvin-labs.com design, 19 templates, incl. board: an imported Penpot design revealed step by step, and bento) whose reveals and focus follow the spoken words, then MP4. Deterministic headless-Chromium rendering with a Pillow fallback. See docs/WEB-SLIDES.md, USER-GUIDE.md.",
   "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/media/corvintv/README.md",
   "documentation": "docs/README.md",
   "adr_prefix": "video-producer",
@@ -54,7 +54,7 @@
       {
         "id": "os.video_producer",
         "name": "CorvinTV",
-        "description": "Turns a task description into a short narrated MP4 (storyboard, TTS, ffmpeg assembly)."
+        "description": "Turns a task description into a short narrated MP4 (Claude Code storyboard, CorvinOS narration, ffmpeg assembly)."
       }
     ]
   },

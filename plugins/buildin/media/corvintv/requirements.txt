@@ -7,18 +7,15 @@
 # package (the plugin runs INSIDE a CorvinOS process, it does not depend on
 # one as a library) — `pip install -r requirements.txt` would have failed
 # outright on a clean machine.
-anthropic>=0.40.0
 requests>=2.31.0
-gTTS>=2.5.0              # legacy engine (tts_engine="gtts")
-openai>=1.0.0            # default narration engine: OpenAI TTS (ADR-2211)
 Pillow>=10.0.0
 numpy>=1.24    # scripts/measure_engagement.py still-time measurement (reports skip, not a number, without it)
 
-# TTS fallback chain (ADR-2211): openai -> edge-tts. Nothing else narrates (Piper was removed
-# 2026-10-17: its quality was too poor; there is no silent mock tier either).
-# edge-tts is free, no API key, Microsoft's cloud voices (network required). Releases before
-# 7.3.1 get HTTP 403 from Microsoft's Read-Aloud handshake and produce no audio.
-edge-tts>=7.3.1
+# No LLM SDK and no TTS package (1.8.0). The storyboard is written by the host's native Claude Code
+# engine (the signed-in `claude` CLI, spawned by src/corvinos_native.py) and every scene is narrated by
+# the CorvinOS voice chain (corvin_console.native_tts -> say.py: OpenAI -> edge-tts -> Piper), whose
+# packages (openai, edge-tts>=7.3.1, piper-tts) CorvinOS itself installs. Neither engine has a fallback
+# inside this plugin: a host without them fails the job with a named reason.
 
 # Real screenshot capture for kind=="screenshot" scenes (CONCEPT-0095,
 # screenshot_capturer.py). A genuinely NEW runtime dependency, not a reuse

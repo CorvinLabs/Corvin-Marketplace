@@ -147,18 +147,16 @@ the narration names it (ADR-2245, see "How a scene becomes a web slide").
 | `web_fps` | `30` | sampling rate of the animation (12-60) |
 | `web_tokens_path` | bundled file | alternative design-token file, validated like the bundled one |
 | `storyboard` | — | an operator-written storyboard; skips the LLM, same validation, web-slide contract enforced strictly (an invalid scene fails the job before any work) |
-| `storyboard_backend` | `claude_cli` | where the storyboard LLM call goes: `claude_cli` (the host's Claude Code login, `claude -p` with no tools, no MCP, no settings, no saved session, prompt over stdin, run in an empty temp dir; binary from `CORVIN_CLAUDE_BIN` or PATH), or `anthropic` (API key). A failed call ends the job with an actionable message (no local fallback); the job's `storyboard_llm` metadata names the backend that actually answered |
-| `storyboard_model` | — | model id for `claude_cli` / `anthropic` (the console passes the newest Sonnet) |
+| `storyboard_backend` | `claude_cli` | the only storyboard engine since 1.8.0: the host's Claude Code login, `claude -p` with no tools, no MCP, no settings, no saved session, prompt over stdin, run in an empty temp dir; binary from `CORVIN_CLAUDE_BIN` (the console pins the one it resolved), PATH or the host's resolver; a Windows `claude.cmd` goes through CorvinOS's cmd.exe-safe launcher. Any other value is refused (ValueError); a failing CLI fails the job with `ClaudeEngineUnavailable` - there is no fallback. The job's `storyboard_llm` metadata is `claude_cli:<model>` |
+| `storyboard_model` | `sonnet` | the model the host routes storyboards to (the console passes its Sonnet tier); standalone: `CORVIN_VIDEO_STORYBOARD_MODEL` |
 
 These are plugin API keys, set by the host in the job config. The CorvinOS
-console route passes only `storyboard_backend`/`storyboard_model`: the
-Anthropic API with a key, else `claude_cli` when the CLI exists — both only
-when L35 admits api.anthropic.com and L34 admits the task under the
-`claude_code` engine — else the job is refused. Measured on the real prompt
-(2026-10-08): qwen3:1.7b ~65 s with invalid or repeated templates, Sonnet 5.5
+console route passes only `storyboard_backend`/`storyboard_model`: always
+`claude_cli`, and only when the CLI exists, L35 admits api.anthropic.com and
+L34 admits the task under the `claude_code` engine — otherwise the job is
+refused before it starts. Measured on the real prompt (2026-10-08): Sonnet 5.5
 ~14 s / ~$0.03 and Opus 5.5 ~17-42 s / ~$0.06 with 8 of 8 valid and 7-8
-distinct templates — hence Sonnet. A remote model may write up to 8 scenes,
-the local one 6. Everything else runs with the defaults (web slides on, dark
+distinct templates — hence Sonnet. The model may write up to 8 scenes. Everything else runs with the defaults (web slides on, dark
 theme). A host
 that starts passing `storyboard` must run its narration text through the same
 pre-spawn gates as the task text (L44 acceptable use, L34 classification),
@@ -166,7 +164,7 @@ because that text is sent to the TTS service. `web_tokens_path` is a host-side
 setting, never tenant input; it must be a regular JSON file of at most 64 KB.
 
 LLM-written storyboards are untrusted: an invalid web-slide spec is never
-passed through. When a remote model (`claude_cli`/`anthropic`) wrote it, the
+passed through. When the model (`claude_cli`) wrote it, the
 scenes that failed go back to the same model once, with their exact
 validation errors and the template contract; a repaired spec is kept only if
 it passes the same validation, and the repair may touch only the scenes that

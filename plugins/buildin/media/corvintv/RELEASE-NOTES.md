@@ -1,11 +1,16 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
-## 1.8.0 — cinematic films, with your Penpot designs in them
+## 1.8.0 — cinematic films, and native engines only: Claude Code writes, the CorvinOS voice chain speaks
+
+One release with two parts: a second kind of video (cinematic films), and CorvinTV no longer bringing an LLM or a
+voice of its own - both come from CorvinOS, the same as in chat, for slide videos and films alike.
+
+### Cinematic films, with your Penpot designs in them
 
 CorvinTV makes a second kind of video: a **cinematic film**. Instead of a sequence of slides, a few long continuous acts
 built from moving figures (a coast at night, a knowledge map, ribbons of light, gates, gears, terrain, and your own
-designs), narrated beat by beat, with the camera drifting through every shot and every visual event on the word that
-causes it. It is the look of the seven-part series *From Spark to Foundation*, now reachable by every user.
+designs), narrated beat by beat (every beat spoken by the CorvinOS voice chain, see below), with the camera drifting
+through every shot and every visual event on the word that causes it. It is the look of the seven-part series *From Spark to Foundation*, now reachable by every user.
 
 - **How:** Video panel → *Cinematic film*, length 2-10 minutes; or `POST /v1/console/video/jobs` with `mode: "cinematic"`
   (`cinematic_minutes`, `cinematic_langs`, `designs`). Details and the rules that make the result look good:
@@ -18,6 +23,10 @@ causes it. It is the look of the seven-part series *From Spark to Foundation*, n
   page and `data:` URLs; fonts are bundled so a film looks the same everywhere.
 - **Two languages, one picture:** a shared timeline keeps the languages identical in length (`language_sync_diff_ms` is
   recorded); only acts with visible text are drawn once per language.
+- **Engines:** the film's screenplay is written by the native Claude Code engine (the same `claude -p` call as the
+  slide storyboard; `max_tokens` only widens the call's deadline, since the CLI has no output cap) and every beat is
+  narrated through the CorvinOS voice chain (`skill._synthesize_narration_chain` -> `corvin_console.native_tts`); the
+  film's metadata carries `tts_chain: "corvinos"` and `storyboard_llm: "claude_cli:<model>"`.
 - **Changed elsewhere:** `skill._call_storyboard_llm` takes `max_tokens` (the slide storyboard keeps 6 000); the console
   job request gains `mode`, `cinematic_minutes`, `cinematic_langs`, `designs` and the `job_started` audit record carries
   `mode`. A plain request is unchanged.
@@ -26,6 +35,48 @@ causes it. It is the look of the seven-part series *From Spark to Foundation*, n
 - **Tests:** `tests/test_cinematic.py` (24), `tests/test_cinematic_job_e2e.py` (3: real job process, Chromium, ffmpeg, Penpot
   design visible in the frames, per-language captions, repair round, failure case); the console endpoint is covered by
   four tests in CorvinOS.
+
+### Native engines only
+
+- **Storyboard: the native Claude Code engine, and nothing else.** Every LLM step (storyboard, web-slide repair,
+  grounded-claims repair) is one tool-less `claude -p` call of the host's signed-in Claude Code CLI, with the
+  model the console routes this work to (its Sonnet tier). The local-model backend, its constants and its silent
+  fallback are **removed**, and so is the API-key backend (`anthropic` SDK). There is no fallback of any kind:
+  - the console refuses a job before it starts when no `claude` CLI is found (HTTP 503 with the reason);
+  - a CLI that fails during a job (not signed in, offline, an error answer) ends the job `error` with the typed
+    `ClaudeEngineUnavailable` and the CLI's reason - visible in the job and as `error_class` in `report.json`;
+  - a job config naming any other backend (from an older host) is refused with a `ValueError`, never rerouted.
+  The console pins the binary it resolved for its own chat (`CORVIN_CLAUDE_BIN` in the job's environment), so a
+  service PATH without `claude` no longer matters (standalone, the CLI is found like the host finds it: pin, PATH,
+  the host's resolver, the known install directories incl. the Windows npm and installer paths); the CLI is started
+  without `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` so it runs on the Claude Code subscription (1.7.2), and a
+  failing call reports the CLI's own message (secrets scrubbed); a Windows `claude.cmd` shim is spawned through CorvinOS's
+  cmd.exe-safe launcher (`agents/_win_shim.py`), the prompt always over stdin.
+- **Narration: the CorvinOS voice chain.** Each scene is spoken through `corvin_console.native_tts`, the same
+  `say.py` chain chat TTS uses: OpenAI → edge-tts → Piper (local, offline), the operator pin `CORVIN_TTS_PROVIDER`,
+  the tenant profile's provider and voice, `CORVIN_TTS_LOCAL_ONLY`, the length-scaled per-provider and whole-chain
+  deadlines and the console's own OpenAI key/endpoint resolution - all unchanged from chat. The job runs the
+  prepared command under its own budget (cancel kills it), reads the tier from say.py's `provider=` marker and
+  normalises the audio to MP3. CorvinTV's own tiers (OpenAI SDK, edge-tts, gTTS) are **removed**; gTTS is gone
+  entirely (it is not part of the CorvinOS chain). The report records the chain (`configured.tts_chain:
+  "corvinos"`), each scene's tier, and `tts_tier_below` when a scene was not spoken by the chain's head (or the
+  pin). No voice → `NoVoiceAvailable` with say.py's per-tier reasons (key-shaped strings redacted), never a mute
+  video.
+- **One narration engine.** `tts_engine` has one value, `auto` (= the CorvinOS chain). A record that stored
+  `openai` or `gtts` keeps validating and means `auto`; the console's Settings panel offers only the chain and
+  shows each tier's readiness (`tts_chain` in `GET /video/settings`).
+- **Manifest and dependencies.** `egress_hosts`: `api.anthropic.com` (the storyboard), `api.openai.com` and
+  `speech.platform.bing.com` (the chain's network tiers); `translate.google.com` is gone. `requirements.txt` /
+  `setup.py` drop `anthropic`, `openai`, `edge-tts` and `gTTS` - CorvinOS provides the engines.
+- **Fresh install.** CorvinOS `default_plugins.yaml` now requires `min_version: "1.8.0"`, so a fresh installation
+  installs and enables this release (a stale marketplace cache with an older one is skipped and retried).
+
+**Needs CorvinOS with `corvin_console.native_tts`** (the CorvinOS change shipped together with this release; an
+older console still works through its chat route's helpers). Measured: a fresh CorvinOS home on a real console
+produced a real MP4 with the real `claude` CLI and the real voice chain - CorvinOS
+`core/console/tests/test_corvintv_native_live_e2e.py` (`CLAUDE_LIVE_E2E=1`). The tests of the removed engines
+(the default-chain, fallback-chain, edge-in-running-loop, gTTS-deadline and OpenAI-default modules) are deleted;
+their subtitle checks moved to the new `tests/test_native_tts_and_no_subtitles.py`.
 
 ## 1.7.2 — storyboard runs on the host's Claude Code subscription; the error says why
 

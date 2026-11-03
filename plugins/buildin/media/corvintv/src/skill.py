@@ -10,13 +10,12 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 import uuid
-
-import anthropic
 
 # No .env loading here: this module runs inside the host's shared console
 # process, and a dotenv load would put every token in the host's .env into
@@ -43,6 +42,7 @@ try:
     from . import signals as sg
     from . import canvas
     from . import penpot_import
+    from . import corvinos_native as native
 except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
@@ -63,6 +63,7 @@ except ImportError:  # standalone script use (no package context)
     import signals as sg
     import canvas
     import penpot_import
+    import corvinos_native as native
 
 logger = logging.getLogger(__name__)
 
@@ -98,48 +99,29 @@ def _update_job_progress(
     emit_job_progress(job.id, status, percent, message)
 
 
+# Every LLM step of a job is one call of the host's native Claude Code engine (corvinos_native). There is
+# no second backend and no fallback (1.8.0): a host without a usable, signed-in CLI fails the job with
+# ClaudeEngineUnavailable. The host passes the model it routes this work to (``storyboard_model``, the
+# console's model_selector tier); standalone use takes CORVIN_VIDEO_STORYBOARD_MODEL, else "sonnet".
+STORYBOARD_BACKEND = "claude_cli"
+DEFAULT_STORYBOARD_MODEL = "sonnet"
 _CLAUDE_CLI_TIMEOUT_S = 300
-_STORYBOARD_API_TIMEOUT_S = 240
+_CLAUDE_CLI_MAX_TIMEOUT_S = 1200
+_DEFAULT_MAX_TOKENS = 6000
 _CLAUDE_MODEL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._\-\[\]]{0,79}")
 _STORYBOARD_SYSTEM = ("You write didactic explainer-video storyboards. Follow the user's "
                       "format exactly and reply with one JSON object only.")
 
-
-def _known_claude_locations() -> List[str]:
-    """Off-PATH install locations of the Claude Code CLI (a service / job process often runs with a
-    stripped PATH). The host's own resolver is preferred - it is what the console chat spawns - and this
-    short list is the standalone fallback, Windows npm / native-installer dirs included."""
-    home = os.path.expanduser("~")
-    out = [os.path.join(home, ".local", "bin", "claude"), "/usr/local/bin/claude", "/opt/homebrew/bin/claude",
-           os.path.join(home, ".claude", "local", "claude")]
-    for var, rel in (("APPDATA", ("npm", "claude.cmd")), ("APPDATA", ("npm", "claude.exe")),
-                     ("USERPROFILE", (".local", "bin", "claude.exe"))):
-        base = os.environ.get(var)
-        if base:
-            out.append(os.path.join(base, *rel))
-    return out
+ClaudeEngineUnavailable = native.ClaudeEngineUnavailable
 
 
 def claude_cli_path() -> Optional[str]:
-    """The Claude Code CLI the host runs, resolved the way the host resolves it: its canonical pin
-    CORVIN_CLAUDE_BIN, else PATH, else the host's known install locations."""
-    pinned = (os.environ.get("CORVIN_CLAUDE_BIN") or "").strip()
-    if pinned:
-        return pinned if os.path.isfile(pinned) and os.access(pinned, os.X_OK) else None
-    found = shutil.which("claude")
-    if found:
-        return found
-    try:
-        import helper_model  # type: ignore  # CorvinOS bridges/shared, when on the host's sys.path
-        cand = helper_model.resolve_claude_bin()
-        if cand and os.path.isfile(cand) and os.access(cand, os.X_OK):
-            return cand
-    except Exception:  # noqa: BLE001 - standalone use: fall through to the local list
-        pass
-    for cand in _known_claude_locations():
-        if os.path.isfile(cand) and os.access(cand, os.X_OK):
-            return cand
-    return None
+    """The Claude Code CLI the host runs (CORVIN_CLAUDE_BIN, PATH, the host's resolver)."""
+    return native.claude_cli_path()
+
+
+def _storyboard_model(model: Optional[str]) -> str:
+    return (model or os.environ.get("CORVIN_VIDEO_STORYBOARD_MODEL") or DEFAULT_STORYBOARD_MODEL).strip()
 
 
 def _as_text(v: Any) -> str:
@@ -148,80 +130,83 @@ def _as_text(v: Any) -> str:
     return v if isinstance(v, str) else ""
 
 
-def _call_claude_cli(prompt: str, model: str) -> str:
+def _call_claude_cli(prompt: str, model: str, timeout_s: Optional[float] = None) -> str:
     """One tool-less, settings-less ``claude -p`` call (the host's Claude Code login).
 
     The prompt goes over stdin, never argv; the call runs in an empty temp dir with
     no tools, no MCP servers, no settings files and no saved session, so the model
-    only ever sees the storyboard prompt."""
+    only ever sees the storyboard prompt. Every failure is a ClaudeEngineUnavailable
+    naming the cause (never the prompt)."""
     exe = claude_cli_path()
     if not exe:
-        raise RuntimeError("claude CLI not found (CORVIN_CLAUDE_BIN or PATH)")
+        raise ClaudeEngineUnavailable(
+            "CorvinTV writes its storyboard with the native Claude Code engine, but no `claude` CLI was found "
+            "(CORVIN_CLAUDE_BIN, PATH). Install Claude Code and sign in (`claude` once in a terminal), then retry.")
     if not isinstance(model, str) or not _CLAUDE_MODEL_RE.fullmatch(model):
         raise ValueError("invalid model id for the claude CLI")
+    argv = native.spawnable(
+        [exe, "-p", "--model", model, "--output-format", "json", "--tools", "",
+         "--setting-sources", "", "--strict-mcp-config", "--no-session-persistence",
+         "--disable-slash-commands", "--system-prompt", _STORYBOARD_SYSTEM])
     # The subscription CorvinOS itself runs on: an API key in the environment would make the CLI bill
     # that key instead of the signed-in Claude Code login.
     env = {k: v for k, v in os.environ.items() if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")}
-    with tempfile.TemporaryDirectory(prefix="vp-storyboard-") as cwd:
-        proc = dl.run_process(
-            [exe, "-p", "--model", model, "--output-format", "json", "--tools", "",
-             "--setting-sources", "", "--strict-mcp-config", "--no-session-persistence",
-             "--disable-slash-commands", "--system-prompt", _STORYBOARD_SYSTEM],
-            input=prompt, text=True, deadline_s=_CLAUDE_CLI_TIMEOUT_S, cwd=cwd, env=env, what="claude CLI storyboard call",
-        )
-    if proc.returncode != 0:
-        # The job log is not always reachable (Windows service host): put the CLI's own words in the error.
-        tail = _scrub_secrets(" ".join(_as_text(proc.stderr).split()) or " ".join(_as_text(proc.stdout).split()))
-        raise RuntimeError(f"claude CLI exited {proc.returncode}" + (f": {tail}" if tail else ""))
-    out = json.loads(proc.stdout)
-    rp.note_llm_usage(out.get("usage"))
-    if out.get("is_error") or not isinstance(out.get("result"), str):
-        raise RuntimeError(f"claude CLI reported an error ({out.get('terminal_reason') or out.get('subtype')})")
+    try:
+        with tempfile.TemporaryDirectory(prefix="vp-storyboard-") as cwd:
+            proc = dl.run_process(argv, input=prompt, text=True, deadline_s=timeout_s or _CLAUDE_CLI_TIMEOUT_S,
+                                  cwd=cwd, env=env, what="claude CLI storyboard call")
+    except (dl.DeadlineExceeded, dl.JobCancelled):
+        raise
+    except OSError as e:
+        raise ClaudeEngineUnavailable(f"the Claude Code CLI could not be started ({type(e).__name__}: {e})") from None
+    out = None
+    try:
+        out = json.loads(proc.stdout)
+    except (TypeError, ValueError):
+        pass
+    if isinstance(out, dict):
+        rp.note_llm_usage(out.get("usage"))
+    if proc.returncode != 0 or not isinstance(out, dict) or out.get("is_error") or not isinstance(out.get("result"), str):
+        # The job log is not always reachable (Windows service host): the CLI's own words go into the error.
+        why = ""
+        if isinstance(out, dict):
+            why = str(out.get("result") or out.get("terminal_reason") or out.get("subtype") or "")
+        if not why:
+            why = " ".join(_as_text(proc.stderr).split()) or " ".join(_as_text(proc.stdout).split())
+        why = _scrub_secrets(why) if why else ""
+        raise ClaudeEngineUnavailable(
+            f"the Claude Code CLI failed (claude CLI exited {proc.returncode}){': ' + why if why else ''}. "
+            "Check that Claude Code is signed in (`claude` in a terminal) and online.")
     return out["result"]
 
 
-_NEEDS_CLAUDE_MSG = ("CorvinTV writes its storyboard with Claude: it needs an internet connection and a running "
-                     "Claude Code (signed in) or an ANTHROPIC_API_KEY. Connect, start Claude Code, and start the job again.")
-
-
-def _call_storyboard_llm(prompt: str, backend: str = "claude_cli", model: Optional[str] = None,
-                         report: Optional[Dict[str, Any]] = None, max_tokens: int = 6000) -> str:
+def _call_storyboard_llm(prompt: str, backend: str = STORYBOARD_BACKEND, model: Optional[str] = None,
+                         report: Optional[Dict[str, Any]] = None, max_tokens: int = _DEFAULT_MAX_TOKENS) -> str:
     """
-    Call Claude to turn the prompt into a storyboard JSON string.
+    Turn the prompt into a storyboard JSON string with the native Claude Code engine.
 
-    ``backend`` is decided by the HOST, which ran its data-flow / egress gates
-    for exactly that destination before starting the job: "claude_cli" (the
-    host's Claude Code login, needs ``model``) or "anthropic" (API key, needs
-    ``model``). There is no local fallback: when the call fails (offline, Claude
-    Code not running or not signed in) the job fails with an actionable message.
-    ``report["backend"]`` receives the backend that answered.
+    ``backend`` must be "claude_cli", the only engine since 1.8.0; a job config naming any
+    other backend (an older host) is refused with a ValueError, never rerouted. ``model`` is
+    the host's routing decision; absent, the standalone default.
+    Real inference only — no mocked or fabricated storyboard content, and no fallback: a failed
+    call raises ClaudeEngineUnavailable. ``report["backend"]`` receives ``claude_cli:<model>``.
+    ``max_tokens`` is the size of the expected answer (the cinematic director asks for a long screenplay):
+    the CLI has no output cap flag, so it only widens the call's deadline.
     """
-    if backend not in ("claude_cli", "anthropic"):
-        raise ValueError(f"unknown storyboard backend {backend!r}")
-    if not model:
-        raise ValueError(f"storyboard backend {backend!r} needs a model id from the host")
+    if backend != STORYBOARD_BACKEND:
+        raise ValueError(f"unknown storyboard backend {backend!r}: CorvinTV uses only the native "
+                         f"Claude Code engine ({STORYBOARD_BACKEND!r})")
     if report is None:
         report = {}
-    try:
-        if backend == "claude_cli":
-            text = _call_claude_cli(prompt, model)
-            report["backend"] = f"claude_cli:{model}"
-            return text
-        client = anthropic.Anthropic(timeout=_STORYBOARD_API_TIMEOUT_S, max_retries=1)
-        # the SDK's timeout is per attempt and per socket read: this bounds the whole call
-        message = dl.run_sync(
-            lambda: client.messages.create(model=model, max_tokens=max_tokens,
-                                           messages=[{"role": "user", "content": prompt}]),
-            deadline_s=_STORYBOARD_API_TIMEOUT_S * 2 + 10, what="anthropic storyboard call")
-        report["backend"] = f"anthropic:{model}"
-        u = getattr(message, "usage", None)
-        rp.note_llm_usage({k: getattr(u, k, None) for k in ("input_tokens", "output_tokens",
-                           "cache_read_input_tokens", "cache_creation_input_tokens")} if u is not None else None)
-        return message.content[0].text
-    except Exception as e:  # noqa: BLE001
-        logger.warning("%s storyboard call failed (%s)", backend, type(e).__name__)
-        raise RuntimeError(f"The storyboard could not be written ({backend}: {type(e).__name__}: {_scrub_secrets(e)}). "
-                           + _NEEDS_CLAUDE_MSG) from e
+    model = _storyboard_model(model)
+    if max_tokens > _DEFAULT_MAX_TOKENS:
+        # ~40 output tokens/s is a slow but normal CLI rate; never shorter than the storyboard deadline
+        text = _call_claude_cli(prompt, model, timeout_s=min(_CLAUDE_CLI_MAX_TIMEOUT_S,
+                                                             _CLAUDE_CLI_TIMEOUT_S + max_tokens / 40))
+    else:
+        text = _call_claude_cli(prompt, model)
+    report["backend"] = f"{STORYBOARD_BACKEND}:{model}"
+    return text
 
 
 _SYSTEM_KEYWORDS = ("system", "architecture", "pipeline", "flow", "layer", "chain", "stack", "kette", "architektur")
@@ -381,7 +366,7 @@ def _brand_neutral_prompt(prompt: str) -> str:
 async def generate_storyboard_with_llm(
     task: str,
     max_duration_minutes: int = 60,
-    backend: str = "claude_cli",
+    backend: str = STORYBOARD_BACKEND,
     model: Optional[str] = None,
     didactic_strategy: Optional[str] = None,
     grounding: Optional[Dict[str, Any]] = None,
@@ -401,7 +386,7 @@ async def generate_storyboard_with_llm(
     # stays small and duration-independent: max_duration_minutes is a ceiling the
     # storyboard must not exceed, not a target.
     max_scenes = 8
-    # PLAN-0942: a host-gated grounding pack is used with a remote model.
+    # PLAN-0942: a host-gated grounding pack (the native engine is the only one, so always usable).
     grounded = grounding is not None
     if grounded:
         max_scenes = gsb.GROUNDED_MAX_SCENES
@@ -474,7 +459,9 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
         )
         try:
             raw = _call_storyboard_llm(grounded_prompt, backend=backend, model=model, report=report)
-        except Exception as e:  # noqa: BLE001 — remote down: the ordinary path, recorded as unavailable
+        except (ClaudeEngineUnavailable, ValueError, dl.DeadlineExceeded, dl.JobCancelled):
+            raise  # no engine, a refused backend or the job's end: nothing a second, ungrounded call could fix
+        except Exception as e:  # noqa: BLE001 — a grounded call that failed otherwise: recorded as unavailable
             logger.warning("grounded storyboard unavailable (%s); writing an ungrounded one", type(e).__name__)
             sb = await generate_storyboard_with_llm(task, max_duration_minutes, backend=backend, model=model,
                                                     didactic_strategy=didactic_strategy,
@@ -541,7 +528,7 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
 
 
 # --------------------------------------------------------------------------
-# Real audio/image/video pipeline (ffmpeg + gTTS — no external API keys)
+# Real audio/image/video pipeline (ffmpeg + the CorvinOS TTS chain)
 # --------------------------------------------------------------------------
 
 _DE_WORDS = frozenset("""
@@ -572,8 +559,14 @@ def _storyboard_lang(texts: List[str]) -> str:
     return _detect_lang(" ".join(t for t in texts if t))
 
 
-OPENAI_TTS_MODEL = "tts-1-hd"
-OPENAI_TTS_VOICE = "onyx"  # ADR-2211: calm, low male voice — consistent across de/en
+# --------------------------------------------------------------------------
+# Narration: the CorvinOS TTS chain (1.8.0). CorvinTV has no voice of its own: every scene is
+# spoken by the chain chat TTS uses (corvin_console.native_tts -> say.py: openai -> edge ->
+# piper), so the operator pin CORVIN_TTS_PROVIDER, the tenant profile's provider/voice,
+# CORVIN_TTS_LOCAL_ONLY, the per-provider and whole-chain deadlines and offline Piper behave
+# exactly as in chat. The host prepares the command; the job runs it under its own budget.
+# --------------------------------------------------------------------------
+
 _SECRET_RE = re.compile(r"(sk-[A-Za-z0-9_\-]{6,}|Bearer\s+\S+)")
 
 
@@ -582,182 +575,95 @@ def _scrub_secrets(text: str) -> str:
     return _SECRET_RE.sub("<redacted>", str(text))[:300]
 
 
-def _openai_api_key() -> Optional[str]:
-    return os.environ.get("CORVIN_TTS_OPENAI_KEY") or os.environ.get("OPENAI_API_KEY") or None
+class NoVoiceAvailable(RuntimeError):
+    """The CorvinOS TTS chain produced no audio: the job fails instead of shipping a silent video."""
 
 
-def _openai_speech(text: str, out_path: Path, api_key: str) -> None:
-    """One OpenAI TTS call; raises on any failure (callers decide: decline or fail)."""
-    from openai import OpenAI
-
-    def _call():
-        response = OpenAI(api_key=api_key, timeout=_TTS_CALL_TIMEOUT_S, max_retries=2).audio.speech.create(
-            model=OPENAI_TTS_MODEL, voice=OPENAI_TTS_VOICE, input=(text or "").strip() or "...",
-        )
-        response.stream_to_file(str(out_path))
-
-    # the SDK's own timeout is per attempt (x3 with retries); this bounds the whole call
-    dl.run_sync(_call, deadline_s=_TTS_CALL_TIMEOUT_S * 3, what="openai tts")
-    if not out_path.exists() or out_path.stat().st_size == 0:
-        raise RuntimeError("OpenAI returned no audio")
-
-
-def _synthesize_narration_openai(text: str, out_path: Path, lang: str) -> None:
-    """Narration via OpenAI TTS, strictly: any problem fails the job with a clear message.
-
-    No silent substitution of another voice — a video whose narrator changes
-    mid-way is worse than a refused job. Use tts_engine="auto" for the
-    fallback chain (openai -> edge-tts, ADR-2211)."""
-    api_key = _openai_api_key()
-    if not api_key:
-        raise RuntimeError(
-            "OpenAI TTS is the narration engine, but no key is configured (CORVIN_TTS_OPENAI_KEY or "
-            "OPENAI_API_KEY in the host environment). Choose another engine in the Video Producer settings."
-        )
+def _audio_kind(path: Path) -> str:
+    """mp3 | ogg | wav | flac | "" by magic bytes - the providers write different formats whatever
+    the file is called (OpenAI: Ogg-Opus, edge-tts: MP3, Piper: WAV)."""
     try:
-        _openai_speech(text, out_path, api_key)
-    except ImportError:
-        raise RuntimeError("OpenAI TTS needs the 'openai' Python package in the host environment") from None
-    except Exception as e:  # noqa: BLE001
-        raise RuntimeError(f"OpenAI TTS failed ({type(e).__name__}): {_scrub_secrets(e)}") from None
+        with open(path, "rb") as fh:
+            head = fh.read(16)
+    except OSError:
+        return ""
+    if head[:4] == b"OggS":
+        return "ogg"
+    if head[:3] == b"ID3" or (len(head) >= 2 and head[0] == 0xFF and head[1] & 0xE0 == 0xE0):
+        return "mp3"
+    if head[:4] == b"RIFF" and head[8:12] == b"WAVE":
+        return "wav"
+    if head[:4] == b"fLaC":
+        return "flac"
+    return ""
 
 
-def _synthesize_narration(text: str, out_path: Path, lang: str) -> None:
-    """Real TTS via gTTS (Google Translate public endpoint, no API key required)."""
-    from gtts import gTTS
-
-    text = (text or "").strip() or "..."
-    tts = gTTS(text=text, lang=lang, timeout=_TTS_CALL_TIMEOUT_S)
-    dl.run_sync(lambda: tts.save(str(out_path)), deadline_s=_TTS_CALL_TIMEOUT_S * 2, what="gtts")
+def _to_mp3(src: Path, dst: Path) -> None:
+    """Normalise a scene's narration to MP3 (the scene artifact format since 1.0)."""
+    dl.run_process(["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-vn", "-ac", "1", "-ar", "24000",
+                    "-c:a", "libmp3lame", "-q:a", "3", str(dst)],
+                   deadline_s=_FFMPEG_TIMEOUT_S, check=True, what="ffmpeg narration to mp3")
 
 
-# --------------------------------------------------------------------------
-# TTS fallback chain (ADR-2211): openai -> edge-tts -> gtts (last resort). Piper is deliberately NOT a tier (operator decision 2026-10-17).
-# Each tier returns True on success, False on "decline" (missing key/package,
-# network error, timeout) — a decline falls through to the next tier, it
-# never raises past the chain. "mock" is the only tier that cannot decline
-# (no external dependency), so the chain always produces an audio_path.
-# --------------------------------------------------------------------------
+_TTS_CHAIN_ATTEMPTS = 2
+_TTS_CHAIN_RETRY_PAUSE_S = 1.5
 
-def _tts_tier_openai(text: str, out_path: Path, lang: str) -> bool:
-    """Tier 1: OpenAI TTS. Declines if no key or package, or the call fails (graceful degradation).
 
-    Handles four failure modes gracefully (returns False, never raises):
-    - No API key configured (OPENAI_API_KEY / CORVIN_TTS_OPENAI_KEY)
-    - Package not installed (openai)
-    - API errors: authentication, quota limits, rate limits, server errors
-    - Network timeouts or connection failures
-
-    Each failure is logged for debugging and recorded via note_degradation() if a report
-    context is active (ADR-2211: fallback chain auditing).
-    """
-    api_key = _openai_api_key()
-    if not api_key:
-        logger.debug("tts chain: openai declined (no API key configured)")
-        return False
-
+def _tts_native(text: str, out_path: Path, lang: str) -> str:
+    """Synthesize ``text`` into ``out_path`` (MP3) through the CorvinOS TTS chain. Returns the
+    provider that spoke ("openai" | "edge" | "piper"). Raises NoVoiceAvailable when the chain
+    cannot run or no provider produced audio, with say.py's content-free reasons."""
+    safe = (text or "").strip() or "..."
+    # the same target suffix chat TTS hands say.py; the provider decides the real format (sniffed below)
+    raw = out_path.with_name(out_path.stem + ".tts.opus")
     try:
-        _openai_speech(text, out_path, api_key)
-        return True
-
-    except ImportError:
-        logger.info("tts chain: openai package not installed, falling back to edge-tts")
-        return False
-
-    except Exception as e:  # noqa: BLE001 — any OpenAI failure declines gracefully
-        error_type = type(e).__name__
-        error_msg = _scrub_secrets(str(e))
-
-        # Classify the error for better logging and fallback messaging
-        if "401" in error_msg or "Unauthorized" in error_msg:
-            logger.warning("tts chain: openai authentication failed (invalid key), falling back to edge-tts")
-        elif "429" in error_msg or "rate_limit" in error_msg.lower():
-            logger.warning("tts chain: openai rate limit exceeded, falling back to edge-tts")
-        elif "quota" in error_msg.lower():
-            logger.warning("tts chain: openai quota exceeded, falling back to edge-tts")
-        elif "timeout" in error_msg.lower() or "deadline" in error_msg.lower():
-            logger.warning("tts chain: openai call timed out, falling back to edge-tts")
-        elif "connection" in error_msg.lower() or "network" in error_msg.lower():
-            logger.warning("tts chain: openai network error, falling back to edge-tts")
+        plan = native.plan_tts(safe, raw, lang)
+    except Exception as e:  # noqa: BLE001 - NativeTTSMissing / a broken host: name it, no fallback voice
+        raise NoVoiceAvailable(f"The CorvinOS TTS chain is not available: {_scrub_secrets(e)}") from None
+    try:
+        for attempt in range(1, _TTS_CHAIN_ATTEMPTS + 1):
+            try:
+                proc = dl.run_process(plan.argv, env=plan.env, deadline_s=plan.timeout_s, what="corvinos tts")
+            except OSError as e:
+                raise NoVoiceAvailable(f"The CorvinOS TTS chain could not start ({type(e).__name__})") from None
+            err = proc.stderr.decode("utf-8", "replace") if isinstance(proc.stderr, bytes) else str(proc.stderr or "")
+            out = proc.stdout.decode("utf-8", "replace") if isinstance(proc.stdout, bytes) else str(proc.stdout or "")
+            reasons = plan.api.reasons_from_stderr(err)
+            spoke = proc.returncode == 0 and out.strip() and raw.exists() and raw.stat().st_size > 0
+            if spoke or attempt == _TTS_CHAIN_ATTEMPTS:
+                break
+            # The whole chain came up empty once - on a flaky link edge-tts fails its connect now and then
+            # (measured here: 2 of 6 calls ClientConnectorError). Chat can shrug that off; a video cannot.
+            # The SAME chain runs again, same order and pins - never another engine.
+            logger.warning("tts chain: no audio on attempt %d (%s), running the chain again", attempt,
+                           "; ".join(_scrub_secrets(r) for r in reasons)[:300])
+            b = dl.current_budget()
+            if b is not None:
+                b.check("narration")
+            time.sleep(_TTS_CHAIN_RETRY_PAUSE_S)
+        if not spoke:
+            detail = "; ".join(_scrub_secrets(r) for r in reasons) or f"say.py exit {proc.returncode}, no audio"
+            raise NoVoiceAvailable(
+                "No narration voice is available: the CorvinOS TTS chain (openai -> edge -> piper, the same as "
+                f"chat) produced no audio ({detail}). Configure an OpenAI TTS key, check the network for edge-tts, "
+                "or install a Piper voice for offline narration.")
+        provider = plan.api.provider_from_stderr(err) or "unknown"
+        if _audio_kind(raw) == "mp3":
+            os.replace(raw, out_path)
         else:
-            logger.warning("tts chain: openai tier declined (%s: %s), falling back to edge-tts",
-                          error_type, error_msg)
-
-        return False
-
-
-def _run_coroutine_blocking(make_coro, timeout: float = 180.0):
-    """Run a coroutine to completion from synchronous code, whether or not this thread already
-    runs an event loop. The TTS tiers are sync and are called from orchestrate_video under
-    asyncio.run; a bare asyncio.run() there raises "cannot be called from a running event loop".
-    The deadline holds on both paths (``deadline.run_blocking``)."""
-    return dl.run_blocking(make_coro, deadline_s=timeout, what="tts coroutine")
-
-
-def _tts_tier_edge(text: str, out_path: Path, lang: str) -> bool:
-    """Tier 2: edge-tts (Microsoft cloud voices, free, no API key, needs network).
-
-    Handles network failures gracefully (returns False, never raises):
-    - Package not installed
-    - Network timeout or connection failure
-    - Voice synthesis error on Microsoft servers
-    - Async runtime errors
-
-    Last tier of the chain: a decline here fails the job with NoVoiceAvailable (never a silent video).
-    """
-    try:
-        import edge_tts
-    except ImportError:
-        logger.info("tts chain: edge-tts package not installed, no further tier")
-        return False
-
-    voice = "de-DE-KatjaNeural" if lang == "de" else "en-US-AvaMultilingualNeural"
-    try:
-        async def _run() -> None:
-            communicate = edge_tts.Communicate((text or "").strip() or "...", voice)
-            await asyncio.wait_for(communicate.save(str(out_path)), _TTS_CALL_TIMEOUT_S)
-
-        _run_coroutine_blocking(_run)
-        return out_path.exists() and out_path.stat().st_size > 0
-    except asyncio.TimeoutError:
-        logger.warning("tts chain: edge-tts call timed out, no further tier")
-        return False
-    except Exception as e:  # noqa: BLE001
-        error_msg = str(e).lower()
-        if "connection" in error_msg or "network" in error_msg:
-            logger.warning("tts chain: edge-tts network error, no further tier")
-        else:
-            logger.warning("tts chain: edge-tts tier declined (%s: %s), no further tier",
-                          type(e).__name__, e)
-        return False
-
-
-# The host admits (or refuses) translate.google.com per job through its L35 egress gate and passes the answer in the
-# job config as ``tts_gtts_allowed``. A job runs in its own process, so one flag is enough; default True = standalone use.
-_GTTS_TIER_ALLOWED = True
-
-
-def _tts_tier_gtts(text: str, out_path: Path, lang: str) -> bool:
-    """Tier 3: gTTS (Google Translate public endpoint, no API key, needs network, one voice per language).
-
-    Last-resort voice so a host with neither an OpenAI key nor a working edge-tts still narrates.
-    The text goes to Google, which is why it ranks last. Declines (never raises) on a missing package,
-    network error or timeout; the chain then fails the job with NoVoiceAvailable.
-    """
-    if not _GTTS_TIER_ALLOWED:
-        logger.info("tts chain: gTTS skipped (translate.google.com is not admitted by the host's egress gate)")
-        return False
-    try:
-        import gtts  # noqa: F401
-    except ImportError:
-        logger.info("tts chain: gTTS package not installed, no further tier")
-        return False
-    try:
-        _synthesize_narration(text, out_path, lang)
-        return out_path.exists() and out_path.stat().st_size > 0
-    except Exception as e:  # noqa: BLE001 - any gTTS/network/timeout failure declines gracefully
-        logger.warning("tts chain: gTTS tier declined (%s: %s), no further tier", type(e).__name__, e)
-        return False
+            _to_mp3(raw, out_path)
+        for r in reasons:
+            logger.info("tts chain: %s", _scrub_secrets(r))
+        return provider
+    finally:
+        try:
+            raw.unlink()
+        except OSError:
+            pass
+        try:
+            raw.with_suffix(".wav").unlink()  # a Piper attempt's scratch WAV
+        except OSError:
+            pass
 
 
 def _tts_tier_mock(text: str, out_path: Path, lang: str) -> bool:
@@ -776,62 +682,43 @@ def _tts_tier_mock(text: str, out_path: Path, lang: str) -> bool:
         wav_file.setsampwidth(2)
         wav_file.setframerate(sample_rate)
         wav_file.writeframes(struct.pack(f"<{n_frames}h", *([0] * n_frames)))
-    logger.warning("tts chain: all real tiers declined, wrote %.1fs silent mock", duration_s)
+    logger.warning("tts chain: test seam wrote %.1fs silent mock", duration_s)
     return True
 
 
-# The silent mock tier is NOT in the production chain: with it, a job whose real voices all
-# declined ended "complete" with a mute MP4 and passed the voice-track check (review 2026-10-10).
-# Tests put it in explicitly (monkeypatch ``_TTS_CHAIN``).
 # Every external step of a job is bounded: a hung ffmpeg or TTS call used to hold one of the
 # three job workers for good (review 2026-10-10). A job-wide deadline + cancel is PLAN-0946 R1b.
 _FFPROBE_TIMEOUT_S = 60
 _FFMPEG_TIMEOUT_S = 1800
-_TTS_CALL_TIMEOUT_S = 90
 
+# The production chain is ONE entry: the CorvinOS chain, which runs its own provider order. Tests
+# swap it (monkeypatch ``_TTS_CHAIN``) for the silent mock; a tier returns the provider name or a
+# bool (True = spoke under its own name), and declines with False.
 _TTS_CHAIN = (
-    ("openai", _tts_tier_openai),
-    ("edge", _tts_tier_edge),
-    ("gtts", _tts_tier_gtts),
+    ("native", _tts_native),
 )
 
 
-class NoVoiceAvailable(RuntimeError):
-    """Every real TTS tier declined: the job fails instead of shipping a silent video."""
+def _expected_tts_provider() -> str:
+    """The tier a healthy native chain speaks with (the operator/profile pin, else openai)."""
+    try:
+        return native.tts_api().expected_provider()
+    except Exception:  # noqa: BLE001
+        return "openai"
 
 
 def _synthesize_narration_chain(text: str, out_path: Path, lang: str) -> str:
-    """Try each TTS tier in priority order (ADR-2211); returns the provider name that actually
-    produced audio_path, for audit/feedback attribution.
-
-    Fallback chain (graceful degradation):
-    1. OpenAI TTS (if API key configured, best quality but needs Internet + API quota)
-    2. Edge TTS (free Microsoft voices, needs Internet)
-    3. gTTS (Google Translate voice, no key, needs Internet; last resort, one voice per language)
-
-    Only these engines narrate (operator decision 2026-10-17: no Piper). If all fail the job
-    raises NoVoiceAvailable. This should be rare:
-    - No OpenAI key is OK (falls through to edge-tts)
-    - An exhausted/invalid OpenAI key is OK (the tier declines, edge-tts takes over)
-    - Edge TTS needs a network and edge-tts >= 7.3.1 (older versions get HTTP 403)
-
-    Each fallback is recorded in the production report (report.py: note_degradation).
-    """
+    """Narrate one scene; returns the provider that actually produced ``out_path``."""
     for provider_name, tier_fn in _TTS_CHAIN:
-        if tier_fn(text, out_path, lang):
-            logger.info("tts chain: success with %s", provider_name)
-            return provider_name
+        spoke = tier_fn(text, out_path, lang)
+        if spoke:
+            name = spoke if isinstance(spoke, str) else provider_name
+            logger.info("tts chain: success with %s", name)
+            return name
         b = dl.current_budget()
         if b is not None:
             b.check("narration")  # a declined tier on a cancelled/exhausted job must not fall to the next
-
-    raise NoVoiceAvailable(
-        "No narration voice is available. All TTS providers declined:\n"
-        "  • OpenAI TTS: requires OPENAI_API_KEY or CORVIN_TTS_OPENAI_KEY (API error, timeout, auth failure, quota exceeded)\n"
-        "  • Edge TTS: requires Internet connection (network timeout, API error)\n"
-        "  • gTTS: requires Internet connection and the gTTS package\n"
-        "To fix: check network connectivity and that gTTS >= 2.5.0 or edge-tts >= 7.3.1 is installed, or set an OpenAI TTS key."
-    )
+    raise NoVoiceAvailable("No narration voice is available: the CorvinOS TTS chain produced no audio.")
 
 
 def _ffprobe_duration(path: Path) -> float:
@@ -1157,7 +1044,7 @@ def _ground_storyboard(storyboard_json: Dict[str, Any], pack: Dict[str, Any], pa
     failures = gsb.check_claims(scenes, pack_text)
     repaired = 0
     used = str(report.get("backend", ""))
-    if failures and used.startswith(("claude_cli:", "anthropic:")):
+    if failures and used.startswith(f"{STORYBOARD_BACKEND}:"):
         backend, _, used_model = used.partition(":")
 
         def _scene_ok(scene: Dict[str, Any]) -> bool:
@@ -1269,7 +1156,7 @@ def _repair_web_scenes(scenes: List[Dict[str, Any]], report: Dict[str, Any], mod
         report["canvas_authoring"] = {"total": len(canvas_ids), "first_try": _canvas_count(scenes, canvas_ids),
                                       "after_repair": _canvas_count(scenes, canvas_ids)}
     used = str(report.get("backend", ""))
-    if not warnings or not used.startswith(("claude_cli:", "anthropic:")):
+    if not warnings or not used.startswith(f"{STORYBOARD_BACKEND}:"):
         return warnings
     failed = []
     for s in scenes:
@@ -1528,10 +1415,21 @@ def emit_feedback(job_id: str, event_type: str, metrics: Dict[str, Any]):
     logger.info(f"[{job_id}] Feedback: {event_type} | {metrics}")
 
 
-SUPPORTED_TTS_ENGINES = ("openai", "auto", "gtts")
-# "auto" = the chain OpenAI -> edge-tts: an exhausted, invalid or missing OpenAI key must not stop a video.
-# "openai" stays selectable for operators who want exactly one voice and a refused job instead of a fallback.
+# One narration engine since 1.8.0: "auto" = the CorvinOS TTS chain (the same as chat). The provider
+# order and any pin come from CorvinOS (CORVIN_TTS_PROVIDER, the tenant profile), never from this plugin.
+SUPPORTED_TTS_ENGINES = ("auto",)
 DEFAULT_TTS_ENGINE = "auto"
+# Values a pre-1.8 host or a stored plugin setting may still carry: each means the native chain now.
+LEGACY_TTS_ENGINES = ("openai", "gtts", "native")
+
+
+def _normalise_tts_engine(tts_engine: Any) -> str:
+    if tts_engine in SUPPORTED_TTS_ENGINES:
+        return tts_engine
+    if tts_engine in LEGACY_TTS_ENGINES:
+        logger.info("tts_engine %r is a pre-1.8 setting: narration uses the CorvinOS TTS chain", tts_engine)
+        return DEFAULT_TTS_ENGINE
+    raise ValueError(f"TTS engine {tts_engine!r} is not available (supported: {', '.join(SUPPORTED_TTS_ENGINES)})")
 
 
 def _storyboard_from_operator(raw: Any, task: str, max_duration_minutes: int) -> Storyboard:
@@ -1817,7 +1715,7 @@ async def orchestrate_video(
     storage_base: str,
     tts_engine: str = DEFAULT_TTS_ENGINE,
     max_duration_minutes: int = 60,
-    storyboard_backend: str = "claude_cli",
+    storyboard_backend: str = STORYBOARD_BACKEND,
     storyboard_model: Optional[str] = None,
     storyboard: Optional[Dict[str, Any]] = None,
     web_slides: bool = True,
@@ -1832,7 +1730,7 @@ async def orchestrate_video(
     """
     Main orchestrator Skill:
     1. LLM: Task → Storyboard (JSON)
-    2. Real synthesis per scene: TTS narration (gTTS) + slide image (ffmpeg drawtext) + scene clip
+    2. Real synthesis per scene: narration (CorvinOS TTS chain) + slide (web or Pillow) + scene clip
     3. Real ffmpeg concat → final MP4 (no subtitles: no caption file, nothing burned in)
     4. Collect feedback → Learning (ADR-0314)
     """
@@ -1854,7 +1752,7 @@ async def orchestrate_video(
     dl.register_job_budget(job_id, budget)
     # ADR-2247: one Production Report per job, written on completion AND on failure. Code deep in the
     # storyboard/render path records its own fallbacks on it through rp.note_degradation.
-    report = rp.ProductionReport(job_id, configured_tts=tts_engine,
+    report = rp.ProductionReport(job_id, configured_tts=tts_engine if tts_engine in SUPPORTED_TTS_ENGINES else str(tts_engine),
                                  storyboard_backend="operator" if storyboard is not None else storyboard_backend,
                                  style_id=getattr(web_style, "id", None))
     _report_token = rp.set_current(report)
@@ -1866,8 +1764,11 @@ async def orchestrate_video(
     # of staying "pending" forever.
     try:
         report.begin("setup")
-        if tts_engine not in SUPPORTED_TTS_ENGINES:
-            raise ValueError(f"TTS engine {tts_engine!r} is not available (supported: {', '.join(SUPPORTED_TTS_ENGINES)})")
+        tts_engine = _normalise_tts_engine(tts_engine)
+        report.configured_tts = tts_engine
+        if storyboard is None and storyboard_backend != STORYBOARD_BACKEND:
+            raise ValueError(f"storyboard backend {storyboard_backend!r} is not supported: CorvinTV uses only the "
+                             f"native Claude Code engine ({STORYBOARD_BACKEND!r})")
         if not isinstance(max_duration_minutes, int) or not 1 <= max_duration_minutes <= 60:
             raise ValueError("max_duration_minutes must be an integer between 1 and 60")
         if shutil.which("ffmpeg") is None:
@@ -1964,6 +1865,7 @@ async def orchestrate_video(
         clip_paths: List[Path] = []
         scene_audio_s: List[float] = []
         tts_providers_used: List[str] = []
+        expected_tier: Optional[str] = None
         renderers_used: List[str] = []
         web_fallbacks: List[Dict[str, Any]] = []
         web = _WebRendererSession(enabled=web_slides, fps=web_fps, tokens=web_tokens, style=web_style)
@@ -1988,17 +1890,11 @@ async def orchestrate_video(
 
                 narration = scene.narration_text or scene.visual_description or scene.id
                 lang = video_lang  # one language per video, from all of its narration
-                if tts_engine == "auto":
-                    tts_provider_used = _synthesize_narration_chain(narration, audio_path, lang)
-                elif tts_engine == "openai":
-                    _synthesize_narration_openai(narration, audio_path, lang)
-                    tts_provider_used = "openai"
-                else:
-                    _synthesize_narration(narration, audio_path, lang)
-                    tts_provider_used = "gtts"
+                tts_provider_used = _synthesize_narration_chain(narration, audio_path, lang)
                 audio_duration = _ffprobe_duration(audio_path)
-                configured_tier = "gtts" if tts_engine == "gtts" else "openai"  # auto aims for the chain's first tier
-                if tts_provider_used != configured_tier:
+                if expected_tier is None:
+                    expected_tier = _expected_tts_provider()  # the pin, else the head of the chain
+                if tts_provider_used != expected_tier:
                     rp.note_degradation("tts_tier_below", scene=i, tier=tts_provider_used)
                 report.scene(i, tts_tier=tts_provider_used, audio_s=round(audio_duration, 3),
                              planned_s=round(scene.duration_ms / 1000.0, 3))
@@ -2108,11 +2004,9 @@ async def orchestrate_video(
         duration_seconds = round(_ffprobe_duration(video_path))
         file_size_mb = round(video_path.stat().st_size / (1024 * 1024), 2)
 
-        # ADR-2211 auditability: record which TTS tier actually spoke each
-        # scene, not just which engine was configured — "openai" if every
-        # scene reached tier 1, "mixed" if the chain fell through on some
-        # scenes (e.g. a transient API failure), or the single provider name
-        # when tts_engine wasn't "auto" (no chain, no fallback possible).
+        # ADR-2211 auditability: record which tier of the CorvinOS chain actually spoke each
+        # scene, not just which engine was configured — the single provider name when every
+        # scene used the same one, "mixed" when the chain fell through on some scenes.
         distinct_providers = set(tts_providers_used)
         provider_used = distinct_providers.pop() if len(distinct_providers) == 1 else "mixed"
 
@@ -2126,6 +2020,7 @@ async def orchestrate_video(
                 "file_size_mb": file_size_mb,
                 "scenes": total,
                 "tts_engine": tts_engine,
+                "tts_chain": "corvinos",
                 "tts_provider_used": provider_used,
                 "language": video_lang,
                 "renderers": renderers_used,
@@ -2294,8 +2189,6 @@ async def start_video_production(
 
 
 async def _orchestrate_from_config(job_id: str, task: str, config: Dict[str, Any]) -> Dict[str, Any]:
-    global _GTTS_TIER_ALLOWED
-    _GTTS_TIER_ALLOWED = bool(config.get("tts_gtts_allowed", True))
     if config.get("mode") == "cinematic":  # a film of animated acts instead of slides (cinematic/produce.py)
         try:
             from .cinematic.produce import produce_cinematic  # noqa: PLC0415
@@ -2308,7 +2201,7 @@ async def _orchestrate_from_config(job_id: str, task: str, config: Dict[str, Any
         storage_base=config["storage_base"],
         tts_engine=config.get("tts_engine", DEFAULT_TTS_ENGINE),
         max_duration_minutes=config.get("max_duration_minutes", 60),
-        storyboard_backend=config.get("storyboard_backend", "claude_cli"),
+        storyboard_backend=config.get("storyboard_backend") or STORYBOARD_BACKEND,
         storyboard_model=config.get("storyboard_model"),
         storyboard=config.get("storyboard"),
         web_slides=config.get("web_slides", True),

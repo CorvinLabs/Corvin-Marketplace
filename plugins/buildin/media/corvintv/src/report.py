@@ -54,8 +54,9 @@ SCENE_KINDS = frozenset({"web_to_pillow", "no_template", "template_to_quote", "c
 STAGES = ("setup", "storyboard", "scenes", "assemble", "signals")
 STATUSES = frozenset({"complete", "error", "cancelled"})
 
-# The configured tier of each engine: ``auto`` aims for the first tier of the chain (ADR-2211).
-TTS_TIER_ORDER = ("openai", "edge", "gtts", "mock")
+# The tiers of the CorvinOS TTS chain in their order (say.py's auto chain; ``auto`` aims for the first
+# one unless the operator or the tenant profile pins another). "mock" is the offline test seam.
+TTS_TIER_ORDER = ("openai", "edge", "piper", "mock")
 
 _TOKEN = re.compile(r"^[A-Za-z0-9_.:+\-/ ]{0,80}$")
 _TEXT_WINDOW = 24
@@ -159,7 +160,7 @@ class ProductionReport:
         self.degradations.append(entry)
 
     def note_llm_usage(self, usage: Optional[Dict[str, Any]]) -> None:
-        """Add one model call's reported usage. Accepts the Claude CLI / Anthropic shape
+        """Add one model call's reported usage. Accepts the Claude Code CLI shape
         (``input_tokens``, ``output_tokens``, ``cache_read_input_tokens``,
         ``cache_creation_input_tokens``)."""
         u = self.llm_usage
@@ -216,7 +217,7 @@ class ProductionReport:
             "error_class": self.error_class,
             "language": self.language,
             "style_id": self.style_id,
-            "configured": {"tts": self.configured_tts, "storyboard_backend": self.storyboard_backend},
+            "configured": {"tts": self.configured_tts, "tts_chain": "corvinos", "storyboard_backend": self.storyboard_backend},
             "storyboard_llm": self.storyboard_llm,
             "llm_usage": dict(self.llm_usage),
             "stages": [{"name": s.name, "seconds": s.seconds} for s in self.stages],

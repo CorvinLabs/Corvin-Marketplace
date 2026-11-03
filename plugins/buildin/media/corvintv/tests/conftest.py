@@ -162,9 +162,13 @@ def run_orchestrate(tmp_path, monkeypatch):
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
                         "-t", "1.2", "-q:a", "9", str(out_path)], check=True)
 
-    monkeypatch.setattr(skill, "_synthesize_narration_openai", fake_tts)
+    def native_stand_in(text, out_path, lang):
+        fake_tts(text, out_path, lang)
+        return "edge"  # what the CorvinOS chain reports when its edge tier spoke
 
-    def run(scenes, spies_for=(), replace=None, tts_engine="openai"):
+    monkeypatch.setattr(skill, "_TTS_CHAIN", (("native", native_stand_in),))
+
+    def run(scenes, spies_for=(), replace=None, tts_engine="auto"):
         spies = {}
         for name, fn in (replace or {}).items():  # stands in for the edge; the call is still recorded
             spies[name] = []
@@ -192,3 +196,37 @@ def run_orchestrate(tmp_path, monkeypatch):
         return result, spies
 
     return run
+
+
+# ── the Claude Code CLI stand-in (1.8.0: the only storyboard engine) ──────────────────────────────
+
+_COROS_WIN_SHIM = (Path(__file__).resolve().parents[6] / "CorvinOS" / "corvin_operator" / "bridges" / "shared"
+                   / "agents" / "_win_shim.py")
+
+
+def install_fake_claude_bin(script: Path, monkeypatch) -> Path:
+    """Pin ``CORVIN_CLAUDE_BIN`` to a test stand-in for the Claude Code CLI written as a Python
+    script. POSIX runs it directly (shebang). Windows cannot exec a script, so - exactly like an
+    npm-installed ``claude.cmd`` - a ``.cmd`` shim wraps it and the job spawns it through CorvinOS's
+    cmd.exe-safe launcher (``agents/_win_shim.py``, loaded from the sibling CorvinOS checkout);
+    without that checkout the test is skipped rather than faked further."""
+    import importlib.util
+    import os
+    import sys
+
+    if os.name != "nt":
+        monkeypatch.setenv("CORVIN_CLAUDE_BIN", str(script))
+        return script
+    if not _COROS_WIN_SHIM.is_file():
+        pytest.skip("Windows: a fake claude needs CorvinOS's _win_shim.py (sibling CorvinOS checkout)")
+    spec = importlib.util.spec_from_file_location("_vp_test_win_shim", _COROS_WIN_SHIM)
+    shim_mod = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, spec.name, shim_mod)  # dataclasses resolve their module by name
+    spec.loader.exec_module(shim_mod)
+    from src import corvinos_native
+
+    monkeypatch.setattr(corvinos_native, "_win_shim_module", lambda: shim_mod)
+    cmd = script.with_name("claude.cmd")
+    cmd.write_text(f'@"{sys.executable}" "{script}" %*\r\n', encoding="utf-8")
+    monkeypatch.setenv("CORVIN_CLAUDE_BIN", str(cmd))
+    return cmd

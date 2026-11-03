@@ -39,7 +39,9 @@ def test_vendored_engine_matches_its_manifest():
     assert set(m["files"]) == {"kb.py", "kb_lib.py", "kb_model.py"}
     assert len(m["source_commit"]) == 40
     for name, digest in m["files"].items():
-        assert hashlib.sha256((SRC / "kb_engine" / name).read_bytes()).hexdigest() == digest, name
+        # the committed (LF) form: a Windows checkout (core.autocrlf=true) has CRLF on disk
+        data = (SRC / "kb_engine" / name).read_bytes().replace(b"\r\n", b"\n")
+        assert hashlib.sha256(data).hexdigest() == digest, name
 
 
 def test_create_then_idempotent(tmp_path):
@@ -112,3 +114,67 @@ def test_refuses_what_it_did_not_create(tmp_path, prepare):
     assert not (tmp_path / "elsewhere" / "scripts").exists()
     if prepare == "foreign_files":
         assert sorted(p.name for p in target.iterdir()) == ["notes.txt"]
+
+
+# --- Windows regressions (2026-11-03): CRLF checkout, text-mode fds -----------------------------
+
+def _crlf_plugin_copy(tmp_path: Path) -> Path:
+    """A copy of src/ as Git for Windows (core.autocrlf=true) checks it out: every text file CRLF."""
+    import shutil
+
+    dst = tmp_path / "plugin_src"
+    shutil.copytree(SRC, dst, ignore=shutil.ignore_patterns("__pycache__", "web-next", "tests"))
+    for f in list((dst / "kb_engine").glob("*.py")) + [f for f in (dst / "kb_template").rglob("*") if f.is_file()]:
+        f.write_bytes(f.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+    return dst
+
+
+def test_a_crlf_checkout_still_installs_the_pinned_lf_engine(tmp_path):
+    src = _crlf_plugin_copy(tmp_path)
+    assert b"\r\n" in (src / "kb_engine" / "kb.py").read_bytes()
+    target = tmp_path / "knowledge"
+    r = run(sys.executable, src / "kb_init.py", "--target", target)
+    out = json.loads(r.stdout)
+    assert r.returncode == 0 and out["status"] == "created", out      # was: "does not match ENGINE.json"
+    m = json.loads((SRC / "kb_engine" / "ENGINE.json").read_text())
+    for name, digest in m["files"].items():                             # byte-exact: the path-gate pin
+        assert hashlib.sha256((target / "scripts" / name).read_bytes()).hexdigest() == digest, name
+    for f in ("kb/_meta/sources.yaml", "kb/_meta/autonomy.yaml", "README.md", ".gitignore", ".gitattributes"):
+        assert b"\r\n" not in (target / f).read_bytes(), f
+    assert run("git", "-C", target, "status", "--porcelain").stdout == ""
+
+
+def test_a_crlf_engine_in_a_tenant_kb_is_normalised_without_a_commit(tmp_path):
+    repo = tmp_path / "knowledge"
+    assert init(repo)[0] == 0
+    p = repo / "scripts" / "kb.py"
+    p.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))
+    log = run("git", "-C", repo, "log", "--oneline").stdout
+    rc, out = init(repo)
+    assert rc == 0 and out["status"] == "ok" and out.get("normalized"), out
+    assert b"\r\n" not in p.read_bytes()
+    assert run("git", "-C", repo, "log", "--oneline").stdout == log
+
+
+def test_writes_leave_a_clean_index_and_no_lock(tmp_path):
+    """On Windows os.open() is TEXT mode by default: the index kb swapped in got CRLF-mangled
+    (`git ls-files -u` then listed a "\\r\\n.gitignore" entry and every later write was refused as
+    "unmerged paths") and index.lock was never released. Two writes in a row prove both."""
+    repo = tmp_path / "knowledge"
+    assert init(repo)[0] == 0
+    assert kb(repo, "new", "initiative", "--title", "One")[0] == 0
+    rc, res = kb(repo, "new", "initiative", "--title", "Two")
+    assert rc == 0 and res["id"] == "I-02", res
+    assert not (repo / ".git" / "index.lock").exists()
+    assert run("git", "-C", repo, "ls-files", "-u").stdout == ""
+    assert run("git", "-C", repo, "status", "--porcelain").stdout == ""
+    assert b"\r\n" not in (repo / "kb" / "audit.jsonl").read_bytes()
+
+
+def test_non_ascii_titles_survive_export_and_index(tmp_path):
+    repo = tmp_path / "knowledge"
+    assert init(repo)[0] == 0
+    assert kb(repo, "new", "initiative", "--title", "Übersicht – 認証")[0] == 0
+    assert kb(repo, "index")[0] == 0
+    rows = [json.loads(ln) for ln in (repo / "kb" / "graph" / "entities.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert any(r["title"] == "Übersicht – 認証" for r in rows)

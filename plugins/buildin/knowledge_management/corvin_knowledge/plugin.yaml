@@ -1,6 +1,6 @@
 plugin_id: corvin_knowledge
-plugin_type: context_retriever
-version: 1.2.0
+plugin_type: web_surface
+version: 1.3.0
 display_name: Knowledge Graph
 description: "Your own knowledge base — concepts, decisions (ADRs), implementation plans, initiatives, epics and tasks — as a Git-backed graph, projected onto the CorvinOS task board with the concept, ADR and implementation-plan gates. Enabling it creates the tenant's knowledge base (ships the kb engine); adds the Knowledge Graph panel to the console. First-party plugin: standard on every installation and enabled at first boot; local-only by default (no network, no telemetry)."
 origin: vetted

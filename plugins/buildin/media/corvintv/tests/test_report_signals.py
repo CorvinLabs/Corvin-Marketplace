@@ -82,12 +82,12 @@ def test_note_degradation_reaches_the_running_jobs_report_and_is_a_no_op_outside
     rep = rp.ProductionReport("job_ctx")
     tok = rp.set_current(rep)
     try:
-        rp.note_degradation("storyboard_backend_fallback", source="claude_cli", target="anthropic")
+        rp.note_degradation("storyboard_backend_fallback", source="claude_cli", target="other")
         rp.note_llm_usage({"input_tokens": 3, "output_tokens": 4})
     finally:
         rp.reset_current(tok)
     rp.note_degradation("grounding_lost", reason="after")  # gone again
-    assert rep.degradations == [{"kind": "storyboard_backend_fallback", "from": "claude_cli", "to": "anthropic"}]
+    assert rep.degradations == [{"kind": "storyboard_backend_fallback", "from": "claude_cli", "to": "other"}]
     assert rep.llm_usage["input_tokens"] == 3
 
 

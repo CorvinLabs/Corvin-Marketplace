@@ -11,7 +11,7 @@
 Turns a **text description** into a **professional narrated video** (1–3 minutes):
 
 1. **Storyboard** — An AI reads your description and breaks it into scenes with narration
-2. **Narration** — Each scene is read aloud using a natural human voice (OpenAI TTS)
+2. **Narration** — Each scene is read aloud by the CorvinOS voice chain, the same voice as chat (OpenAI, else edge-tts, else Piper offline)
 3. **Slides** — Animated diagrams appear in the corvin-labs.com design (dark theme by default)
 4. **Video** — Everything is assembled into an MP4 you can download and share
 
@@ -55,9 +55,11 @@ Use the paperclip to attach text, Markdown or PDF files as source material (up t
 - Say how long: "2-minute video" (videos of one to three minutes work best)
 - Give structure hints: "Start with..., then explain..., end with..."
 
-### Step 3: Choose the Narration Engine (Optional)
+### Step 3: The Narration Voice (nothing to choose)
 
-In **Settings** you choose how the video is narrated: **Auto** (the default: every scene is spoken by OpenAI, best quality, and by the free edge-tts voices when OpenAI declines - no key, an invalid or exhausted key, a rate limit or a timeout; the job report says which voice spoke), **OpenAI** (OpenAI only, no fallback: a decline refuses the job) or the legacy **gTTS** engine. There is no offline voice: if both OpenAI and edge-tts are unreachable the job fails with a named error instead of producing a silent video. The Settings panel also tells you whether OpenAI and the slide renderer (Chromium) are available on this host. Theme, frame rate and slide type are not user-selectable in the console.
+Since CorvinTV 1.8.0 every video is narrated by the **CorvinOS voice chain** - the same voice your chat replies are read with: OpenAI first (best quality, needs a key), the free edge-tts voices when OpenAI declines, and Piper (local, works offline) last. Whatever is configured for chat applies here too: the voice settings of your profile, an operator pin (`CORVIN_TTS_PROVIDER`) and the local-only switch (`CORVIN_TTS_LOCAL_ONLY`). The job report says which voice spoke each scene. If no voice can speak, the job fails with a named error instead of producing a silent video. The Settings panel shows the chain and which of its voices are ready on this host, and whether the slide renderer (Chromium) is available.
+
+The storyboard is always written by **Claude Code** (the `claude` CLI signed in on the CorvinOS host). There is no other model and no fallback: without Claude Code the job is refused with a message saying so. Theme, frame rate and slide type are not user-selectable in the console.
 
 ### Step 4: Send
 
@@ -158,13 +160,17 @@ the result beautiful and the limits: [docs/CINEMATIC.md](docs/CINEMATIC.md).
 
 ## Troubleshooting
 
-### ❌ "OpenAI API Error" or "Missing API Key"
+### ❌ "No narration voice is available"
 
-**Cause:** Your host doesn't have an OpenAI API key configured.
+**Cause:** No voice of the CorvinOS voice chain could speak (no OpenAI key, edge-tts unreachable, no Piper voice installed). The message lists each voice's reason.
 
-**Fix:**
-1. Contact your CorvinOS operator to add `OPENAI_API_KEY` to the environment
-2. OR leave the narration engine on **Auto** (the default): edge-tts takes over when OpenAI declines; the voice is free but of lower quality
+**Fix:** make chat voice work and CorvinTV works too - add an OpenAI TTS key in the console's Setup, check the network for edge-tts, or install a Piper voice for offline narration.
+
+### ❌ "CorvinTV writes its storyboard with the native Claude Code engine ..."
+
+**Cause:** The `claude` CLI is missing on the host, not signed in, or offline. CorvinTV uses no other model.
+
+**Fix:** install Claude Code on the CorvinOS host and run `claude` once in a terminal to sign in, then start the video again.
 
 ### ❌ "Rendering failed, using fallback slide"
 
@@ -178,7 +184,7 @@ the result beautiful and the limits: [docs/CINEMATIC.md](docs/CINEMATIC.md).
 
 **Check the error message:**
 - **"Storyboard generation failed"** → Your description might be too long or unclear. Try splitting it into 2 shorter videos.
-- **"TTS failed for scene X"** → Narration failed. Check if the OpenAI API is reachable.
+- **"No narration voice is available"** → see above; the message names why each voice declined.
 - **"FFmpeg error"** → Assembly failed. This is rare; try again or contact your operator.
 
 ### ❌ Video is jerky or low quality
@@ -235,7 +241,7 @@ Target: policy makers
 ## What the Video Includes
 
 ✅ **Professional design:** Slides match the corvin-labs.com brand  
-✅ **Natural narration:** Real human voice (OpenAI) or fallback synthesizer  
+✅ **Natural narration:** the CorvinOS voice (OpenAI, edge-tts or Piper - the same as chat)  
 ✅ **Animations:** Charts draw themselves, text fades in, shapes morph  
 ✅ **Proper timing:** Narration and visuals stay in sync  
 ✅ **High resolution:** 1920×1080 at 30fps (YouTube, presentations, etc.)

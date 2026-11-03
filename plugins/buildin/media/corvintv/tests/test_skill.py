@@ -21,14 +21,8 @@ class TestStoryboardGeneration:
     @pytest.mark.asyncio
     async def test_generate_storyboard_with_llm(self):
         """Test LLM storyboard generation."""
-        # This test requires Anthropic API key
-        # For CI/testing, mock the API call
-        with patch("src.skill.anthropic.Anthropic") as mock_anthropic:
-            mock_client = MagicMock()
-            mock_anthropic.return_value = mock_client
-
-            mock_message = MagicMock()
-            mock_message.content = [MagicMock(text='''{
+        with patch("src.skill._call_claude_cli") as mock_cli:
+            mock_cli.return_value = ('''{
                 "id": "sb_test",
                 "task": "Test video",
                 "scenes": [
@@ -40,11 +34,9 @@ class TestStoryboardGeneration:
                         "visual_description": "Title card"
                     }
                 ]
-            }''')]
+            }''')
 
-            mock_client.messages.create.return_value = mock_message
-
-            storyboard = await generate_storyboard_with_llm("Test video", 5, backend="anthropic", model="test-model")
+            storyboard = await generate_storyboard_with_llm("Test video", 5, model="test-model")
 
             assert storyboard is not None
             assert len(storyboard.scenes) == 1
@@ -53,13 +45,9 @@ class TestStoryboardGeneration:
     @pytest.mark.asyncio
     async def test_storyboard_exceeds_max_duration(self):
         """Test validation: storyboard exceeds max duration."""
-        with patch("src.skill.anthropic.Anthropic") as mock_anthropic:
-            mock_client = MagicMock()
-            mock_anthropic.return_value = mock_client
-
+        with patch("src.skill._call_claude_cli") as mock_cli:
             # Storyboard with total > 5 minutes
-            mock_message = MagicMock()
-            mock_message.content = [MagicMock(text='''{
+            mock_cli.return_value = ('''{
                 "id": "sb_test",
                 "task": "Test video",
                 "scenes": [
@@ -71,20 +59,15 @@ class TestStoryboardGeneration:
                         "visual_description": "Long scene"
                     }
                 ]
-            }''')]
-
-            mock_client.messages.create.return_value = mock_message
+            }''')
 
             with pytest.raises(ValueError, match="too long"):
-                await generate_storyboard_with_llm("Test", max_duration_minutes=5, backend="anthropic", model="test-model")
+                await generate_storyboard_with_llm("Test", max_duration_minutes=5, model="test-model")
 
     @pytest.mark.asyncio
     async def test_storyboard_exceeds_scene_limit(self):
         """Test validation: storyboard has too many scenes."""
-        with patch("src.skill.anthropic.Anthropic") as mock_anthropic:
-            mock_client = MagicMock()
-            mock_anthropic.return_value = mock_client
-
+        with patch("src.skill._call_claude_cli") as mock_cli:
             # Storyboard with 101 scenes (limit is 100)
             scenes = [
                 {
@@ -97,17 +80,14 @@ class TestStoryboardGeneration:
                 for i in range(101)
             ]
 
-            mock_message = MagicMock()
-            mock_message.content = [MagicMock(text=f'''{{
+            mock_cli.return_value = (f'''{{
                 "id": "sb_test",
                 "task": "Test video",
                 "scenes": {str(scenes).replace("'", '"')}
-            }}''')]
-
-            mock_client.messages.create.return_value = mock_message
+            }}''')
 
             with pytest.raises(ValueError, match="Too many scenes"):
-                await generate_storyboard_with_llm("Test", 10, backend="anthropic", model="test-model")
+                await generate_storyboard_with_llm("Test", 10, model="test-model")
 
 
 class TestOrchestrationFlow:

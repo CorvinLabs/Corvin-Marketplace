@@ -1,0 +1,9 @@
+# The kb engine is hash-pinned against its committed LF blob (src/kb_engine/ENGINE.json and the
+# CorvinOS path gate). Git for Windows' core.autocrlf=true rewrote it to CRLF in the working tree,
+# kb_init.py then refused to install a "modified engine", and no tenant knowledge base was ever
+# created on Windows (2026-11-03). Pin LF independent of the local git config.
+# NOTE: this does not rewrite an existing checkout; kb_init.py also accepts and normalises CRLF.
+src/kb_engine/*.py text eol=lf
+src/kb_engine/ENGINE.json text eol=lf
+src/kb_init.py text eol=lf
+src/kb_template/** text eol=lf

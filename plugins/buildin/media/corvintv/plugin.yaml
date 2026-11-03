@@ -2,8 +2,9 @@ plugin_id: video_producer
 plugin_type: web_surface
 version: 1.8.0
 display_name: CorvinTV
-description: "CorvinTV (formerly Video Producer): create narrated MP4s from a task description - LLM-written
-  storyboard, narration by OpenAI TTS with edge-tts as the fallback, animated web slides, ffmpeg assembly.
+description: "CorvinTV (formerly Video Producer): create narrated MP4s from a task description - storyboard
+  written by the native Claude Code engine (the host's signed-in claude CLI; no other LLM, no fallback), narration
+  by the CorvinOS voice chain (the same as chat: OpenAI, edge-tts, Piper), animated web slides, ffmpeg assembly.
   First-party plugin of the buildin tier: a fresh installation installs and enables it, and the operator can
   disable or uninstall it at any time. See USER-GUIDE.md and docs/."
 origin: vetted
@@ -13,10 +14,10 @@ network_egress: external
 egress_hosts:
   # Every host a job can reach, each gated by the console's own L34/L35 pre-spawn checks before the job
   # starts (egress_gate.DEFAULT_ENGINE_HOSTS). Nothing is contacted at boot or in the background.
-  - api.openai.com            # narration tier 1 (needs the operator's OpenAI key)
-  - speech.platform.bing.com  # narration tier 2, edge-tts (Microsoft voices, no key)
-  - api.anthropic.com         # optional storyboard backend
-  - translate.google.com      # narration tier 3, gTTS (last resort in "auto"; the only tier when tts_engine is "gtts")
+  - api.anthropic.com         # the storyboard: the host's Claude Code CLI (the only LLM engine)
+  - api.openai.com            # narration, CorvinOS chain tier 1 (needs the operator's OpenAI key)
+  - speech.platform.bing.com  # narration, CorvinOS chain tier 2, edge-tts (Microsoft voices, no key)
+  # tier 3, Piper, is local; CORVIN_TTS_LOCAL_ONLY=1 keeps the narration on it
 pii_risk: medium   # the narration text (derived from the operator's task) goes to the TTS host; never the task's files
 requires_consent: false
 audit_required: true
@@ -27,9 +28,9 @@ settings_schema:
   properties:
     tts_engine:
       type: string
-      enum: [openai, auto, gtts]
+      enum: [auto, openai, gtts]
       default: auto
-      description: Text-to-speech engine for narration -- auto (OpenAI TTS first, edge-tts when OpenAI declines; the default), openai (OpenAI only, no fallback) or gtts (legacy); the same set src/skill.py SUPPORTED_TTS_ENGINES
+      description: Narration engine -- auto, the CorvinOS voice chain chat TTS uses (OpenAI, edge-tts, Piper; pinned by CORVIN_TTS_PROVIDER or the voice settings). The only engine since 1.8.0; openai and gtts are kept so that a record which stored them still validates, and both mean auto (src/skill.py LEGACY_TTS_ENGINES)
     penpot_runtime:
       type: string
       enum: [auto, docker, podman]

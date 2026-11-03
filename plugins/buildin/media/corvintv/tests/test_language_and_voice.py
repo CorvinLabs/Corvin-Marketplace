@@ -18,15 +18,17 @@ def test_every_scene_of_a_video_is_voiced_in_the_videos_language(run_orchestrate
     # scene 2 alone ("Kontext und Agent.") carries no function word an older guess could use
     scenes = [{"id": f"s{i}", "kind": "example", "duration_ms": 8000, "narration_text": t, "visual_description": "d"}
               for i, t in enumerate([TEXT_DE[0], "Agent, Kontext, Pipeline: drei Begriffe.", TEXT_DE[2]], 1)]
-    _, spies = run_orchestrate(scenes, spies_for=("_synthesize_narration_openai",))
-    assert [a[2] for a, _ in spies["_synthesize_narration_openai"]] == ["de", "de", "de"]
+    _, spies = run_orchestrate(scenes, spies_for=("_synthesize_narration_chain",))
+    assert [a[2] for a, _ in spies["_synthesize_narration_chain"]] == ["de", "de", "de"]
 
 
 def test_the_production_voice_chain_has_no_silent_tier():
-    assert [name for name, _ in skill._TTS_CHAIN] == ["openai", "edge", "gtts"]
+    # 1.8.0: ONE entry, the CorvinOS chain (openai -> edge -> piper runs inside it, like chat TTS)
+    assert [name for name, _ in skill._TTS_CHAIN] == ["native"]
+    assert skill._TTS_CHAIN[0][1] is skill._tts_native
 
 
 def test_when_every_voice_declines_the_job_fails_instead_of_going_mute(monkeypatch, tmp_path):
-    monkeypatch.setattr(skill, "_TTS_CHAIN", (("openai", lambda *a: False), ("edge", lambda *a: False)))
+    monkeypatch.setattr(skill, "_TTS_CHAIN", (("native", lambda *a: False),))
     with pytest.raises(skill.NoVoiceAvailable):
         skill._synthesize_narration_chain("Hallo Welt.", tmp_path / "a.mp3", "de")

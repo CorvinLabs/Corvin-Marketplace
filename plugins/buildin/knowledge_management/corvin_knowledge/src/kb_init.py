@@ -23,7 +23,6 @@ import argparse
 import hashlib
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -41,10 +40,22 @@ class InitError(Exception):
     pass
 
 
+def _lf(data: bytes) -> bytes:
+    """The committed (LF) form of an engine file. A Windows checkout with core.autocrlf=true
+    (Git for Windows' default) has CRLF on disk; Python reads CRLF exactly as LF, so the
+    CRLF->LF form IS the reviewed code. ENGINE.json and the CorvinOS path-gate pins are
+    taken from the LF blob, and a tenant KB always receives the LF bytes."""
+    return data.replace(b"\r\n", b"\n")
+
+
+def _digest(path: Path) -> str:
+    return hashlib.sha256(_lf(path.read_bytes())).hexdigest()
+
+
 def engine_manifest() -> dict:
     m = json.loads((ENGINE / "ENGINE.json").read_text(encoding="utf-8"))
     for name, digest in m["files"].items():
-        if hashlib.sha256((ENGINE / name).read_bytes()).hexdigest() != digest:
+        if _digest(ENGINE / name) != digest:
             raise InitError(f"kb_engine/{name} does not match ENGINE.json — refusing to install a modified engine")
     return m
 
@@ -64,14 +75,16 @@ def _copy_engine(target: Path, files: dict) -> None:
         if dst.is_symlink():
             raise InitError(f"scripts/{name} is a symlink — refusing to write through it")
         fd, tmp = tempfile.mkstemp(dir=dst.parent, prefix=f".{name}.")
-        os.close(fd)
-        shutil.copyfile(ENGINE / name, tmp)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(_lf((ENGINE / name).read_bytes()))   # LF: byte-identical to the pinned blob
         os.replace(tmp, dst)
 
 
 def _engine_matches(target: Path, files: dict) -> bool:
     for name, digest in files.items():
         p = target / "scripts" / name
+        # exact bytes, not the LF-normalised form: a CRLF engine in a tenant KB is rewritten
+        # to LF, so the path gate's byte pin always matches what the KB runs
         if not p.is_file() or hashlib.sha256(p.read_bytes()).hexdigest() != digest:
             return False
     return True
@@ -83,14 +96,15 @@ def _create(target: Path, m: dict) -> dict:
         if src.is_dir() or "__pycache__" in src.parts:
             continue
         rel = src.relative_to(TEMPLATE)
-        dst = target / (".gitignore" if rel.as_posix() == "gitignore" else rel)
+        name = rel.as_posix()
+        dst = target / ("." + name if name in ("gitignore", "gitattributes") else rel)
         dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src, dst)
+        dst.write_bytes(_lf(src.read_bytes()))   # LF: a Windows checkout of the template is CRLF
     _copy_engine(target, m["files"])
     (target / MARKER).write_text(json.dumps({
         "created_by": "corvin_knowledge plugin",
         "engine_commit": m["source_commit"],
-    }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    }, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
     # `git init -b` needs git >= 2.28; set the branch explicitly so older git works too
     _git(target, "init", "-q")
     _git(target, "symbolic-ref", "HEAD", "refs/heads/main")
@@ -114,9 +128,13 @@ def ensure(target: Path) -> dict:
     _copy_engine(target, m["files"])
     marker = json.loads((target / MARKER).read_text(encoding="utf-8"))
     marker["engine_commit"] = m["source_commit"]
-    (target / MARKER).write_text(json.dumps(marker, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (target / MARKER).write_text(json.dumps(marker, indent=2, sort_keys=True) + "\n", encoding="utf-8",
+                                 newline="\n")
     paths = [f"scripts/{n}" for n in m["files"]] + [MARKER.as_posix()]
     _git(target, "add", "--", *paths)
+    if not _git(target, "diff", "--cached", "--name-only", "--", *paths):
+        # only the line endings differed (a CRLF engine rewritten to LF): same content, nothing to commit
+        return {"status": "ok", "path": str(target), "engine_commit": m["source_commit"], "normalized": True}
     # pathspec commit: whatever else the operator has staged stays staged and out of this commit
     _git(target, "commit", "-q", "-m", f"kb: engine {m['source_commit'][:12]}", "--", *paths)
     return {"status": "upgraded", "path": str(target), "engine_commit": m["source_commit"]}

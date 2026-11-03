@@ -223,7 +223,7 @@ def _read_capped(stream, cap: int, sink: List[bytes], flag: List[bool]) -> None:
 
 
 def run_process(
-    cmd: Sequence[str],
+    cmd: "Sequence[str] | str",
     *,
     deadline_s: float,
     input: Any = None,
@@ -257,8 +257,9 @@ def run_process(
     data = None
     if input is not None:
         data = input.encode("utf-8") if isinstance(input, str) else bytes(input)
+    # a str is a Windows command line built by the host's cmd.exe-safe shim launcher (corvinos_native.spawnable)
     proc = subprocess.Popen(  # deadline-exempt: this IS the primitive
-        list(cmd), stdin=subprocess.PIPE if data is not None else subprocess.DEVNULL,
+        cmd if isinstance(cmd, str) else list(cmd), stdin=subprocess.PIPE if data is not None else subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, env=env, close_fds=True, **kw,
     )
     out: List[bytes] = []

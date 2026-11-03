@@ -1,0 +1,4 @@
+# kb_init.py installs this as .gitattributes. The engine in scripts/ is pinned byte-for-byte (LF)
+# by the CorvinOS path gate; a Windows git with core.autocrlf=true must never turn it into CRLF.
+# The KB's own files are LF too: kb.py writes LF and refuses a file that mixes CRLF and LF.
+* text=auto eol=lf

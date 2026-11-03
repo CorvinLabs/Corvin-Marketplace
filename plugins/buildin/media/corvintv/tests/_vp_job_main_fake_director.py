@@ -22,7 +22,7 @@ def _fake(skill) -> None:
     folder = Path(os.environ["VP_FAKE_LLM_DIR"])
     job_id = os.environ["CORVIN_VIDEO_JOB_ID"]
 
-    def fake_cli(prompt: str, model: str) -> str:
+    def fake_cli(prompt: str, model: str, timeout_s=None) -> str:
         which = "repair" if "Your previous answer was rejected" in prompt else "direction"
         return (folder / f"{job_id}.{which}.json").read_text(encoding="utf-8")
 

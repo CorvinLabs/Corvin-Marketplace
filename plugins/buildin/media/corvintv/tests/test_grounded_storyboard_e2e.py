@@ -13,6 +13,7 @@ import pytest
 
 from src import grounded_storyboard as gsb
 from src import skill
+from tests.conftest import install_fake_claude_bin
 from src.models import VideoJob
 from src.storage import get_storage
 
@@ -69,7 +70,7 @@ def _fake_claude(tmp_path: Path, monkeypatch, storyboard: dict, repair: dict = N
         f"sys.exit({exit_code})\n"
     )
     script.chmod(0o755)
-    monkeypatch.setenv("CORVIN_CLAUDE_BIN", str(script))
+    install_fake_claude_bin(script, monkeypatch)
     return log
 
 
@@ -157,15 +158,22 @@ async def test_without_a_pack_the_prompt_is_the_ordinary_one(store, tmp_path, mo
     assert "SOURCES" not in prompt and "console_still" not in prompt and "Maximum 8 scenes" in prompt
 
 
-async def test_remote_failure_ends_the_job_and_there_is_no_local_model_to_leak_the_pack_to(store, tmp_path, monkeypatch):
+async def test_a_non_native_backend_is_refused_before_any_call(store, tmp_path, monkeypatch):
+    """1.8.0: a job config from an older host naming another backend is refused, never rerouted."""
+    log = _fake_claude(tmp_path, monkeypatch, GOOD)
+    for backend in ("ollama", "anthropic"):
+        with pytest.raises(ValueError, match="native Claude Code engine"):
+            await _run(store, f"job_g5{backend[0]}", storyboard_backend=backend, grounding_pack=PACK, web_slides=False)
+    assert _calls(log) == []
+
+
+async def test_a_failing_cli_fails_the_grounded_job_and_nothing_else_sees_the_pack(store, tmp_path, monkeypatch):
     log = _fake_claude(tmp_path, monkeypatch, GOOD, exit_code=1)
-    with pytest.raises(Exception):
+    with pytest.raises(skill.ClaudeEngineUnavailable):
         await _run(store, "job_g6", storyboard_backend="claude_cli", storyboard_model="m",
                    grounding_pack=PACK, web_slides=False)
-    job = get_storage(store).get_job("job_g6")
-    assert job.status == "error" and "internet connection" in job.error_message
-    assert not hasattr(skill, "_OLLAMA_URL")
-    assert _calls(log)  # the only route that was tried is the (gated) Claude one
+    assert [c["kind"] for c in _calls(log)] == ["storyboard"], "no second, ungrounded attempt on a dead engine"
+    assert get_storage(store).get_job("job_g6").status == "error"
 
 
 async def test_malformed_pack_is_ignored_and_host_status_is_recorded(store, tmp_path, monkeypatch):

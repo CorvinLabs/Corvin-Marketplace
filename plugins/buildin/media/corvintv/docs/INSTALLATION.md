@@ -37,11 +37,13 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Installs exactly 4 packages: `anthropic`, `requests`, `gTTS`, `Pillow` (plus
-their own transitive dependencies). Nothing else is imported by the live
-code — verified by grepping every import line (including the ones inside
-functions) across `src/models.py`, `storage.py`, `skill.py`,
-`async_runner.py`, `__init__.py`.
+Installs `requests`, `Pillow`, `numpy` and `playwright` (plus their own transitive
+dependencies). Since 1.8.0 there is **no LLM SDK and no TTS package** in this list:
+the storyboard is written by the host's native Claude Code engine (the signed-in
+`claude` CLI) and the narration by the CorvinOS voice chain
+(`corvin_console.native_tts` → `say.py`: OpenAI → edge-tts → Piper), whose packages
+CorvinOS installs itself. CorvinTV therefore runs inside a CorvinOS installation; a
+fresh one installs and enables it at first boot without any step.
 
 Optionally, install the package itself (editable, for development):
 
@@ -49,7 +51,7 @@ Optionally, install the package itself (editable, for development):
 pip install -e .
 ```
 
-## Step 3: Verify (no API key, no network cost beyond gTTS)
+## Step 3: Verify the imports
 
 ```bash
 python3 -c "
@@ -59,40 +61,37 @@ print('all live modules import cleanly')
 "
 ```
 
-To verify the actual narration + encoding pipeline works (uses gTTS's free
-public endpoint and your local ffmpeg — no account needed):
+To verify narration + encoding end to end, run the CorvinOS live test with
+the console's own interpreter (it boots a console on a fresh temp home, makes a
+real short video with the real `claude` CLI and the real voice chain, and
+checks it with ffprobe):
 
 ```bash
-python3 -c "
-import sys; sys.path.insert(0, 'src')
-from pathlib import Path
-import tempfile, skill
-from PIL import Image
-
-work = Path(tempfile.mkdtemp())
-img, aud, out = work/'f.png', work/'a.mp3', work/'c.mp4'
-Image.new('RGB', (1280, 720), 'navy').save(img)
-skill._synthesize_narration('Installation verified.', aud, 'en')
-skill._assemble_scene_clip(img, aud, out)
-print('narration + assembly OK:', out.stat().st_size, 'bytes ->', out)
-"
+cd <CorvinOS checkout>
+CLAUDE_LIVE_E2E=1 pytest core/console/tests/test_corvintv_native_live_e2e.py -m live -s
 ```
 
-## Step 4: Anthropic API Key (optional)
+## Step 4: Claude Code (required)
 
-The storyboard step needs Claude: the Anthropic API when a key is set, else the
-host's Claude Code login — and only when the HOST (the CorvinOS console, not this
-plugin) decides the job's egress policy allows it. There is no local fallback:
-offline, or without Claude Code, the console refuses the job. Setting
-`ANTHROPIC_API_KEY` in the *console's* environment is a host-level decision,
-not something this plugin configures on its own — see the main CorvinOS
-docs for `tenant.corvin.yaml`'s egress policy.
+Every storyboard is one tool-less `claude -p` call of the host's Claude Code
+CLI. Install Claude Code on the CorvinOS host and sign in once (`claude` in a
+terminal). The CLI runs on that Claude Code subscription: it is started
+without `ANTHROPIC_API_KEY`, and its own error message reaches the job error.
+The console resolves the binary like its own chat does
+(`CORVIN_CLAUDE_BIN`, PATH, the known install locations, a Windows `claude.cmd`
+shim through the cmd.exe-safe launcher) and hands the job exactly that binary.
+There is no API-key path and no local model: without the CLI a job is refused
+before it starts, and a CLI failure ends the job with `ClaudeEngineUnavailable`
+and the reason. Whether the task may go to api.anthropic.com at all is still
+the host's decision (L35 egress / L34 classification, `tenant.corvin.yaml`).
 
 ## Not needed, despite earlier docs claiming otherwise
 
 - **Node.js / Puppeteer** — the screenshot-capture code that used it was
   removed as dead (ADR-0953); not on the live path.
-- **OpenAI API key** — narration uses gTTS, not OpenAI TTS.
+- **An OpenAI API key for CorvinTV** — narration is the CorvinOS voice chain; a key
+  configured for chat TTS is used here too, and without one edge-tts or Piper speaks.
+- **`ANTHROPIC_API_KEY`** — never used; the storyboard comes from the `claude` CLI.
 - **YouTube / Google OAuth credentials** — upload is not built; the console
   route answers `501 Not Implemented`.
 - **`python3 -m video_producer`** — there is no CLI. The only entry point is
@@ -101,24 +100,27 @@ docs for `tenant.corvin.yaml`'s egress policy.
 
 ## Troubleshooting
 
-**`ModuleNotFoundError` for anthropic/requests/gtts/PIL** — `pip install -r
+**`ModuleNotFoundError` for requests/PIL** — `pip install -r
 requirements.txt` was skipped or ran in the wrong venv; re-run Step 2.
 
 **`ffmpeg: command not found`** — Step 1 was skipped, or `ffmpeg` is not on
 `PATH` in the process that runs the job (check the same shell/service
 environment the console runs in, not just your interactive shell).
 
-**gTTS step fails / times out** — it calls Google's public Translate TTS
-endpoint; it needs outbound internet access and fails if that endpoint is
-unreachable (corporate proxy, offline environment). There is currently no
-offline TTS fallback on the live path.
+**"No narration voice is available"** — no tier of the CorvinOS voice chain
+could speak; the message lists each tier's reason (`say.py: ...`). Fix chat TTS
+and CorvinTV follows: an OpenAI TTS key, network access for edge-tts
+(speech.platform.bing.com), or a Piper voice model for offline narration.
+
+**"... native Claude Code engine ... no `claude` CLI"** — install Claude Code on
+the host and sign in; see Step 4.
 
 ## Uninstallation
 
 Remove the plugin directory and, if you installed it editable,
 `pip uninstall corvinos-video-producer`. No credentials or OAuth tokens are
-written anywhere by the live path (gTTS needs none; Anthropic reads its key
-from the host's own environment, this plugin never persists one).
+written anywhere by the live path (the `claude` CLI keeps its own login; the
+voice chain's keys belong to CorvinOS; this plugin never persists one).
 
 ## Next Steps
 

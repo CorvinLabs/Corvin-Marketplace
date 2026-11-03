@@ -2,10 +2,11 @@
 
 This is the e2e-wiring-proof + e2e-driven-iteration test for the didactic
 integration (narration_validator, didactic-constrained prompt, vector-icon
-renderer). It deliberately does NOT mock the pipeline: real Claude storyboard generation
-(qwen3:1.7b, local, no API key), real gTTS synthesis, real Pillow rendering,
-real ffmpeg assembly — because a mocked "E2E" test proves the mock works, not
-the pipeline.
+renderer). It deliberately does NOT mock the pipeline: real inference by the
+native Claude Code engine (the signed-in `claude` CLI, 1.8.0), real narration by
+the CorvinOS TTS chain, real Pillow rendering, real ffmpeg assembly — because a
+mocked "E2E" test proves the mock works, not the pipeline. The full-pipeline
+part is live: it runs only with CORVINTV_LIVE=1 inside a CorvinOS interpreter.
 
 Testing feedback applied (session memory):
   - "Fehlerbehandlung auf Primitive-Ebene, nicht Callsite-Band-Aid": the
@@ -53,8 +54,18 @@ from src.models import VideoJob
 
 
 SKILL_PY = Path(__file__).parent.parent / "src" / "skill.py"
-CLAUDE_CODE_AVAILABLE = bool(os.environ.get("CORVIN_CLAUDE_BIN")) or shutil.which("claude") is not None
 FFMPEG_AVAILABLE = shutil.which("ffmpeg") is not None
+
+
+def _native_engines_up() -> bool:
+    """Live only on request, with the signed-in claude CLI and the CorvinOS TTS chain importable."""
+    import importlib.util
+    import os
+
+    from src import corvinos_native
+
+    return (os.environ.get("CORVINTV_LIVE") == "1" and corvinos_native.claude_cli_path() is not None
+            and importlib.util.find_spec("corvin_console") is not None)
 
 
 # ===========================================================================
@@ -244,8 +255,8 @@ class TestFullPipelineCorvinCompliance:
 
     @pytest.mark.asyncio
     async def test_produces_real_video_about_corvin_compliance(self, tmp_path):
-        if not CLAUDE_CODE_AVAILABLE:
-            pytest.skip("Claude Code not available — cannot generate a real storyboard")
+        if not _native_engines_up():
+            pytest.skip("live: set CORVINTV_LIVE=1 and run inside CorvinOS with a signed-in claude CLI")
         if not FFMPEG_AVAILABLE:
             pytest.skip("ffmpeg not on PATH — cannot assemble a real video")
 
@@ -269,10 +280,9 @@ class TestFullPipelineCorvinCompliance:
             job_id=job_id,
             task=task,
             storage_base=storage_base,
-            tts_engine="gtts",
+            tts_engine="auto",
             max_duration_minutes=3,
             storyboard_backend="claude_cli",
-            storyboard_model="claude-sonnet-5-5",
         )
 
         # --- Primitive-level proof: the job's own validator ran and the

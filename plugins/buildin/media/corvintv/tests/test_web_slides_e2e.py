@@ -15,6 +15,7 @@ import pytest
 from PIL import Image, ImageChops, ImageStat
 
 from src import skill
+from tests.conftest import install_fake_claude_bin
 from src.models import VideoJob
 from src.storage import get_storage
 from src.web_renderer import WebRenderError
@@ -156,7 +157,7 @@ def _fake_claude(tmp_path: Path, monkeypatch, storyboard: dict, exit_code: int =
         f"sys.exit({exit_code})\n"
     )
     script.chmod(0o755)
-    monkeypatch.setenv("CORVIN_CLAUDE_BIN", str(script))
+    install_fake_claude_bin(script, monkeypatch)
     return log
 
 
@@ -224,14 +225,17 @@ async def test_a_repair_that_is_still_invalid_keeps_the_classic_slide_and_says_w
     assert len(md["storyboard_template_warnings"]) == 1 and "center_value" in md["storyboard_template_warnings"][0]
 
 
-async def test_claude_cli_failure_fails_the_job_with_an_actionable_message(store, tmp_path, monkeypatch):
-    """No local fallback: Claude Code failing (offline, not signed in) ends the job, and says what to do."""
+async def test_claude_cli_failure_fails_the_job_with_a_typed_error_and_no_other_engine(store, tmp_path, monkeypatch):
+    """1.8.0: the native Claude Code engine is the only one. A failing CLI ends the job `error` with
+    ClaudeEngineUnavailable - nothing else writes the storyboard."""
     _fake_claude(tmp_path, monkeypatch, CLAUDE_STORYBOARD, exit_code=1)
-    with pytest.raises(Exception):
+    with pytest.raises(skill.ClaudeEngineUnavailable, match="Claude Code CLI failed"):
         await _run(store, "job_cli_fb", storyboard_backend="claude_cli", storyboard_model="claude-sonnet-5-5")
     job = get_storage(store).get_job("job_cli_fb")
-    assert job.status == "error"
-    assert "internet connection" in job.error_message and "Claude Code" in job.error_message
+    assert job.status == "error" and "Claude Code" in job.error_message
+    report = json.loads((Path(store) / "videos" / "job_cli_fb" / "report.json").read_text(encoding="utf-8"))
+    assert report["error_class"] == "ClaudeEngineUnavailable" and report["failed_stage"] == "storyboard"
+    assert report["configured"]["storyboard_backend"] == "claude_cli"
 
 
 async def test_browser_unavailable_falls_back_to_classic_slides_and_says_so(store, monkeypatch):

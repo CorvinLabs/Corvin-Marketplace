@@ -527,7 +527,10 @@ def audit_append(repo: Path, data: bytes) -> None:
     import os
     if (repo / "kb").is_symlink():
         raise SystemExit("refused: kb/ is a symlink")
-    fd = os.open(repo / "kb/audit.jsonl", os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o644)
+    # O_BINARY (Windows; 0 on POSIX): a text-mode fd writes CRLF for LF, and the transaction
+    # hashed exactly `data` - recovery could no longer find the segment it has to cut
+    fd = os.open(repo / "kb/audit.jsonl", os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+                 | getattr(os, "O_BINARY", 0), 0o644)
     try:
         os.write(fd, data)
     finally:
@@ -542,6 +545,7 @@ def audit(repo: Path, rec: dict) -> None:
     rec = {"ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), **rec}
     if (repo / "kb").is_symlink():
         raise SystemExit("refused: kb/ is a symlink")
-    fd = os.open(repo / "kb/audit.jsonl", os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o644)
-    with os.fdopen(fd, "a", encoding="utf-8") as f:
+    fd = os.open(repo / "kb/audit.jsonl", os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+                 | getattr(os, "O_BINARY", 0), 0o644)
+    with os.fdopen(fd, "a", encoding="utf-8", newline="\n") as f:   # LF on every platform (one JSON line)
         f.write(json.dumps(rec, ensure_ascii=False, sort_keys=True) + "\n")
