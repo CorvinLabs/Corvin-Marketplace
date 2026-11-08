@@ -1,0 +1,26 @@
+id: legal
+version: 1
+title: Legal and compliance
+description: A matter log, a clause library and a review template. For drafting support,
+  not legal advice.
+requires:
+- core
+suggests:
+- kb
+- gates
+files:
+- src: files/MATTER-LOG.md
+  dst: matters/MATTER-LOG.md
+  kind: seed
+- src: files/CLAUSE-LIBRARY.md
+  dst: clauses/CLAUSE-LIBRARY.md
+  kind: seed
+- src: files/REVIEW-TEMPLATE.md
+  dst: reviews/REVIEW-TEMPLATE.md
+  kind: seed
+claude: files/claude.md
+seed_tasks:
+- title: Open the matter log
+  dod: matters/MATTER-LOG.md lists every open matter with a next deadline.
+- title: Seed the clause library
+  dod: clauses/ has the first three clauses with use and fallbacks.

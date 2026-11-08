@@ -1,0 +1,31 @@
+id: marketing-campaign
+version: 1
+title: Marketing
+description: Campaign briefs, a content calendar and a brand voice. Videos are offered.
+role: marketing
+classification: internal
+assistant_access: write
+outcome: briefs, content calendar, copy
+docs_mode: nested
+features:
+- core
+- kb
+- tasks
+- claude
+- marketing
+offered:
+- core
+- kb
+- tasks
+- claude
+- marketing
+- graph
+- videos
+- video_producer
+- directory
+- dashboard
+videos:
+  root: ../Corvin-Videos
+  languages:
+  - de
+  - en

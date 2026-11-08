@@ -1,7 +1,7 @@
 # Project Templates
 
 First-party CorvinOS plugin (`buildin`, vetted, local-only, no network, no telemetry). It ships the **catalogue** the
-console's *Projects* feature creates projects from: feature fragments and three templates. It is **pure data** -
+console's *Projects* feature creates projects from: feature fragments and nine role templates (software, data science, marketing, product, sales, legal, video, research, knowledge). It is **pure data** -
 nothing in it is executed; the CorvinOS host plans, previews and applies it (ADR-2315, CONCEPT-0126).
 
 | Template | Default features |

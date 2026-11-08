@@ -1,0 +1,22 @@
+id: sales
+version: 1
+title: Sales
+description: Account plans and a pipeline view. Customer data stays in the project.
+requires:
+- core
+suggests:
+- kb
+- tasks
+files:
+- src: files/ACCOUNT-PLAN-TEMPLATE.md
+  dst: accounts/ACCOUNT-PLAN-TEMPLATE.md
+  kind: seed
+- src: files/PIPELINE.md
+  dst: pipeline/PIPELINE.md
+  kind: seed
+claude: files/claude.md
+seed_tasks:
+- title: Set up the pipeline
+  dod: pipeline/PIPELINE.md lists the accounts with stage and next step.
+- title: Write the first account plan
+  dod: accounts/ has a plan with decision makers and a next step.

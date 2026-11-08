@@ -1,0 +1,22 @@
+id: product
+version: 1
+title: Product management
+description: A PRD template and a roadmap; decisions go to the knowledge base.
+requires:
+- core
+suggests:
+- kb
+- tasks
+files:
+- src: files/PRD-TEMPLATE.md
+  dst: product/PRD-TEMPLATE.md
+  kind: seed
+- src: files/ROADMAP.md
+  dst: product/ROADMAP.md
+  kind: seed
+claude: files/claude.md
+seed_tasks:
+- title: Write the first PRD
+  dod: product/ has a PRD with a problem, a success measure and a not-in-scope list.
+- title: Draft the roadmap
+  dod: product/ROADMAP.md has Now, Next and Later, each item linked.

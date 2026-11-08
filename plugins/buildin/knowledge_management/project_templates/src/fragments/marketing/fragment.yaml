@@ -1,0 +1,27 @@
+id: marketing
+version: 1
+title: Marketing
+description: A campaign brief, a content calendar and a brand-voice page, so copy
+  stays consistent.
+requires:
+- core
+suggests:
+- kb
+- tasks
+- videos
+files:
+- src: files/BRIEF-TEMPLATE.md
+  dst: campaigns/BRIEF-TEMPLATE.md
+  kind: seed
+- src: files/CALENDAR.md
+  dst: content/CALENDAR.md
+  kind: seed
+- src: files/VOICE.md
+  dst: brand/VOICE.md
+  kind: seed
+claude: files/claude.md
+seed_tasks:
+- title: Write the first brief
+  dod: campaigns/ has a brief with a measurable goal and an audience.
+- title: Fill the content calendar
+  dod: content/CALENDAR.md lists the next four weeks.

@@ -1,10 +1,42 @@
 id: video-engineering
 version: 1
 title: Video engineering
-description: Narrated, reproducible videos with a knowledge base, a task board, Claude Code rules and the Video Producer. Agentic compute and experiments are offered, not on.
+description: Narrated, reproducible videos with a knowledge base, a task board, Claude
+  Code rules and the Video Producer. Agentic compute and experiments are offered,
+  not on.
+role: video
+classification: internal
+assistant_access: write
+outcome: videos, narration, sources
 docs_mode: nested
-features: [core, kb, tasks, graph, gates, claude, ldd, videos, video_producer, directory, dashboard]
-offered: [core, kb, tasks, graph, gates, claude, ldd, experiments, acs, videos, video_producer, directory, dashboard]
+features:
+- core
+- kb
+- tasks
+- graph
+- gates
+- claude
+- ldd
+- videos
+- video_producer
+- directory
+- dashboard
+offered:
+- core
+- kb
+- tasks
+- graph
+- gates
+- claude
+- ldd
+- experiments
+- acs
+- videos
+- video_producer
+- directory
+- dashboard
 videos:
   root: ../Corvin-Videos
-  languages: [de, en]
+  languages:
+  - de
+  - en

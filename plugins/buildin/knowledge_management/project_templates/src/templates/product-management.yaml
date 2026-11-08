@@ -1,0 +1,26 @@
+id: product-management
+version: 1
+title: Product management
+description: PRDs, a roadmap and recorded product decisions.
+role: product
+classification: internal
+assistant_access: write
+outcome: PRDs, roadmap, decisions
+docs_mode: nested
+features:
+- core
+- kb
+- tasks
+- graph
+- claude
+- product
+offered:
+- core
+- kb
+- tasks
+- graph
+- claude
+- product
+- gates
+- directory
+- dashboard

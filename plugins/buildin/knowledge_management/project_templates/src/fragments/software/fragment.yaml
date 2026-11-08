@@ -1,0 +1,23 @@
+id: software
+version: 1
+title: Software engineering
+description: Architecture and testing notes, ADRs through the knowledge base, tests
+  before code.
+requires:
+- core
+suggests:
+- kb
+- tasks
+files:
+- src: files/ARCHITECTURE.md
+  dst: engineering/ARCHITECTURE.md
+  kind: seed
+- src: files/TESTING.md
+  dst: engineering/TESTING.md
+  kind: seed
+claude: files/claude.md
+seed_tasks:
+- title: Describe the architecture
+  dod: engineering/ARCHITECTURE.md names the parts, the boundaries and one open question.
+- title: Make the tests runnable
+  dod: engineering/TESTING.md has the command that runs the tests and its result.

@@ -1,0 +1,25 @@
+id: sales-account
+version: 1
+title: Sales
+description: Account plans and a pipeline. Customer data is confidential and the assistant
+  only reads.
+role: sales
+classification: confidential
+assistant_access: read
+outcome: account plans, pipeline notes
+docs_mode: nested
+features:
+- core
+- kb
+- tasks
+- claude
+- sales
+offered:
+- core
+- kb
+- tasks
+- claude
+- sales
+- graph
+- directory
+- dashboard

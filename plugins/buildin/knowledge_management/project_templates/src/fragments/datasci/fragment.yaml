@@ -1,0 +1,27 @@
+id: datasci
+version: 1
+title: Data science
+description: Data handling rules, a report template and a model card, with the preregistration
+  method on top when experiments are on.
+requires:
+- core
+suggests:
+- kb
+- tasks
+- experiments
+files:
+- src: files/README.md
+  dst: data/README.md
+  kind: seed
+- src: files/REPORT-TEMPLATE.md
+  dst: reports/REPORT-TEMPLATE.md
+  kind: seed
+- src: files/MODEL-CARD-TEMPLATE.md
+  dst: models/MODEL-CARD-TEMPLATE.md
+  kind: seed
+claude: files/claude.md
+seed_tasks:
+- title: Record the data sources
+  dod: data/ has a manifest with origin, date and checksum for each file.
+- title: Write the first report
+  dod: reports/ holds a report that follows the template and links its evidence.

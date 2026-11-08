@@ -1,0 +1,33 @@
+id: data-science
+version: 1
+title: Data science
+description: Data, experiments with a preregistration, reports and model cards, with
+  agentic compute on offer.
+role: data_science
+classification: confidential
+assistant_access: write
+outcome: experiments, models, reports
+docs_mode: nested
+features:
+- core
+- kb
+- tasks
+- graph
+- gates
+- claude
+- experiments
+- datasci
+- dashboard
+offered:
+- core
+- kb
+- tasks
+- graph
+- gates
+- claude
+- experiments
+- datasci
+- dashboard
+- ldd
+- acs
+- directory

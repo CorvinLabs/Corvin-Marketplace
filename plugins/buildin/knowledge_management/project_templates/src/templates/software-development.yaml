@@ -1,0 +1,33 @@
+id: software-development
+version: 1
+title: Software engineering
+description: Code with tests first, decisions as ADRs, a task board and Claude Code
+  rules.
+role: software
+classification: internal
+assistant_access: write
+outcome: code, ADRs, tests
+docs_mode: nested
+features:
+- core
+- kb
+- tasks
+- graph
+- gates
+- claude
+- ldd
+- software
+- dashboard
+offered:
+- core
+- kb
+- tasks
+- graph
+- gates
+- claude
+- ldd
+- software
+- dashboard
+- experiments
+- acs
+- directory

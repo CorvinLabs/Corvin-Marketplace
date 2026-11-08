@@ -1,0 +1,27 @@
+id: legal-compliance
+version: 1
+title: Legal and compliance
+description: A matter log, a clause library and reviews. Confidential; the assistant
+  only reads and drafts.
+role: legal
+classification: confidential
+assistant_access: read
+outcome: matters, clause library, reviews
+docs_mode: nested
+features:
+- core
+- kb
+- graph
+- gates
+- claude
+- legal
+offered:
+- core
+- kb
+- graph
+- gates
+- claude
+- legal
+- tasks
+- directory
+- dashboard

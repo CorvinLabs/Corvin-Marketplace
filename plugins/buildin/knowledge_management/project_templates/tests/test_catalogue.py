@@ -43,7 +43,8 @@ def closure(frags, ids):
 def test_ids_match_directories_and_requires_point_at_real_fragments():
     fr = fragments()
     assert {"core", "kb", "tasks", "graph", "gates", "claude", "ldd", "experiments", "acs", "videos",
-            "video_producer", "directory", "dashboard"} == set(fr)
+            "video_producer", "directory", "dashboard",
+            "software", "datasci", "marketing", "product", "sales", "legal"} == set(fr)
     for fid, f in fr.items():
         assert f["id"] == fid
         for r in (f.get("requires") or []) + (f.get("suggests") or []):
@@ -123,7 +124,30 @@ def test_plugin_manifests_agree():
     pj = json.loads((SRC.parent / "plugin.json").read_text(encoding="utf-8"))
     py = yaml.safe_load((SRC.parent / "plugin.yaml").read_text(encoding="utf-8"))
     assert pj["id"] == "plugin:buildin-knowledge_management-project_templates"
-    assert pj["version"] == py["version"] == "1.0.0"
+    assert pj["version"] == py["version"] == "1.1.0"
     assert py["plugin_id"] == "project_templates"
     assert pj["category"] == "knowledge_management" and pj["tier"] == "buildin"
     assert py["network_egress"] == "none" and py["requires_consent"] is False
+
+
+ROLES = {"software", "data_science", "marketing", "product", "sales", "legal", "video", "research", "knowledge"}
+CLASSES = {"public", "internal", "confidential", "secret"}
+
+
+def test_every_template_names_a_role_a_class_an_access_level_and_an_outcome():
+    """CONCEPT-0127: a role profile is a template with metadata; the lists are closed (the host refuses anything else)."""
+    for tid, t in templates().items():
+        assert t.get("role") in ROLES, (tid, t.get("role"))
+        assert t.get("classification") in CLASSES, (tid, t.get("classification"))
+        assert t.get("assistant_access") in {"read", "write"}, (tid, t.get("assistant_access"))
+        assert 5 <= len(str(t.get("outcome", ""))) <= 160, (tid, "the outcome says in plain words what the role produces")
+
+
+def test_one_template_per_role_and_a_sensitive_role_never_defaults_to_a_lower_class_than_internal():
+    ts = templates()
+    roles = [t["role"] for t in ts.values()]
+    assert len(roles) == len(set(roles)) == len(ROLES), sorted(roles)
+    for tid in ("sales-account", "legal-compliance", "data-science"):
+        assert ts[tid]["classification"] in {"confidential", "secret"}, tid
+    for tid in ("sales-account", "legal-compliance"):
+        assert ts[tid]["assistant_access"] == "read", tid     # the assistant drafts, a person acts
