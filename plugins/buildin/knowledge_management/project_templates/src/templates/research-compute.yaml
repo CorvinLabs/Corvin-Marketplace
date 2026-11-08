@@ -1,0 +1,7 @@
+id: research-compute
+version: 1
+title: Research with compute
+description: Preregistered experiments with the knowledge base, tasks, Claude Code rules and agentic compute.
+docs_mode: nested
+features: [core, kb, tasks, graph, gates, claude, ldd, experiments, acs, dashboard]
+offered: [core, kb, tasks, graph, gates, claude, ldd, experiments, acs, directory, dashboard]

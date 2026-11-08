@@ -1,0 +1,15 @@
+id: videos
+version: 1
+title: Videos
+description: The video folder convention - source/, build/, sources.md per video, German and English versions of every video.
+requires: [core]
+suggests: [kb, tasks]
+files:
+  - {src: files/INDEX.md, dst: videos/INDEX.md, kind: seed}
+  - {src: files/TEMPLATE-sources.md, dst: videos/TEMPLATE-sources.md, kind: seed}
+claude: files/claude.md
+seed_tasks:
+  - title: Create the first video
+    dod: A video folder exists with source/, build/ and a sources.md skeleton, and the storyboard is written.
+  - title: Run the first acceptance
+    dod: ffprobe values recorded, loudness about -16 LUFS, frames sampled and looked at, duration equals the sum of the segments, sources.md has all eight sections.

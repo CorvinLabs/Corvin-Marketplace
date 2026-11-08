@@ -1,0 +1,7 @@
+id: directory
+version: 1
+title: Peer directory
+description: Which of the tenant's paired A2A peers this project may see and ask. A subset of what the tenant has; nothing is ever sent automatically.
+requires: [core]
+suggests: [claude]
+claude: files/claude.md

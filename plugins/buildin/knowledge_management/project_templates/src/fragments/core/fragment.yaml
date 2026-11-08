@@ -1,0 +1,8 @@
+id: core
+version: 1
+title: Project
+description: The project itself - its manifest, a README and the rules every other feature builds on. Always on.
+files:
+  - {src: files/README.md, dst: README.md, kind: seed}
+claude: files/claude.md
+actions: [git_init]

@@ -1,0 +1,5 @@
+id: graph
+version: 1
+title: Knowledge graph
+description: The project's knowledge graph in the console's Knowledge Graph panel (scope selector).
+requires: [kb]

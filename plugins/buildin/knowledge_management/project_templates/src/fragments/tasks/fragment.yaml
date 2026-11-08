@@ -1,0 +1,6 @@
+id: tasks
+version: 1
+title: Tasks
+description: The project's initiatives, epics and tasks on the console Tasks board (a scope of the same board, never a second one).
+requires: [kb]
+suggests: [gates]

@@ -1,0 +1,14 @@
+id: kb
+version: 1
+title: Knowledge base
+description: docs/ as a Git-backed knowledge base - ideas, concepts, decisions, plans, notes, initiatives, epics and tasks - with the concept, ADR and plan gates.
+requires: [core]
+suggests: [gates]
+requires_plugins: [corvin_knowledge]
+kb:
+  initiative: "{{project.title}}"
+  epic: "Setup"
+claude: files/claude.md
+seed_tasks:
+  - title: Capture the project goal and audience as an idea
+    dod: An idea exists in docs/ (kb find shows it) that names the goal and the audience.

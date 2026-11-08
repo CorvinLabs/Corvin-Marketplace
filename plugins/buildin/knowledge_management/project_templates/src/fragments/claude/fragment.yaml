@@ -1,0 +1,6 @@
+id: claude
+version: 1
+title: Claude Code rules
+description: A generated CLAUDE.md for this project (rules of every active feature plus a block that is yours and is never overwritten).
+requires: [core]
+claude: files/claude.md

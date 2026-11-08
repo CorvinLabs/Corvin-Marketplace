@@ -1,0 +1,10 @@
+id: video_producer
+version: 1
+title: Video Producer
+description: Connects the project to the CorvinTV / Video Producer plugin (storyboard, narration, web slides, render) and the project's video folder.
+requires: [videos]
+requires_plugins: [video_producer]
+claude: files/claude.md
+seed_tasks:
+  - title: Check the Video Producer connection
+    dod: A short test job (no publishing) completed in the console Video Producer panel, and where its output went is written in videos/INDEX.md.

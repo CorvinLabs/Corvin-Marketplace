@@ -1,0 +1,7 @@
+id: ldd
+version: 1
+title: LDD
+description: Loss-driven development rules for this project (E2E-first, dialectical reasoning, docs as part of done).
+requires: [claude]
+suggests: [gates]
+claude: files/claude.md

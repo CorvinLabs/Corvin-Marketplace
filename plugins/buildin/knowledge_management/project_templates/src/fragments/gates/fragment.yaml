@@ -1,0 +1,7 @@
+id: gates
+version: 1
+title: Quality gates
+description: Readiness badges and the review loop in the console. The engine enforces its state machine and evidence rules always; this only shows and guides.
+requires: [kb]
+suggests: [tasks]
+claude: files/claude.md

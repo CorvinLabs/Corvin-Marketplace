@@ -1,0 +1,35 @@
+id: acs
+version: 1
+title: Agentic compute
+description: The CorvinOS MCP servers (Forge, compute, orchestration, SkillForge) for this project, written to machine-local files, plus the rules that avoid the known traps.
+requires: [claude]
+suggests: [experiments]
+gitignore: [".corvin/forge/data/"]
+files:
+  - {src: files/forge-README.md, dst: .corvin/forge/README.md, kind: seed}
+claude: files/claude.md
+mcp:
+  corvin_orchestration:
+    command: "{{paths.python}}"
+    args: ["-m", "corvin_orchestration.mcp_server"]
+    env:
+      CORVIN_CALLER_PERSONA: assistant
+      PYTHONPATH: "{{paths.repo}}/core/orchestration{{paths.pathsep}}{{paths.repo}}/core/workflows{{paths.pathsep}}{{paths.repo}}/core/console{{paths.pathsep}}{{paths.repo}}/corvin_operator/bridges/shared{{paths.pathsep}}{{paths.repo}}/corvin_operator/forge"
+      CORVIN_HOME: "{{paths.corvin_home}}"
+      CORVIN_TENANT_ID: "{{project.tenant}}"
+  forge:
+    command: "{{paths.python}}"
+    args: ["{{paths.repo}}/corvin_operator/forge/forge.py", "mcp", "--permission-mode", "yes"]
+    env:
+      FORGE_ALLOWED_TOOLS: ""
+      FORGE_PERSONA: assistant
+      CORVIN_HOME: "{{paths.corvin_home}}"
+      CORVIN_TENANT_ID: "{{project.tenant}}"
+  skill_forge:
+    command: "{{paths.python}}"
+    args: ["-m", "skill_forge.mcp_server"]
+    env:
+      PYTHONPATH: "{{paths.repo}}/corvin_operator/skill-forge{{paths.pathsep}}{{paths.repo}}/corvin_operator/forge"
+      SKILL_FORGE_PERSONA: assistant
+      CORVIN_HOME: "{{paths.corvin_home}}"
+      CORVIN_TENANT_ID: "{{project.tenant}}"

@@ -1,0 +1,7 @@
+id: knowledge-only
+version: 1
+title: Knowledge only
+description: A knowledge base with its graph. No tasks board, no Claude Code rules, nothing else.
+docs_mode: nested
+features: [core, kb, graph]
+offered: [core, kb, tasks, graph, gates, claude, ldd, dashboard]

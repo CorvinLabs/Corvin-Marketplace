@@ -1,0 +1,10 @@
+id: experiments
+version: 1
+title: Experiments
+description: The preregistration method for measured claims - idea, preregistration plan before any data, raw data with a checksum manifest, a result note with the evidence link.
+requires: [kb]
+suggests: [acs]
+files:
+  - {src: files/README.md, dst: docs/data/experiments/README.md, kind: seed}
+  - {src: files/scratch.gitignore, dst: docs/data/scratch/.gitignore, kind: seed}
+claude: files/claude.md

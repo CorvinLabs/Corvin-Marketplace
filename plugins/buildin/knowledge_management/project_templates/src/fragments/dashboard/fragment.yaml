@@ -1,0 +1,6 @@
+id: dashboard
+version: 1
+title: Overview
+description: The project overview page in the console - a checklist of real checks, next steps and open work. Display only.
+requires: [core]
+suggests: [kb]
