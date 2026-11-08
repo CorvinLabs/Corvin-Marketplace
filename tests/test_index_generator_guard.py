@@ -80,3 +80,13 @@ def test_growing_the_index_needs_no_flag(tmp_path):
     assert grow.returncode == 0, grow.stderr
     ids = {p["id"] for p in json.loads((root / "index" / "plugins.json").read_text())["plugins"]}
     assert "plugin:buildin-media-gamma" in ids
+
+
+def test_the_default_marketplace_root_is_the_repository_not_a_path_that_no_longer_exists():
+    """T-0367: the default used to be ./operator/marketplace, which does not exist any more."""
+    import subprocess, sys
+    here = Path(__file__).resolve().parent.parent
+    out = subprocess.run([sys.executable, str(here / "generate_index_v2.py"), "--help"], capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0
+    assert "operator/marketplace" not in out.stdout
+    assert "repository root" in out.stdout

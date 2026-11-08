@@ -2,7 +2,7 @@
 """
 Marketplace Index Generator v2 — ADR-0511 compliant.
 
-Generates index.json from plugin.json manifests in operator/marketplace/plugins/.
+Generates index.json from plugin.json manifests in <repository root>/plugins/.
 
 **Source of Truth:** plugin.json (JSON Schema validation)
 
@@ -18,8 +18,8 @@ every boot and appeared nowhere in the marketplace surface. Indexing is now boun
 to loadability: a buildin without ``plugin.yaml`` is SKIPPED (warning), and a
 loadable ``plugin.yaml`` without a ``plugin.json`` is a hard ERROR, so neither
 direction can drift silently again.
-**Structure:** operator/marketplace/plugins/{buildin,contributor}/[category]/[plugin_id]/plugin.json
-**Output:** operator/marketplace/index/plugins.json (validated against index-schema.json)
+**Structure:** plugins/{buildin,contributor}/[category]/[plugin_id]/plugin.json
+**Output:** index/plugins.json (validated against index-schema.json)
 
 This replaces generate_index.py (legacy YAML-based, now deprecated).
 See ADR-0511 for full specification.
@@ -345,8 +345,8 @@ def main():
     parser.add_argument(
         "--marketplace",
         type=Path,
-        default=Path.cwd() / "operator/marketplace",
-        help="Path to marketplace root (default: ./operator/marketplace)",
+        default=Path(__file__).resolve().parent,
+        help="Path to marketplace root (default: the directory of this script, the repository root)",
     )
     parser.add_argument(
         "--output",
