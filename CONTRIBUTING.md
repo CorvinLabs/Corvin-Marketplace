@@ -91,3 +91,22 @@ soon as the marketplace source carries a **higher `version`** than the one they 
 ## License
 
 All contributions to Corvin Marketplace are licensed under Apache-2.0.
+
+## Updating `index/plugins.json` (T-0367)
+
+`generate_index_v2.py` does not understand the current layout: it reports every buildin plugin that has a `plugin.yaml`
+as "loadable but NOT indexed", drops the buildin Knowledge Graph and CorvinTV entries and adds a contributor entry for
+the Knowledge Graph. It therefore refuses to write an index that would lose an entry (exit 3, file untouched), and
+`--accept-removals` exists only for a removal you have checked by hand.
+
+To add or change a plugin's index entry, edit the index by hand, in the same commit as the plugin's `plugin.json`:
+
+1. Put the plugin's `plugin.json` (validated against `plugin-schema.json`) into `plugins`, `by_id`, `by_category[<category>]`
+   and `by_tier[<tier>]`. Replace the entry in place when the id exists; do not duplicate it.
+2. Update `plugin_count` to `len(plugins)` and `generated_at` to the current UTC time.
+3. Keep the file's formatting: `json.dumps(indent=2, ensure_ascii=False)` plus a trailing newline.
+4. Validate: `jsonschema.validate(index, index-schema-v2.json)` and each changed `plugin.json` against `plugin-schema.json`.
+   Both must pass before the commit.
+5. Check the diff: only the added or changed plugin should change (a few dozen lines, not hundreds).
+
+`tests/test_index_generator_guard.py` proves the guard with the real schemas.

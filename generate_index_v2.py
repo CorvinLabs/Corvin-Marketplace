@@ -367,6 +367,12 @@ def main():
         help="Path to index schema (default: {marketplace}/index-schema.json)",
     )
 
+    parser.add_argument(
+        "--accept-removals",
+        action="store_true",
+        help="write even when the new index would drop entries the current index has (default: refuse, exit 3)",
+    )
+
     args = parser.parse_args()
 
     marketplace_root = args.marketplace.resolve()
@@ -379,6 +385,25 @@ def main():
     )
 
     index = generator.generate_index()
+
+    # T-0367: this generator does not know the current layout (a buildin plugin with plugin.yaml and plugin.json
+    # is reported as not indexed, and entries disappear). Refuse to overwrite an index it would SHRINK: a removal is
+    # only written on purpose (--accept-removals), and the hand-edit procedure is in CONTRIBUTING.md.
+    if output_path.is_file():
+        try:
+            current = json.loads(output_path.read_text(encoding="utf-8"))
+            old_ids = {p.get("id") for p in current.get("plugins", []) if isinstance(p, dict)}
+            new_ids = {p.get("id") for p in index.get("plugins", []) if isinstance(p, dict)}
+        except (OSError, ValueError):
+            old_ids, new_ids = set(), set()
+        dropped = sorted(i for i in old_ids - new_ids if i)
+        if dropped and not args.accept_removals:
+            logger.error(
+                "refusing to write %s: the new index would drop %d entr%s: %s. Re-run with --accept-removals "
+                "only after checking each one, or follow the hand-edit procedure in CONTRIBUTING.md.",
+                output_path, len(dropped), "y" if len(dropped) == 1 else "ies", ", ".join(dropped),
+            )
+            sys.exit(3)
 
     # Write output
     output_path.parent.mkdir(parents=True, exist_ok=True)
