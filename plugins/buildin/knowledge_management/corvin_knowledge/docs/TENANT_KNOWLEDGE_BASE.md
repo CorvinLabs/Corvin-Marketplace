@@ -57,6 +57,28 @@ When G1–G4 all hold, the decision is `implementation_ready` and its epic carri
 badge on the board. A card move on the board runs `kb.py task` (the state machine). Board
 edits of title, status or parent are refused (`409 kb_owned`).
 
+## Scaffold without an engine copy (`--no-engine`, for project knowledge bases)
+
+`python3 src/kb_init.py --target <dir> --no-engine [--no-git]` creates the same scaffold
+(`kb/_meta/*`, `.gitignore`, `README.md`) **without** `scripts/`. The marker
+`kb/_meta/tenant_kb.json` then says `"engine": "external"` instead of an `engine_commit`.
+
+Why: a CorvinOS project (ADR-2315) keeps its knowledge base in `<project>/docs`. That KB is read
+and written by the engine of the tenant's *bound* knowledge base, `kb.py --repo <project>/docs`
+(ADR-2316). The path gate lets an agent session run `kb.py` only from a few pinned locations
+(Corvin-Knowledge, the tenant KB, `CORVIN_KB_REPO`), so an engine copy inside a project would be
+refused for agents and would drift from the host's engine.
+
+* An existing `--no-engine` scaffold answers `ok` and is never "upgraded" (no engine to refresh) —
+  with or without the flag on the second call.
+* `--no-git` additionally skips `git init` and the first commit, for a project whose `docs/` lives in
+  the project's own git root (`docs_mode: plain`). It is only valid together with `--no-engine`.
+* A directory this plugin did not create is still refused; nothing in it is touched.
+* Default mode (no flags) is unchanged: it ships and refreshes the engine.
+
+Proof: `tests/test_kb_init_no_engine.py` (real subprocesses; the whole `new initiative / epic /
+task / check` pipeline runs on a scaffold with no engine of its own).
+
 ## The engine copy
 
 `src/kb_engine/` is a byte-identical copy of `scripts/{kb,kb_lib,kb_model}.py` from
