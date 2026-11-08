@@ -1,8 +1,8 @@
 {
   "version": "2.0",
   "schema": "ADR-0511",
-  "generated_at": "2026-10-19T11:00:04.699443Z",
-  "plugin_count": 37,
+  "generated_at": "2026-11-08T11:25:43.000000Z",
+  "plugin_count": 38,
   "plugins": [
     {
       "id": "plugin:contributor-integration-slack_notifier",
@@ -1383,6 +1383,41 @@
       ],
       "entry_point": "core.plugins.buildin.data_processing.context_snapshot_analyzer.ContextSnapshotAnalyzer",
       "origin": "builtin"
+    },
+    {
+      "id": "plugin:buildin-knowledge_management-project_templates",
+      "type": "plugin",
+      "name": "Project Templates",
+      "version": "1.0.0",
+      "author": "CorvinLabs (Shumway + Claude)",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "buildin",
+      "category": "knowledge_management",
+      "description": "Templates for CorvinOS projects: a project is created from a list of feature fragments (knowledge base, tasks, Claude Code rules, LDD, videos, Video Producer, peer directory, agentic compute, experiments). Pure data - no code runs from a template; the CorvinOS host plans, previews and applies it.",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/knowledge_management/project_templates/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/knowledge_management/project_templates"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "buildin",
+      "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace",
+      "tags": [
+        "knowledge_management",
+        "integration"
+      ],
+      "capabilities": [
+        "project_templates",
+        "feature_fragments"
+      ],
+      "entry_points": {},
+      "security_audit": {
+        "audited": false
+      }
     }
   ],
   "by_id": {
@@ -2765,6 +2800,41 @@
           }
         ]
       }
+    },
+    "plugin:buildin-knowledge_management-project_templates": {
+      "id": "plugin:buildin-knowledge_management-project_templates",
+      "type": "plugin",
+      "name": "Project Templates",
+      "version": "1.0.0",
+      "author": "CorvinLabs (Shumway + Claude)",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+      "tier": "buildin",
+      "category": "knowledge_management",
+      "description": "Templates for CorvinOS projects: a project is created from a list of feature fragments (knowledge base, tasks, Claude Code rules, LDD, videos, Video Producer, peer directory, agentic compute, experiments). Pure data - no code runs from a template; the CorvinOS host plans, previews and applies it.",
+      "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/knowledge_management/project_templates/README.md",
+      "distribution": {
+        "supports_source": true,
+        "supports_wheel": false,
+        "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/knowledge_management/project_templates"
+      },
+      "dependencies": [],
+      "requires_version": ">=1.0.0",
+      "boot_layer": "installed",
+      "sla_level": "buildin",
+      "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace",
+      "tags": [
+        "knowledge_management",
+        "integration"
+      ],
+      "capabilities": [
+        "project_templates",
+        "feature_fragments"
+      ],
+      "entry_points": {},
+      "security_audit": {
+        "audited": false
+      }
     }
   },
   "by_category": {
@@ -3437,6 +3507,41 @@
               "component": "CorvinKnowledgePage"
             }
           ]
+        }
+      },
+      {
+        "id": "plugin:buildin-knowledge_management-project_templates",
+        "type": "plugin",
+        "name": "Project Templates",
+        "version": "1.0.0",
+        "author": "CorvinLabs (Shumway + Claude)",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "buildin",
+        "category": "knowledge_management",
+        "description": "Templates for CorvinOS projects: a project is created from a list of feature fragments (knowledge base, tasks, Claude Code rules, LDD, videos, Video Producer, peer directory, agentic compute, experiments). Pure data - no code runs from a template; the CorvinOS host plans, previews and applies it.",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/knowledge_management/project_templates/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/knowledge_management/project_templates"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "buildin",
+        "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace",
+        "tags": [
+          "knowledge_management",
+          "integration"
+        ],
+        "capabilities": [
+          "project_templates",
+          "feature_fragments"
+        ],
+        "entry_points": {},
+        "security_audit": {
+          "audited": false
         }
       }
     ],
@@ -5550,6 +5655,41 @@
           "learning:write",
           "audit:read"
         ]
+      },
+      {
+        "id": "plugin:buildin-knowledge_management-project_templates",
+        "type": "plugin",
+        "name": "Project Templates",
+        "version": "1.0.0",
+        "author": "CorvinLabs (Shumway + Claude)",
+        "license": "Apache-2.0",
+        "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
+        "tier": "buildin",
+        "category": "knowledge_management",
+        "description": "Templates for CorvinOS projects: a project is created from a list of feature fragments (knowledge base, tasks, Claude Code rules, LDD, videos, Video Producer, peer directory, agentic compute, experiments). Pure data - no code runs from a template; the CorvinOS host plans, previews and applies it.",
+        "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/knowledge_management/project_templates/README.md",
+        "distribution": {
+          "supports_source": true,
+          "supports_wheel": false,
+          "source_url": "https://github.com/CorvinLabs/Corvin-Marketplace/tree/main/plugins/buildin/knowledge_management/project_templates"
+        },
+        "dependencies": [],
+        "requires_version": ">=1.0.0",
+        "boot_layer": "installed",
+        "sla_level": "buildin",
+        "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace",
+        "tags": [
+          "knowledge_management",
+          "integration"
+        ],
+        "capabilities": [
+          "project_templates",
+          "feature_fragments"
+        ],
+        "entry_points": {},
+        "security_audit": {
+          "audited": false
+        }
       }
     ]
   }

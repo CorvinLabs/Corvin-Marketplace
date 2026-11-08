@@ -21,14 +21,15 @@
   "sla_level": "buildin",
   "maintainer_url": "https://github.com/CorvinLabs/Corvin-Marketplace",
   "tags": [
-    "projects",
-    "templates",
-    "knowledge",
-    "video-engineering"
+    "knowledge_management",
+    "integration"
   ],
   "capabilities": [
     "project_templates",
     "feature_fragments"
   ],
-  "entry_points": {}
+  "entry_points": {},
+  "security_audit": {
+    "audited": false
+  }
 }
