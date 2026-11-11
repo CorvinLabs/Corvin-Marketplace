@@ -119,6 +119,13 @@ def test_every_video_feature_enforces_both_languages_in_the_template_and_the_rul
     assert len(re.findall(r"^## ", sources, re.M)) == 8
 
 
+def test_no_template_pins_the_videos_folder():
+    """The host picks it from where the project lives (CorvinOS REVIEW-0068 #1): a pinned ../Corvin-Videos is outside every
+    folder the location rule allows for a project in the managed workspace (the shipped default) or an own folder."""
+    for tid, t in templates().items():
+        assert "root" not in (t.get("videos") or {}), tid
+
+
 def test_plugin_manifests_agree():
     import json
     pj = json.loads((SRC.parent / "plugin.json").read_text(encoding="utf-8"))

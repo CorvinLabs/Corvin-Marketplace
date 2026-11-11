@@ -1,6 +1,6 @@
 plugin_id: project_templates
 plugin_type: context_retriever
-version: 1.1.0
+version: 1.1.1
 display_name: Project Templates
 description: "Templates for CorvinOS projects: a project is created from feature fragments (knowledge base, tasks, Claude Code rules, LDD, videos, Video Producer, peer directory, agentic compute, experiments). Pure data; the host plans, previews and applies it. First-party, local-only: no network, no telemetry."
 origin: vetted

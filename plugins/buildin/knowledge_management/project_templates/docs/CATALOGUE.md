@@ -50,3 +50,9 @@ Each template names a `role` (closed list: software, data_science, marketing, pr
 a default data `classification` (public, internal, confidential, secret) and `assistant_access` (read, write), and an `outcome` in
 plain words. The host (CorvinOS, ADR-2319) enforces the class through its data-flow gate; the template only proposes defaults.
 Role fragments (`software`, `datasci`, `marketing`, `product`, `sales`, `legal`) are seed files plus a Claude Code rules section.
+
+1.1.1: no template pins `videos.root` any more - the host chooses the shared `../Corvin-Videos` only for a project that lies
+directly in the projects folder and `videos/` inside the project otherwise (a pinned `../Corvin-Videos` broke New video in
+the managed workspace, CorvinOS REVIEW-0068 #1). `research-compute` is titled "Research and experiments": a project named
+after its template must not carry a word the assistant's path gate protects (`compute`), which the managed workspace refuses
+as an id (REVIEW-0068 #6).

@@ -25,7 +25,6 @@ offered:
 - directory
 - dashboard
 videos:
-  root: ../Corvin-Videos
   languages:
   - de
   - en

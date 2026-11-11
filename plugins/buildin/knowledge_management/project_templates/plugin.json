@@ -2,7 +2,7 @@
   "id": "plugin:buildin-knowledge_management-project_templates",
   "type": "plugin",
   "name": "Project Templates",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "CorvinLabs (Shumway + Claude)",
   "license": "Apache-2.0",
   "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
