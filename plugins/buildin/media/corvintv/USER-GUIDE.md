@@ -172,13 +172,14 @@ the result beautiful and the limits: [docs/CINEMATIC.md](docs/CINEMATIC.md).
 
 **Fix:** install Claude Code on the CorvinOS host and run `claude` once in a terminal to sign in, then start the video again.
 
-### ❌ "Rendering failed, using fallback slide"
+### ❌ "Chromium (the web slide renderer) cannot start ..."
 
-**Cause:** The web slide renderer (Chromium) isn't available.
+**Cause:** The browser that renders the animated slides is missing or does not match the installed Playwright. CorvinTV
+tries to install it itself (no admin rights needed); this message means that did not work (offline, download blocked).
 
-**Fix:**
-- This is normal and safe — the video still plays, just with simpler slides
-- Contact your operator if this happens often
+**Fix:** run `python scripts/corvintv_doctor.py` with the Python of your CorvinOS install - it repairs what it can and
+prints the exact command otherwise (`<python> -m playwright install chromium`). Only if plain, simpler slides are
+acceptable, set `CORVINTV_ALLOW_PILLOW=1`. On an offline host set `CORVINTV_NO_AUTO_REPAIR=1` and install the browser once.
 
 ### ❌ "Job failed"
 

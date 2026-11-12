@@ -1,5 +1,24 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## Unreleased — a fresh host makes web-quality video, or says why it cannot
+
+**Found 2026-11-12:** the host's Playwright wanted Chromium build 1254 while only 1248 was installed. Every web slide
+failed to launch and every scene silently became a plain Pillow slide - "the videos look bad", with no message naming
+the cause. The prerequisites lived only in `requirements.txt`; nothing checked or repaired them.
+
+- **Self-check and self-repair (`src/environment.py`).** Before the storyboard (so before any LLM or TTS cost) a job now
+  proves Chromium by really launching it, not by looking for a file. A missing or mismatched browser build is installed
+  automatically with `playwright install chromium` into the user's own cache - no admin rights, any OS. Repair is
+  single-flight, bounded (15 min) and a success is cached for 10 minutes. `CORVINTV_NO_AUTO_REPAIR=1` switches the
+  download off for offline hosts (the check still runs).
+- **No more silent Pillow video.** If Chromium still cannot run, the job ends `error` with the reason and the exact fix.
+  `CORVINTV_ALLOW_PILLOW=1` restores the old behaviour (plain slides, reported as `web_to_pillow` degradation).
+- **ffmpeg adoption.** When PATH has no ffmpeg, a copy in `~/.corvin/bin` or the `imageio-ffmpeg` wheel is put on the
+  process's PATH. ffmpeg is deliberately not downloaded (an unpinned binary is a supply-chain step); the error names the fix.
+- **`scripts/corvintv_doctor.py [--no-repair] [--json]`** - the same check from a terminal, exit 0 = web quality available.
+- `provider.health_check` reports a known-broken renderer. Penpot (container runtime) is unchanged and optional: only the
+  `board` template needs it.
+
 ## 1.8.0 — cinematic films, and native engines only: Claude Code writes, the CorvinOS voice chain speaks
 
 One release with two parts: a second kind of video (cinematic films), and CorvinTV no longer bringing an LLM or a

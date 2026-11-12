@@ -31,4 +31,12 @@ class VideoProducerPlugin:
         self._ctx = None
 
     def health_check(self) -> HealthStatus:
+        # cheap: the answer of the last real browser check in this process, never a launch from a health poll
+        try:
+            from .src import environment as env
+        except ImportError:  # pragma: no cover - loader without package context
+            return HealthStatus(ok=True, message="loaded")
+        last = env.last_known()
+        if last and not last.get("ok"):
+            return HealthStatus(ok=False, message="web renderer unavailable: " + str(last.get("reason"))[:160])
         return HealthStatus(ok=True, message="loaded")

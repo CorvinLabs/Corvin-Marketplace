@@ -43,6 +43,7 @@ try:
     from . import canvas
     from . import penpot_import
     from . import corvinos_native as native
+    from . import environment as host_env
 except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
@@ -64,6 +65,7 @@ except ImportError:  # standalone script use (no package context)
     import canvas
     import penpot_import
     import corvinos_native as native
+    import environment as host_env
 
 logger = logging.getLogger(__name__)
 
@@ -1771,12 +1773,23 @@ async def orchestrate_video(
                              f"native Claude Code engine ({STORYBOARD_BACKEND!r})")
         if not isinstance(max_duration_minutes, int) or not 1 <= max_duration_minutes <= 60:
             raise ValueError("max_duration_minutes must be an integer between 1 and 60")
-        if shutil.which("ffmpeg") is None:
-            raise RuntimeError("ffmpeg binary not found on PATH — required for real video assembly")
+        ff = host_env.ensure_ffmpeg()  # adopts ~/.corvin/bin or the imageio wheel onto PATH when PATH has none
+        if not ff["ok"] or shutil.which("ffmpeg") is None:
+            raise RuntimeError(f"ffmpeg binary not found on PATH — required for real video assembly "
+                               f"({ff.get('reason')}; fix: {ff.get('fix')})")
         if web_theme not in THEMES:
             raise ValueError(f"web_theme must be one of {THEMES}")
         if isinstance(web_fps, bool) or not isinstance(web_fps, int) or not 12 <= web_fps <= 60:
             raise ValueError("web_fps must be an integer between 12 and 60")
+        if web_slides:
+            # Preflight BEFORE the storyboard costs an LLM call: a host whose Chromium cannot start used to
+            # render every scene as a plain Pillow slide without a word. Repairs in user space, else names why.
+            chrome = await asyncio.to_thread(host_env.ensure_chromium_cached)
+            if not chrome["ok"] and not host_env.pillow_allowed():
+                raise RuntimeError(host_env.describe(chrome))
+            if chrome.get("repaired"):
+                _update_job_progress(storage, job, "storyboard_generating", 0,
+                                     "Web renderer repaired automatically (Chromium installed)")
         web_tokens = load_tokens(Path(web_tokens_path)) if web_tokens_path else None
         if web_style is not None:
             # the host resolved it from the tenant's own store; validated again here, never trusted
