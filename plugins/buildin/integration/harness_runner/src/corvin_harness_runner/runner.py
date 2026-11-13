@@ -195,6 +195,18 @@ def _build_sandbox(base: Path, *, out_dir: Path, model: str, base_url: str, adap
             "registry": base / "engine_model_registry.yaml"}
 
 
+def _seed_login(config_dir: Path) -> None:
+    """Login mode (no endpoint): copy the operator's Claude Code login into a THROWAWAY config dir,
+    mode 0600. The login never goes to out-dir; only the session files are copied out, afterwards."""
+    src = Path(os.path.expanduser("~")) / ".claude" / ".credentials.json"
+    if not src.is_file():
+        raise RuntimeError(f"no Claude Code login at {src}; run `claude /login` or pass an endpoint")
+    config_dir.mkdir(parents=True, exist_ok=True)
+    dst = config_dir / ".credentials.json"
+    shutil.copyfile(src, dst)
+    os.chmod(dst, 0o600)
+
+
 def _apply_env(sb: dict[str, Path], out_dir: Path, args, base_url: str, token: str,
                helper_model: str) -> None:
     for k in SCRUB_ENV:
@@ -445,6 +457,12 @@ def main(argv: list[str] | None = None) -> int:
         helper_model = args.model
         result["model_sent"] = helper_model
         _apply_env(sb, out_dir, args, base_url, token, helper_model)
+        login_dir = base / "cc_login"
+        if not base_url:
+            # login mode: worker and L44 classifier run on the operator's own Claude Code login
+            _seed_login(login_dir)
+            _seed_login(base / "helper_claude")
+            os.environ["CLAUDE_CONFIG_DIR"] = str(login_dir)
         if base_url:
             engine_models._REGISTRY_FILE = sb["registry"]
             engine_models._registry_cache = None
@@ -523,6 +541,9 @@ def main(argv: list[str] | None = None) -> int:
             obs.fh.close()
         except Exception:  # noqa: BLE001
             pass
-        if not keep_home:
-            shutil.rmtree(base, ignore_errors=True)
+        login_sessions = base / "cc_login" / "projects"
+        if login_sessions.is_dir():
+            shutil.copytree(login_sessions, out_dir / "sessions" / "projects", dirs_exist_ok=True)
+        if not keep_home or (base / "cc_login").exists():
+            shutil.rmtree(base, ignore_errors=True)  # a kept home would keep the login copy: never kept in login mode
     return code
