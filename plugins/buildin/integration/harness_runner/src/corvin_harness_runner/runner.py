@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -449,6 +450,14 @@ def main(argv: list[str] | None = None) -> int:
             engine_models._registry_cache = None
             engine_models._providers_cache = None
         _install_observers(adapter, obs, base / "helper_claude")
+        # The worker starts in the chat's session directory, never in the task directory, so a task's
+        # relative paths resolve in the wrong place. Runner-local fix: that session directory becomes a
+        # link to the task's workdir inside this run's throwaway home; the adapter's own paths are unchanged.
+        session = Path(adapter._session_dir(CHANNEL, CHAT_KEY))
+        if session.is_symlink() or session.is_dir():
+            session.unlink() if session.is_symlink() else shutil.rmtree(session)
+        session.parent.mkdir(parents=True, exist_ok=True)
+        session.symlink_to(workdir, target_is_directory=True)
 
         box: dict[str, Any] = {}
 
@@ -515,6 +524,5 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:  # noqa: BLE001
             pass
         if not keep_home:
-            import shutil
             shutil.rmtree(base, ignore_errors=True)
     return code

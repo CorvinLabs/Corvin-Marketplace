@@ -159,3 +159,14 @@ def test_cwd_repository_is_not_written(run, tmp_path):
                                "CORVIN_CLAUDE_BIN": str(FAKE), "FAKE_CLAUDE_DUMP": str(run.dump)})
     assert proc.returncode == 0, proc.stderr.decode()[-1500:]
     assert sorted(p.name for p in repo.iterdir()) == before
+
+
+def test_worker_starts_in_the_task_directory_not_the_session_directory(run):
+    """Board tasks use relative paths from the directory they start in. The worker's cwd must be the
+    task's workdir (realpath), and the task's own files must be where the worker can reach them."""
+    (run.wd / "task_input.txt").write_text("from the task dir\n")
+    proc = invoke(run)
+    assert proc.returncode == 0, proc.stderr[-800:] if hasattr(proc, "stderr") else proc
+    cwd = run.dumps("worker")[0]["cwd"]
+    assert Path(cwd).resolve() == run.wd.resolve(), cwd
+    assert (Path(cwd) / "task_input.txt").read_text() == "from the task dir\n"
