@@ -1,5 +1,21 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## Unreleased — video templates: pick the kind of video
+
+A **video template** is a whole-video recipe (length, audience, tone, scene plan, checks). Eleven ship: Standard (the
+previous behaviour), Short (9:16, opens with a question), Marketing, Code debugging, Research, Understanding + didactic,
+Tutorial, Release notes, Executive brief, Case study / postmortem, and Questions and answers. See `docs/VIDEO-TEMPLATES.md`.
+
+- **Panel:** a *Template* chip in the composer lists them grouped, with length, format and scene count. The choice is
+  remembered for the next video (`PUT /v1/console/video/templates/default`, audited as `video_producer.template_default_changed`).
+  A film and a revision turn the picker off.
+- **Job:** `video_template` in the job request reaches `generate_storyboard_with_llm`; `job_started` records it. A reply that
+  breaks a template error rule is repaired once, then fails the job; warnings are recorded and never block.
+- **Not producible yet:** *Short* needs a vertical 1080x1920 renderer. It is listed disabled with that reason and refused with 409.
+- **Unchanged:** with no template (or `standard`) the storyboard prompt is byte-identical to 1.8.0.
+- Tests: `tests/test_video_templates.py` (42), console `test_video_producer_templates_e2e.py` (6, real HTTP), panel
+  `video-producer-templates.test.tsx` (7) and `video-templates-lib.test.ts`.
+
 ## Unreleased — a fresh host makes web-quality video, or says why it cannot
 
 **Found 2026-11-12:** the host's Playwright wanted Chromium build 1254 while only 1248 was installed. Every web slide

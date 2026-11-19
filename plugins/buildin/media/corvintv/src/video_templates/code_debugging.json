@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "id": "code_debugging",
+  "name": {
+    "en": "Code debugging",
+    "de": "Code-Debugging"
+  },
+  "summary": {
+    "en": "Debugging walk-through: symptom, reproduction, cause, fix, verification.",
+    "de": "Fehlersuche an Code: Symptom, Reproduktion, Ursache, Fix, Gegenprobe."
+  },
+  "category": "engineer",
+  "sort": 30,
+  "audience": "Developers who know the language but not this bug",
+  "tone": "Calm, precise and honest about what was measured versus guessed",
+  "format": {
+    "aspect": "16:9",
+    "available": true
+  },
+  "duration": {
+    "target_s": 210,
+    "min_s": 120,
+    "max_s": 420
+  },
+  "scenes": {
+    "min": 6,
+    "max": 10
+  },
+  "scene_ms": {
+    "min": 8000,
+    "max": 20000
+  },
+  "didactic_strategy": "rich_visual",
+  "structure": [
+    {
+      "kind": "title",
+      "purpose": "The symptom in one sentence, with the exact error text"
+    },
+    {
+      "kind": "problem",
+      "purpose": "How to reproduce it: input, command, expected versus actual"
+    },
+    {
+      "kind": "solution",
+      "purpose": "The cause, located in the code: show the faulty lines highlighted"
+    },
+    {
+      "kind": "example",
+      "purpose": "The fix as a diff, line by line"
+    },
+    {
+      "kind": "example",
+      "purpose": "The proof it works: the same reproduction now passes, plus one edge case"
+    },
+    {
+      "kind": "summary",
+      "purpose": "What to take away: the root cause class and how to catch it earlier"
+    }
+  ],
+  "preferred_slides": [
+    "code",
+    "flow",
+    "compare",
+    "content"
+  ],
+  "rules": [
+    "Show real code from the task; never invent code or error messages.",
+    "Use the code template with highlight and groups so each narrated sentence marks its lines.",
+    "Separate what was observed from what is assumed; say \"I assume\" when it is a hypothesis.",
+    "Name the root cause, not only the symptom patch."
+  ],
+  "avoid": [
+    "Blaming a library or the user without evidence.",
+    "Fixes that are not shown to be verified."
+  ],
+  "evidence": "sources",
+  "checks": [
+    "has_code_scene",
+    "ends_with_takeaway",
+    "has_opening_context"
+  ],
+  "recommended_model": "opus"
+}

@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "id": "marketing",
+  "name": {
+    "en": "Marketing",
+    "de": "Marketing"
+  },
+  "summary": {
+    "en": "Product video: problem, benefit, proof, next step - factual, without pressure.",
+    "de": "Produktvideo: Problem, Nutzen, Beleg, nächster Schritt - sachlich, ohne Druck."
+  },
+  "category": "persuade",
+  "sort": 20,
+  "audience": "Prospective users who do not know the product yet",
+  "tone": "Confident, friendly and concrete; benefits before features; never exaggerated",
+  "format": {
+    "aspect": "16:9",
+    "available": true
+  },
+  "duration": {
+    "target_s": 75,
+    "min_s": 45,
+    "max_s": 120
+  },
+  "scenes": {
+    "min": 5,
+    "max": 8
+  },
+  "scene_ms": {
+    "min": 6000,
+    "max": 16000
+  },
+  "didactic_strategy": "minimal_visual",
+  "structure": [
+    {
+      "kind": "title",
+      "purpose": "Name the product and the one promise in a short hook"
+    },
+    {
+      "kind": "problem",
+      "purpose": "The situation the viewer recognises, in their words"
+    },
+    {
+      "kind": "solution",
+      "purpose": "The one benefit that answers it, shown not listed"
+    },
+    {
+      "kind": "example",
+      "purpose": "A concrete use: who, what, result"
+    },
+    {
+      "kind": "example",
+      "purpose": "Proof: a real number, quote or feature that can be checked"
+    },
+    {
+      "kind": "anchor",
+      "purpose": "Next step: one clear, voluntary action"
+    }
+  ],
+  "preferred_slides": [
+    "hero",
+    "stat",
+    "compare",
+    "bento",
+    "quote"
+  ],
+  "rules": [
+    "One promise per video.",
+    "Name only claims the task or its sources support.",
+    "Close with exactly one call to action, phrased as an invitation."
+  ],
+  "avoid": [
+    "Superlatives (best, number one) without a source.",
+    "Pressure, scarcity, fear or comparisons that disparage others without proof."
+  ],
+  "evidence": "cited_numbers",
+  "checks": [
+    "ends_with_takeaway",
+    "has_data_scene",
+    "no_pressure_language"
+  ],
+  "recommended_model": "opus"
+}

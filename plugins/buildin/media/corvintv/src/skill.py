@@ -44,6 +44,7 @@ try:
     from . import penpot_import
     from . import corvinos_native as native
     from . import environment as host_env
+    from . import video_templates as vt
 except ImportError:  # standalone script use (no package context)
     from models import VideoJob, Storyboard, Scene, VideoOutput
     from storage import get_storage, TERMINAL_STATUSES
@@ -66,6 +67,7 @@ except ImportError:  # standalone script use (no package context)
     import penpot_import
     import corvinos_native as native
     import environment as host_env
+    import video_templates as vt
 
 logger = logging.getLogger(__name__)
 
@@ -365,6 +367,45 @@ def _brand_neutral_prompt(prompt: str) -> str:
     return prompt
 
 
+def _parse_storyboard_json(raw: str) -> Optional[Dict[str, Any]]:
+    """The model's reply as a dict, tolerating a code fence; None when it is not a JSON object."""
+    text = (raw or "").strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
+        text = re.sub(r"\n?```$", "", text)
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _conform_to_template(raw: str, tpl: "vt.VideoTemplate", base_prompt: str, backend: str,
+                         model: Optional[str], report: Dict[str, Any]) -> str:
+    """Check the reply against the video template; on a template ERROR ask the model ONCE to fix exactly
+    those problems. A reply that is still wrong after that fails the job (the caller's validation or
+    the final check below) instead of shipping a video that breaks its template. Warnings never block;
+    they are kept in ``report['template_issues']``."""
+    data = _parse_storyboard_json(raw)
+    if data is None:
+        return raw  # the existing parser reports the malformed JSON
+    issues = vt.check_storyboard(tpl, data)
+    if vt.errors(issues):
+        retry = _call_storyboard_llm(base_prompt + "\n\n" + vt.repair_instruction(issues) + "\n\nPrevious reply:\n" + raw,
+                                     backend=backend, model=model, report=report)
+        again = _parse_storyboard_json(retry)
+        if again is not None:
+            data, raw = again, retry
+            issues = vt.check_storyboard(tpl, data)
+        report["template_repaired"] = True
+        if vt.errors(issues):
+            raise ValueError("The storyboard breaks the '%s' video template: %s"
+                             % (tpl.id, "; ".join(i.message for i in vt.errors(issues))))
+    report["template_issues"] = [i.to_dict() for i in issues]
+    report["video_template"] = tpl.id
+    return raw
+
+
 async def generate_storyboard_with_llm(
     task: str,
     max_duration_minutes: int = 60,
@@ -373,6 +414,7 @@ async def generate_storyboard_with_llm(
     didactic_strategy: Optional[str] = None,
     grounding: Optional[Dict[str, Any]] = None,
     brand_neutral: bool = False,  # a user's own style: no CorvinOS wording in the prompt
+    video_template: Optional[str] = None,  # CONCEPT-0137/ADR video template id; None = the standard one
 ) -> Storyboard:
     """
     LLM: Task → Storyboard (JSON)
@@ -393,8 +435,14 @@ async def generate_storyboard_with_llm(
     if grounded:
         max_scenes = gsb.GROUNDED_MAX_SCENES
 
-    strategy = didactic_strategy or detect_didactic_strategy(task)
+    tpl = vt.usable(video_template)  # raises TemplateError for an unknown or unavailable template
+    strategy = didactic_strategy or tpl.didactic_strategy or detect_didactic_strategy(task)
     budget = CHAR_BUDGETS.get(strategy, CHAR_BUDGETS["rich_visual"])
+    max_duration_minutes = vt.effective_max_minutes(tpl, max_duration_minutes)  # a template only lowers the ceiling
+    dur_txt = ("8000-20000 ms (8-20 seconds)" if tpl.id == vt.DEFAULT_TEMPLATE_ID
+               else "%d-%d ms" % (tpl.scene_ms_min, tpl.scene_ms_max))  # the standard prompt stays byte-identical
+    if tpl.id != vt.DEFAULT_TEMPLATE_ID:
+        max_scenes = min(max_scenes, tpl.scene_max)
 
     prompt = f"""
 You are a didactic video storyboard generator. Given a task, generate a detailed,
@@ -413,7 +461,7 @@ DESIGN RULES (measured from real didactic videos, apply them):
 - Scene 2 is "opening" or "problem": set context, state why this matters.
 - Middle scenes are "solution"/"example": one idea per scene.
 - Last scene is "summary" or "anchor": a memorable one-sentence takeaway.
-- Each scene duration: 8000-20000 ms (8-20 seconds) — long enough to read,
+- Each scene duration: {dur_txt} — long enough to read,
   short enough to hold attention.
 - Narration per scene: {budget['min']}-{budget['max']} characters (hard ceiling 500).
 - Write narration_text in the SAME language as the Task above.
@@ -421,7 +469,7 @@ DESIGN RULES (measured from real didactic videos, apply them):
   "shield icon" for security, "chain with four links" for a 4-step process),
   not a vague mood description.
 
-{_TEMPLATE_GUIDE}{_still_guide()}{_board_guide()}
+{vt.prompt_block(tpl)}{_TEMPLATE_GUIDE}{_still_guide()}{_board_guide()}
 
 CONSTRAINTS (MUST ENFORCE):
 - Total duration ≤ {max_duration_minutes * 60000} ms
@@ -467,12 +515,17 @@ RETURN ONLY THE JSON, NO EXPLANATIONS.
             logger.warning("grounded storyboard unavailable (%s); writing an ungrounded one", type(e).__name__)
             sb = await generate_storyboard_with_llm(task, max_duration_minutes, backend=backend, model=model,
                                                     didactic_strategy=didactic_strategy,
-                                                    brand_neutral=brand_neutral)
+                                                    brand_neutral=brand_neutral, video_template=video_template)
             sb.grounding = {"status": "unavailable", "reason": "remote_storyboard_failed"}
             rp.note_degradation("grounding_lost", reason="remote_storyboard_failed")
             return sb
+        base_prompt = grounded_prompt
     else:
+        base_prompt = prompt
         raw = _call_storyboard_llm(prompt, backend=backend, model=model, report=report)
+
+    if tpl.id != vt.DEFAULT_TEMPLATE_ID:
+        raw = _conform_to_template(raw, tpl, base_prompt, backend, model, report)
 
     try:
         raw = raw.strip()
@@ -1728,6 +1781,7 @@ async def orchestrate_video(
     grounding_status: Optional[Dict[str, Any]] = None,
     web_style: Optional["Style"] = None,
     revision_base_narrations: Optional[List[str]] = None,
+    video_template: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Main orchestrator Skill:
@@ -1816,7 +1870,7 @@ async def orchestrate_video(
         else:
             storyboard = await generate_storyboard_with_llm(
                 task, max_duration_minutes, backend=storyboard_backend, model=storyboard_model,
-                grounding=pack, brand_neutral=web_style is not None,
+                grounding=pack, brand_neutral=web_style is not None, video_template=video_template,
             )
             if storyboard.grounding is None:
                 if isinstance(grounding_status, dict) and grounding_status.get("status") in ("refused", "unavailable"):
@@ -2225,4 +2279,5 @@ async def _orchestrate_from_config(job_id: str, task: str, config: Dict[str, Any
         grounding_status=config.get("grounding_status"),
         web_style=config.get("web_style"),
         revision_base_narrations=config.get("revision_base_narrations"),
+        video_template=config.get("video_template"),
     )

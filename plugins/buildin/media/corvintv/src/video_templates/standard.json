@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "id": "standard",
+  "name": {
+    "en": "Standard",
+    "de": "Standard"
+  },
+  "summary": {
+    "en": "The previous behaviour: a general explainer video with no extra rules.",
+    "de": "Das bisherige Verhalten: ein allgemeines Erklärvideo ohne Zusatzvorgaben."
+  },
+  "category": "explain",
+  "sort": 0,
+  "audience": "General audience",
+  "tone": "Clear and neutral",
+  "format": {
+    "aspect": "16:9",
+    "available": true
+  },
+  "duration": {
+    "target_s": 240,
+    "min_s": 60,
+    "max_s": 3600
+  },
+  "scenes": {
+    "min": 3,
+    "max": 8
+  },
+  "scene_ms": {
+    "min": 8000,
+    "max": 20000
+  },
+  "didactic_strategy": null,
+  "structure": [
+    {
+      "kind": "title",
+      "purpose": "Short hook with the topic"
+    },
+    {
+      "kind": "summary",
+      "purpose": "Memorable one-sentence takeaway"
+    }
+  ],
+  "preferred_slides": [
+    "hero",
+    "content"
+  ],
+  "rules": [
+    "Follow the generic design rules."
+  ],
+  "avoid": [],
+  "evidence": "none",
+  "checks": [
+    "ends_with_takeaway"
+  ],
+  "recommended_model": "sonnet"
+}

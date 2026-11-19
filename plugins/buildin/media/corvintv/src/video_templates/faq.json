@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "id": "faq",
+  "name": {
+    "en": "Questions and answers",
+    "de": "Fragen und Antworten"
+  },
+  "summary": {
+    "en": "Several questions, each with a short evidenced answer - a good series format.",
+    "de": "Mehrere Fragen, jede mit kurzer, belegter Antwort - ideal als Serienformat."
+  },
+  "category": "explain",
+  "sort": 100,
+  "audience": "Curious people with specific questions",
+  "tone": "Friendly, direct, one honest answer per question",
+  "format": {
+    "aspect": "16:9",
+    "available": true
+  },
+  "duration": {
+    "target_s": 150,
+    "min_s": 90,
+    "max_s": 300
+  },
+  "scenes": {
+    "min": 4,
+    "max": 9
+  },
+  "scene_ms": {
+    "min": 8000,
+    "max": 18000
+  },
+  "didactic_strategy": "minimal_visual",
+  "structure": [
+    {
+      "kind": "title",
+      "purpose": "The topic and how many questions follow"
+    },
+    {
+      "kind": "problem",
+      "purpose": "Question 1, stated the way a person would ask it"
+    },
+    {
+      "kind": "solution",
+      "purpose": "The answer in two sentences, with the reason"
+    },
+    {
+      "kind": "problem",
+      "purpose": "Question 2 (repeat the pair for each further question)",
+      "required": false
+    },
+    {
+      "kind": "solution",
+      "purpose": "Its answer",
+      "required": false
+    },
+    {
+      "kind": "summary",
+      "purpose": "The one answer to remember"
+    }
+  ],
+  "preferred_slides": [
+    "content",
+    "compare",
+    "quote",
+    "stat"
+  ],
+  "rules": [
+    "Each question is open and concrete.",
+    "\"It depends\" is a valid answer only with the reason it depends."
+  ],
+  "avoid": [
+    "Questions the video does not answer.",
+    "Leading or yes/no questions."
+  ],
+  "evidence": "none",
+  "checks": [
+    "ends_with_takeaway",
+    "no_pressure_language"
+  ],
+  "recommended_model": "sonnet"
+}

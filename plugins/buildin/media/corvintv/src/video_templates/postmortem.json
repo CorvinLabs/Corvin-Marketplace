@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "id": "postmortem",
+  "name": {
+    "en": "Case study / postmortem",
+    "de": "Fallstudie / Postmortem"
+  },
+  "summary": {
+    "en": "Look back at an incident: timeline, cause, impact, actions - blameless.",
+    "de": "Rückblick auf einen Vorfall: Ablauf, Ursache, Wirkung, Maßnahmen - ohne Schuldzuweisung."
+  },
+  "category": "engineer",
+  "sort": 90,
+  "audience": "Teams that want to learn from what happened",
+  "tone": "Blameless, factual and specific",
+  "format": {
+    "aspect": "16:9",
+    "available": true
+  },
+  "duration": {
+    "target_s": 240,
+    "min_s": 150,
+    "max_s": 480
+  },
+  "scenes": {
+    "min": 6,
+    "max": 10
+  },
+  "scene_ms": {
+    "min": 8000,
+    "max": 20000
+  },
+  "didactic_strategy": "rich_visual",
+  "structure": [
+    {
+      "kind": "title",
+      "purpose": "What happened, in one sentence"
+    },
+    {
+      "kind": "opening",
+      "purpose": "Timeline of events with times"
+    },
+    {
+      "kind": "problem",
+      "purpose": "Impact: who and what was affected, measured"
+    },
+    {
+      "kind": "solution",
+      "purpose": "Root cause, traced layer by layer"
+    },
+    {
+      "kind": "example",
+      "purpose": "What was done to fix and to prevent it"
+    },
+    {
+      "kind": "summary",
+      "purpose": "What the team learns"
+    }
+  ],
+  "preferred_slides": [
+    "timeline",
+    "flow",
+    "stat",
+    "layers",
+    "content"
+  ],
+  "rules": [
+    "Name causes in systems and processes, never in people.",
+    "Separate timeline facts from interpretation.",
+    "Each action has an owner role and a way to verify it."
+  ],
+  "avoid": [
+    "Blame.",
+    "Impact numbers that were not measured."
+  ],
+  "evidence": "sources",
+  "checks": [
+    "has_data_scene",
+    "ends_with_takeaway",
+    "has_opening_context"
+  ],
+  "recommended_model": "opus"
+}

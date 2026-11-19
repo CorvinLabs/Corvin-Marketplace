@@ -55,6 +55,15 @@ Use the paperclip to attach text, Markdown or PDF files as source material (up t
 - Say how long: "2-minute video" (videos of one to three minutes work best)
 - Give structure hints: "Start with..., then explain..., end with..."
 
+### Step 2b: Choose the Kind of Video (Template)
+
+Next to *Style* the composer has a **Template** chip. It decides what kind of video is written: *Marketing* (problem,
+benefit, proof, one next step), *Code debugging* (symptom, cause, fix, verification, with the code on screen), *Research*
+(question, method, findings, limits, with sources named), *Understanding + didactic*, *Tutorial*, *Release notes*,
+*Executive brief*, *Case study / postmortem*, *Questions and answers*, or *Standard* (as before). Your choice is
+remembered for the next video. A cinematic film and a change request do not use a template.
+*Short (9:16)* is listed but greyed out: it needs a vertical renderer that does not exist yet. Details: `docs/VIDEO-TEMPLATES.md`.
+
 ### Step 3: The Narration Voice (nothing to choose)
 
 Since CorvinTV 1.8.0 every video is narrated by the **CorvinOS voice chain** - the same voice your chat replies are read with: OpenAI first (best quality, needs a key), the free edge-tts voices when OpenAI declines, and Piper (local, works offline) last. Whatever is configured for chat applies here too: the voice settings of your profile, an operator pin (`CORVIN_TTS_PROVIDER`) and the local-only switch (`CORVIN_TTS_LOCAL_ONLY`). The job report says which voice spoke each scene. If no voice can speak, the job fails with a named error instead of producing a silent video. The Settings panel shows the chain and which of its voices are ready on this host, and whether the slide renderer (Chromium) is available.

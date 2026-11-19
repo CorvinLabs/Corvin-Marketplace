@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "id": "didactic",
+  "name": {
+    "en": "Understanding + didactic",
+    "de": "Verstehen + Didaktik"
+  },
+  "summary": {
+    "en": "Make a concept understood: question, problem, picture, example, takeaway.",
+    "de": "Ein Konzept verständlich machen: Frage, Problem, Bild, Beispiel, Merksatz."
+  },
+  "category": "explain",
+  "sort": 50,
+  "audience": "Learners new to the topic",
+  "tone": "Patient, concrete and encouraging; plain words before terms",
+  "format": {
+    "aspect": "16:9",
+    "available": true
+  },
+  "duration": {
+    "target_s": 240,
+    "min_s": 150,
+    "max_s": 480
+  },
+  "scenes": {
+    "min": 5,
+    "max": 8
+  },
+  "scene_ms": {
+    "min": 8000,
+    "max": 20000
+  },
+  "didactic_strategy": "minimal_visual",
+  "structure": [
+    {
+      "kind": "title",
+      "purpose": "The question the video answers"
+    },
+    {
+      "kind": "opening",
+      "purpose": "Context: why this matters to the learner"
+    },
+    {
+      "kind": "problem",
+      "purpose": "The problem or misunderstanding in a concrete case"
+    },
+    {
+      "kind": "solution",
+      "purpose": "The idea, one step per scene, each with a picture or a metaphor"
+    },
+    {
+      "kind": "example",
+      "purpose": "A worked example the learner can follow"
+    },
+    {
+      "kind": "anchor",
+      "purpose": "One memorable sentence that sums it up"
+    }
+  ],
+  "preferred_slides": [
+    "hero",
+    "content",
+    "diagram",
+    "cycle",
+    "layers",
+    "compare",
+    "canvas"
+  ],
+  "rules": [
+    "One idea per scene, in the order the learner needs it.",
+    "Introduce a term only after its picture; say it in plain words first.",
+    "End each part so the learner could answer the opening question a little better."
+  ],
+  "avoid": [
+    "Jargon without explanation.",
+    "More than one new idea per scene."
+  ],
+  "evidence": "none",
+  "checks": [
+    "ends_with_takeaway",
+    "has_opening_context"
+  ],
+  "recommended_model": "opus"
+}

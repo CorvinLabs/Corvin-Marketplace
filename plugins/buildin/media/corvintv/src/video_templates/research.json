@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "id": "research",
+  "name": {
+    "en": "Research",
+    "de": "Research"
+  },
+  "summary": {
+    "en": "Research overview: question, method, findings, limits, conclusion - with sources named.",
+    "de": "Forschungsüberblick: Frage, Methode, Befund, Grenzen, Schluss - mit Quellenangabe."
+  },
+  "category": "research",
+  "sort": 40,
+  "audience": "Informed readers who want the evidence, not the opinion",
+  "tone": "Neutral, careful and exact; uncertainty is stated, not hidden",
+  "format": {
+    "aspect": "16:9",
+    "available": true
+  },
+  "duration": {
+    "target_s": 300,
+    "min_s": 180,
+    "max_s": 600
+  },
+  "scenes": {
+    "min": 6,
+    "max": 10
+  },
+  "scene_ms": {
+    "min": 8000,
+    "max": 20000
+  },
+  "didactic_strategy": "rich_visual",
+  "structure": [
+    {
+      "kind": "title",
+      "purpose": "The research question"
+    },
+    {
+      "kind": "opening",
+      "purpose": "Why it matters and what is already known"
+    },
+    {
+      "kind": "solution",
+      "purpose": "Method: what was done or read, and how it was chosen"
+    },
+    {
+      "kind": "example",
+      "purpose": "Findings: the numbers or statements, each with its source"
+    },
+    {
+      "kind": "problem",
+      "purpose": "Limits: what the evidence does not show"
+    },
+    {
+      "kind": "summary",
+      "purpose": "Conclusion: what follows and what stays open"
+    }
+  ],
+  "preferred_slides": [
+    "stat",
+    "chart",
+    "line",
+    "compare",
+    "timeline",
+    "quote",
+    "content"
+  ],
+  "rules": [
+    "Every claim names its source from the task or attachments.",
+    "Distinguish finding, interpretation and opinion.",
+    "Report effect sizes and sample sizes only if given; never round a number up to sound stronger."
+  ],
+  "avoid": [
+    "Generalising beyond the evidence.",
+    "Citations the task did not provide."
+  ],
+  "evidence": "sources",
+  "checks": [
+    "has_data_scene",
+    "ends_with_takeaway",
+    "has_opening_context"
+  ],
+  "recommended_model": "opus"
+}

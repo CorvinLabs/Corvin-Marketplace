@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "id": "tutorial",
+  "name": {
+    "en": "Tutorial (how-to)",
+    "de": "Anleitung (How-to)"
+  },
+  "summary": {
+    "en": "Step-by-step guide with the result up front and a check at the end.",
+    "de": "Schritt-für-Schritt-Anleitung mit Ergebnis am Anfang und Kontrolle am Ende."
+  },
+  "category": "explain",
+  "sort": 60,
+  "audience": "People who want to get a task done",
+  "tone": "Practical, short imperative sentences, no filler",
+  "format": {
+    "aspect": "16:9",
+    "available": true
+  },
+  "duration": {
+    "target_s": 180,
+    "min_s": 90,
+    "max_s": 420
+  },
+  "scenes": {
+    "min": 5,
+    "max": 10
+  },
+  "scene_ms": {
+    "min": 6000,
+    "max": 18000
+  },
+  "didactic_strategy": "rich_visual",
+  "structure": [
+    {
+      "kind": "title",
+      "purpose": "What the viewer will have at the end"
+    },
+    {
+      "kind": "opening",
+      "purpose": "What is needed beforehand"
+    },
+    {
+      "kind": "solution",
+      "purpose": "Steps, one action per scene, in order"
+    },
+    {
+      "kind": "example",
+      "purpose": "The expected result and how to recognise it"
+    },
+    {
+      "kind": "problem",
+      "purpose": "The most common mistake and its fix",
+      "required": false
+    },
+    {
+      "kind": "summary",
+      "purpose": "Recap of the steps in one line each"
+    }
+  ],
+  "preferred_slides": [
+    "content",
+    "code",
+    "flow",
+    "timeline",
+    "still"
+  ],
+  "rules": [
+    "One action per step; name exact button, command or value.",
+    "Show the expected result after the last step.",
+    "Do not skip steps the viewer cannot guess."
+  ],
+  "avoid": [
+    "Steps that depend on knowledge never stated.",
+    "Optional detours in the main path."
+  ],
+  "evidence": "none",
+  "checks": [
+    "ends_with_takeaway",
+    "has_opening_context"
+  ],
+  "recommended_model": "sonnet"
+}

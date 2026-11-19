@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "id": "executive_brief",
+  "name": {
+    "en": "Executive brief",
+    "de": "Management-Kurzfassung"
+  },
+  "summary": {
+    "en": "Decision brief: situation, options, recommendation, risks, ask.",
+    "de": "Entscheidungsvorlage: Lage, Optionen, Empfehlung, Risiken, Bedarf."
+  },
+  "category": "persuade",
+  "sort": 80,
+  "audience": "Decision makers with little time",
+  "tone": "Direct, numeric and neutral; the recommendation comes early",
+  "format": {
+    "aspect": "16:9",
+    "available": true
+  },
+  "duration": {
+    "target_s": 120,
+    "min_s": 60,
+    "max_s": 240
+  },
+  "scenes": {
+    "min": 4,
+    "max": 7
+  },
+  "scene_ms": {
+    "min": 8000,
+    "max": 18000
+  },
+  "didactic_strategy": "minimal_visual",
+  "structure": [
+    {
+      "kind": "title",
+      "purpose": "The decision to make, and the recommendation in one sentence"
+    },
+    {
+      "kind": "problem",
+      "purpose": "Situation and what is at stake"
+    },
+    {
+      "kind": "solution",
+      "purpose": "Options compared on the same criteria"
+    },
+    {
+      "kind": "example",
+      "purpose": "The recommendation and why it wins"
+    },
+    {
+      "kind": "problem",
+      "purpose": "Main risks and how they are handled"
+    },
+    {
+      "kind": "anchor",
+      "purpose": "What is needed from the audience, by when"
+    }
+  ],
+  "preferred_slides": [
+    "stat",
+    "compare",
+    "chart",
+    "bento",
+    "content"
+  ],
+  "rules": [
+    "Lead with the recommendation.",
+    "Compare options on identical criteria.",
+    "Every figure comes from the task."
+  ],
+  "avoid": [
+    "Hiding downsides.",
+    "Figures without a source."
+  ],
+  "evidence": "cited_numbers",
+  "checks": [
+    "has_data_scene",
+    "ends_with_takeaway",
+    "no_pressure_language"
+  ],
+  "recommended_model": "opus"
+}

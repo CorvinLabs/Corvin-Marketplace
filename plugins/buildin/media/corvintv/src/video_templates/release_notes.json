@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "id": "release_notes",
+  "name": {
+    "en": "Release notes",
+    "de": "Release-Notizen"
+  },
+  "summary": {
+    "en": "What is new: overview, three to five changes with their benefit, a note on upgrading.",
+    "de": "Was ist neu: Überblick, drei bis fünf Änderungen mit Nutzen, Hinweis zum Umstieg."
+  },
+  "category": "format",
+  "sort": 70,
+  "audience": "Existing users",
+  "tone": "Brisk, plain and honest; breaking changes first",
+  "format": {
+    "aspect": "16:9",
+    "available": true
+  },
+  "duration": {
+    "target_s": 90,
+    "min_s": 60,
+    "max_s": 180
+  },
+  "scenes": {
+    "min": 4,
+    "max": 8
+  },
+  "scene_ms": {
+    "min": 6000,
+    "max": 16000
+  },
+  "didactic_strategy": "minimal_visual",
+  "structure": [
+    {
+      "kind": "title",
+      "purpose": "Version and the one headline change"
+    },
+    {
+      "kind": "solution",
+      "purpose": "Each change: what it does, why it helps"
+    },
+    {
+      "kind": "example",
+      "purpose": "One change shown in use",
+      "required": false
+    },
+    {
+      "kind": "problem",
+      "purpose": "What to do when upgrading, and anything that breaks"
+    },
+    {
+      "kind": "summary",
+      "purpose": "Where to read more"
+    }
+  ],
+  "preferred_slides": [
+    "hero",
+    "bento",
+    "content",
+    "compare",
+    "timeline"
+  ],
+  "rules": [
+    "Breaking changes are named before the new features.",
+    "Only changes that are in the task or its sources."
+  ],
+  "avoid": [
+    "Marketing language.",
+    "Features that are announced but not built."
+  ],
+  "evidence": "sources",
+  "checks": [
+    "ends_with_takeaway"
+  ],
+  "recommended_model": "sonnet"
+}

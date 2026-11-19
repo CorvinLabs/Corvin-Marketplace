@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "id": "short",
+  "name": {
+    "en": "Short (9:16)",
+    "de": "Short (9:16)"
+  },
+  "summary": {
+    "en": "Phone format of about 35 s: opens with a question, one idea, one proof, one takeaway.",
+    "de": "Handyformat in etwa 35 s: beginnt mit einer Frage, eine Idee, ein Beleg, ein Merksatz."
+  },
+  "category": "format",
+  "sort": 10,
+  "audience": "Viewers scrolling on a phone, usually without sound at first",
+  "tone": "Warm, direct, calm and curious; no shouting, no superlatives, no countdown urgency",
+  "format": {
+    "aspect": "9:16",
+    "available": false,
+    "unavailable_reason": "Needs the vertical 1080x1920 renderer; the panel shows it but does not produce it until that exists."
+  },
+  "duration": {
+    "target_s": 35,
+    "min_s": 25,
+    "max_s": 59
+  },
+  "scenes": {
+    "min": 4,
+    "max": 7
+  },
+  "scene_ms": {
+    "min": 3000,
+    "max": 9000
+  },
+  "didactic_strategy": "minimal_visual",
+  "structure": [
+    {
+      "kind": "title",
+      "purpose": "THE QUESTION: one open question (at most 12 words) that the video answers, concrete and in the second person"
+    },
+    {
+      "kind": "opening",
+      "purpose": "THE GAP: why the question matters, one everyday picture the viewer knows"
+    },
+    {
+      "kind": "solution",
+      "purpose": "THE ANSWER: up to three short steps, one picture and one sentence each"
+    },
+    {
+      "kind": "example",
+      "purpose": "THE PROOF: one checkable fact, number or example, with its source named"
+    },
+    {
+      "kind": "anchor",
+      "purpose": "THE TAKEAWAY: one sentence to remember; its last words lead back to the opening question or to the next one"
+    }
+  ],
+  "preferred_slides": [
+    "hero",
+    "content",
+    "stat",
+    "quote"
+  ],
+  "rules": [
+    "Sentences of at most 12 words, active voice, verbs before nouns.",
+    "One idea per short; a second idea is a second short.",
+    "The narration carries the content; each slide shows one headline or one picture, never a paragraph.",
+    "Allowed devices: open question, tension arc (question, gap, answer), concrete imagery, rapport wording like \"you know this\", threefold structure, repeating the takeaway."
+  ],
+  "avoid": [
+    "Fear, shame, loss pressure or false urgency.",
+    "Hidden commands, hypnotic or trance language, suggestion below awareness.",
+    "Invented numbers, invented quotes, a question the video does not answer."
+  ],
+  "evidence": "cited_numbers",
+  "checks": [
+    "opens_with_question",
+    "ends_with_takeaway",
+    "has_data_scene",
+    "no_pressure_language"
+  ],
+  "recommended_model": "opus",
+  "hook": {
+    "kind": "question",
+    "max_words": 12
+  }
+}
