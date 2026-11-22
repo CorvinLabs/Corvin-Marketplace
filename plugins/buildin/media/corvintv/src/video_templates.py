@@ -97,6 +97,8 @@ class VideoTemplate:
     checks: Tuple[str, ...]
     recommended_model: str
     sort: int = 100
+    mode: str = "slides"
+    input_kind: str = ""         # what the brief must contain beyond text: "" | "url"
 
     def public(self) -> Dict[str, Any]:
         """What the panel needs to draw the picker. The prompt rules stay server-side."""
@@ -109,6 +111,7 @@ class VideoTemplate:
             "structure": [{"kind": s.kind, "purpose": s.purpose, "required": s.required} for s in self.structure],
             "hook": {"kind": "question", "max_words": self.hook_max_words} if self.hook_max_words else None,
             "evidence": self.evidence, "recommended_model": self.recommended_model,
+            "mode": self.mode, "input": {"kind": self.input_kind} if self.input_kind else None,
         }
 
 
@@ -154,8 +157,12 @@ def _strings(v: Any, where: str, *, max_items: int, max_len: int = 400) -> Tuple
 _TOP_KEYS = (
     "schema", "id", "name", "summary", "category", "sort", "audience", "tone", "format", "duration", "scenes",
     "scene_ms", "didactic_strategy", "structure", "preferred_slides", "rules", "avoid", "hook", "evidence",
-    "checks", "recommended_model",
+    "checks", "recommended_model", "mode", "input",
 )
+# ADR-2336: a template normally shapes the storyboard of a SLIDE video ("slides"). A template with another mode picks
+# another job pipeline (``website``: a narrated tour of a web page) and says what its brief must contain.
+_MODES = ("slides", "website")
+_INPUT_KINDS = ("url",)
 
 
 def parse_template(raw: Dict[str, Any], source: str = "template") -> VideoTemplate:
@@ -253,6 +260,20 @@ def parse_template(raw: Dict[str, Any], source: str = "template") -> VideoTempla
     sort = raw.get("sort", 100)
     if not isinstance(sort, int) or isinstance(sort, bool):
         raise TemplateError("%s: sort must be an integer" % where)
+    mode = raw.get("mode", "slides")
+    if mode not in _MODES:
+        raise TemplateError("%s: mode must be one of %s" % (where, ", ".join(_MODES)))
+    input_kind = ""
+    if "input" in raw:
+        inp = _req(raw, "input", dict, where)
+        _only(inp, ("kind",), where + ".input")
+        input_kind = _req(inp, "kind", str, where + ".input")
+        if input_kind not in _INPUT_KINDS:
+            raise TemplateError("%s.input: kind must be one of %s" % (where, ", ".join(_INPUT_KINDS)))
+        if mode == "slides":
+            raise TemplateError("%s: an input applies to a template with another mode than slides" % where)
+    if mode == "website" and input_kind != "url":
+        raise TemplateError("%s: the website mode needs input.kind 'url'" % where)
     return VideoTemplate(
         id=tid, name=_text_map(raw.get("name"), where + ".name"), summary=_text_map(raw.get("summary"), where + ".summary"),
         category=category, audience=_req(raw, "audience", str, where).strip(), tone=_req(raw, "tone", str, where).strip(),
@@ -262,6 +283,7 @@ def parse_template(raw: Dict[str, Any], source: str = "template") -> VideoTempla
         rules=_strings(_req(raw, "rules", list, where), where + ".rules", max_items=14),
         avoid=_strings(_req(raw, "avoid", list, where), where + ".avoid", max_items=10),
         hook_max_words=hook_words, evidence=evidence, checks=checks, recommended_model=model, sort=sort,
+        mode=mode, input_kind=input_kind,
     )
 
 

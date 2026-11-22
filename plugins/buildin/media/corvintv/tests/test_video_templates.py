@@ -11,7 +11,7 @@ from src import skill
 from src import video_templates as vt
 
 SHIPPED = {"standard", "short", "marketing", "code_debugging", "research", "didactic", "tutorial",
-           "release_notes", "executive_brief", "postmortem", "faq"}
+           "release_notes", "executive_brief", "postmortem", "faq", "website"}
 
 
 def _raw(tid="probe", **over):
@@ -57,6 +57,11 @@ def test_short_is_listed_but_not_producible_until_the_vertical_renderer_exists()
 def test_every_other_template_is_16_9_and_producible():
     for tid in SHIPPED - {"short"}:
         assert vt.usable(tid).aspect == "16:9"
+
+
+def test_only_the_website_template_has_another_mode_than_slides():
+    # ADR-2336: a template with another mode picks another job pipeline; the others shape a slide storyboard
+    assert {tid for tid, t in vt.load_all().items() if t.mode != "slides"} == {"website"}
 
 
 def test_unknown_id_is_refused_and_none_means_default():

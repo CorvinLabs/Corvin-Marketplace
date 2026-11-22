@@ -312,3 +312,14 @@ When your video is ready, you get:
 
 **Happy video making!** 🎬
 
+## Website tour: a video of a web page, and a page to put online
+
+Pick the template **Website tour** in the composer. Write the page address and what the tour should say, for example
+`https://example.com Explain the plans and what each one costs`, then choose the voice language and the length.
+The page is filmed while a voice walks the viewer down it; its animations run in time with the words.
+
+* A tour of an address needs the workspace's **website capture** switch on (Settings) and an egress policy that allows the host.
+* When it is finished, play it on the stage. The globe button next to Download gives the **website bundle**: the videos and a
+  page (`index.html` with chapters and a transcript). Upload the folder to any web host, or send the zip.
+* The tour says only what the page says. Pages behind a login cannot be toured, and a demo that only moves through
+  JavaScript timers stands still. Details: `docs/WEBSITE-TOUR.md`.

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orbit Notes</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.invalid/tracker.js"></script>
+</head><body>
+<header id="top"><h1>Orbit Notes</h1><p>Notes that keep their shape.</p></header>
+<section id="idea"><h2>One idea per note</h2><p>Every note holds exactly one idea, so you find it again in seconds.</p>
+  <div class="cards"><div class="card" data-reveal><b>Capture</b><span>Write it down once.</span></div>
+  <div class="card" data-reveal><b>Link</b><span>Connect it to what you know.</span></div>
+  <div class="card" data-reveal><b>Revisit</b><span>Come back when it matters.</span></div></div></section>
+<section id="figure"><h2>The loop</h2><p>The loop runs while you write.</p>
+  <figure class="loop"><div class="ring"><i class="dot"></i></div><div class="bar"><span class="fill"></span></div><figcaption>A note grows with every pass.</figcaption></figure></section>
+<section id="more"><h2>Everything stays yours</h2><p>The notes live in plain files on your own disk. Nothing is sent anywhere.</p>
+  <img src="logo.svg" alt="" width="120" height="120"></section>
+<footer id="end"><h2>Start today</h2><p>Download it and write your first note.</p></footer>
+<script>var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting)e.target.classList.add("in")})});document.querySelectorAll("[data-reveal]").forEach(function(c){io.observe(c)});</script>
+</body></html>

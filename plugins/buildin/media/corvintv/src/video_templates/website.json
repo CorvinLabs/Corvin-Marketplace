@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "id": "website",
+  "name": {"en": "Website tour", "de": "Website-Tour"},
+  "summary": {
+    "en": "A narrated tour of a web page: the page scrolls while a voice explains it, its animations run in time. Gives an MP4 and a page to put online.",
+    "de": "Eine vertonte Tour durch eine Webseite: die Seite scrollt, während eine Stimme sie erklärt, ihre Animationen laufen im Takt. Ergibt ein MP4 und eine Seite zum Online-Stellen."
+  },
+  "category": "format",
+  "sort": 90,
+  "audience": "Visitors of the page who want to be guided through it",
+  "tone": "Welcoming, concrete and calm; says only what the page says",
+  "format": {"aspect": "16:9", "available": true},
+  "mode": "website",
+  "input": {"kind": "url"},
+  "duration": {"target_s": 240, "min_s": 60, "max_s": 900},
+  "scenes": {"min": 4, "max": 24},
+  "scene_ms": {"min": 6000, "max": 30000},
+  "didactic_strategy": "minimal_visual",
+  "structure": [
+    {"kind": "opening", "purpose": "Welcome the viewer and say what the tour shows"},
+    {"kind": "solution", "purpose": "Walk down the page section by section, one idea per scene", "required": true},
+    {"kind": "summary", "purpose": "Close with the next step the page offers"}
+  ],
+  "preferred_slides": ["hero"],
+  "rules": [
+    "Follow the order of the page",
+    "Say only what the page says: no number, claim or feature that is not on it",
+    "One camera target per scene; point at a figure with a focus when a sentence is about it"
+  ],
+  "avoid": ["Superlatives the page does not use", "Reading the page word for word"],
+  "evidence": "sources",
+  "checks": [],
+  "recommended_model": "sonnet"
+}

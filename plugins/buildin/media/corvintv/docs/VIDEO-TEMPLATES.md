@@ -76,3 +76,10 @@ console refuses it with 409. It becomes selectable when the vertical renderer ex
 - `recommended_model` is informational. The model that writes the storyboard is chosen by the host's routing.
 - Two plugin versions are involved: a console without this module answers `501` on `/video/templates` and the panel shows
   "Templates unavailable"; videos are produced as before.
+
+## The `website` template (1.9.0)
+
+Unlike the other templates it does not shape a slide storyboard: `"mode": "website"` and `"input": {"kind": "url"}` make the job a
+website tour (`docs/WEBSITE-TOUR.md`). `mode` (`slides` by default | `website`) and `input` are validated strictly like every
+other key. A template with another mode than `slides` cannot be the remembered default, cannot revise a video and is refused for
+a slide storyboard.

@@ -1,6 +1,29 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
-## Unreleased — video templates: pick the kind of video
+## 1.9.0 — website tours: a narrated, smoothly scrolling video of a web page, and a page to put online
+
+A third job mode, **website**, chosen through the new video template **Website tour** (CONCEPT-0139, ADR-2336). It films the
+REAL page: the camera scrolls while a voice explains it, the page's own CSS animations run in time with the spoken
+sentences, and restrained effects (spot, reveal, soft zoom, vignette) lift what is being talked about. See `docs/WEBSITE-TOUR.md`.
+
+- **Result is a bundle:** `output.mp4` (and `output.<lang>.mp4`), `site/index.html` (a self-contained player page with chapters,
+  language switch and transcript, strict content-security policy, no request to any other site), `site/` media and tracks, and
+  `website-bundle.zip` to send or upload. The panel's globe button downloads it (`GET /v1/console/video/videos/{id}/bundle`).
+- **Smoother scrolling:** one global monotone cubic camera curve (continuous speed, no stop at every scene, 900 px/s cap) with
+  the sub-pixel part of each position applied when cropping. The report records `max_step_px` and `max_accel_px`;
+  `tests/test_website_tour_e2e.py` measures the real shift between frames of the finished MP4.
+- **Same voice chain:** every sentence goes through `_synthesize_narration_chain` (OpenAI, then edge-tts, then Piper); a test
+  counts the calls. The end card says the voice is AI-generated.
+- **One capture policy:** a page address is fetched under exactly the website-capture rules (workspace switch, enabled
+  egress policy, L35 gate, `precheck_host`, the capture proxy); a local `websites/<name>` folder is served on loopback and the
+  browser may reach nothing else. `capture_started` / `capture_finished` carry the host and a hash prefix only.
+- **Templates:** `video_templates` gains the strictly validated keys `mode` (`slides` | `website`) and `input`. A website
+  template is never a slide storyboard, a revision or the remembered default.
+- **CLI:** `scripts/website_tour.py` runs the same job entry without the console.
+- Tests: `tests/test_website_tour.py` (30), `tests/test_website_tour_e2e.py` (5, real process, browser, ffmpeg), console
+  `core/console/tests/test_video_producer_website_e2e.py` (5), `video-film-lib.test.ts` and `video-templates-lib.test.ts`.
+
+## 1.9.0 — video templates: pick the kind of video
 
 A **video template** is a whole-video recipe (length, audience, tone, scene plan, checks). Eleven ship: Standard (the
 previous behaviour), Short (9:16, opens with a question), Marketing, Code debugging, Research, Understanding + didactic,
@@ -13,10 +36,10 @@ Tutorial, Release notes, Executive brief, Case study / postmortem, and Questions
   breaks a template error rule is repaired once, then fails the job; warnings are recorded and never block.
 - **Not producible yet:** *Short* needs a vertical 1080x1920 renderer. It is listed disabled with that reason and refused with 409.
 - **Unchanged:** with no template (or `standard`) the storyboard prompt is byte-identical to 1.8.0.
-- Tests: `tests/test_video_templates.py` (42), console `test_video_producer_templates_e2e.py` (6, real HTTP), panel
+- Tests: `tests/test_video_templates.py` (42), console `core/console/tests/test_video_producer_templates_e2e.py` (6, real HTTP), panel
   `video-producer-templates.test.tsx` (7) and `video-templates-lib.test.ts`.
 
-## Unreleased — a fresh host makes web-quality video, or says why it cannot
+## 1.9.0 — a fresh host makes web-quality video, or says why it cannot
 
 **Found 2026-11-12:** the host's Playwright wanted Chromium build 1254 while only 1248 was installed. Every web slide
 failed to launch and every scene silently became a plain Pillow slide - "the videos look bad", with no message naming

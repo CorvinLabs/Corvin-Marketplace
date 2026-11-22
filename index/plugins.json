@@ -105,13 +105,13 @@
       "id": "plugin:buildin-media-corvintv",
       "type": "plugin",
       "name": "CorvinTV",
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": "CorvinOS Contributors",
       "license": "Apache-2.0",
       "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "buildin",
       "category": "media",
-      "description": "CorvinTV (formerly Video Producer): turn a task description into a professional narrated video - storyboard by the native Claude Code engine (the host's signed-in claude CLI, no other LLM), narration by the CorvinOS voice chain (the same as chat: OpenAI, edge-tts, Piper), animated web slides (corvin-labs.com design, 19 templates, incl. board: an imported Penpot design revealed step by step, and bento) whose reveals and focus follow the spoken words, then MP4. Deterministic headless-Chromium rendering with a Pillow fallback. See docs/WEB-SLIDES.md, USER-GUIDE.md.",
+      "description": "CorvinTV (formerly Video Producer): turn a task description into a professional narrated video - storyboard by the native Claude Code engine (the host's signed-in claude CLI, no other LLM), narration by the CorvinOS voice chain (the same as chat: OpenAI, edge-tts, Piper), animated web slides (corvin-labs.com design, 19 templates, incl. board: an imported Penpot design revealed step by step, and bento) whose reveals and focus follow the spoken words, then MP4. Deterministic headless-Chromium rendering with a Pillow fallback. See docs/WEB-SLIDES.md, USER-GUIDE.md. Website tours (template \"website\"): a narrated, smoothly scrolling tour of a web page as MP4 plus a page to put online. See docs/WEBSITE-TOUR.md.",
       "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/media/corvintv/README.md",
       "documentation": "docs/README.md",
       "adr_prefix": "video-producer",
@@ -140,7 +140,8 @@
         "video-assembly",
         "video-production",
         "voice-narration",
-        "web-slides"
+        "web-slides",
+        "website-tour"
       ],
       "entry_points": {
         "console_panels": [
@@ -1522,13 +1523,13 @@
       "id": "plugin:buildin-media-corvintv",
       "type": "plugin",
       "name": "CorvinTV",
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": "CorvinOS Contributors",
       "license": "Apache-2.0",
       "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
       "tier": "buildin",
       "category": "media",
-      "description": "CorvinTV (formerly Video Producer): turn a task description into a professional narrated video - storyboard by the native Claude Code engine (the host's signed-in claude CLI, no other LLM), narration by the CorvinOS voice chain (the same as chat: OpenAI, edge-tts, Piper), animated web slides (corvin-labs.com design, 19 templates, incl. board: an imported Penpot design revealed step by step, and bento) whose reveals and focus follow the spoken words, then MP4. Deterministic headless-Chromium rendering with a Pillow fallback. See docs/WEB-SLIDES.md, USER-GUIDE.md.",
+      "description": "CorvinTV (formerly Video Producer): turn a task description into a professional narrated video - storyboard by the native Claude Code engine (the host's signed-in claude CLI, no other LLM), narration by the CorvinOS voice chain (the same as chat: OpenAI, edge-tts, Piper), animated web slides (corvin-labs.com design, 19 templates, incl. board: an imported Penpot design revealed step by step, and bento) whose reveals and focus follow the spoken words, then MP4. Deterministic headless-Chromium rendering with a Pillow fallback. See docs/WEB-SLIDES.md, USER-GUIDE.md. Website tours (template \"website\"): a narrated, smoothly scrolling tour of a web page as MP4 plus a page to put online. See docs/WEBSITE-TOUR.md.",
       "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/media/corvintv/README.md",
       "documentation": "docs/README.md",
       "adr_prefix": "video-producer",
@@ -1557,7 +1558,8 @@
         "video-assembly",
         "video-production",
         "voice-narration",
-        "web-slides"
+        "web-slides",
+        "website-tour"
       ],
       "entry_points": {
         "console_panels": [
@@ -3388,13 +3390,13 @@
         "id": "plugin:buildin-media-corvintv",
         "type": "plugin",
         "name": "CorvinTV",
-        "version": "1.8.0",
+        "version": "1.9.0",
         "author": "CorvinOS Contributors",
         "license": "Apache-2.0",
         "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "buildin",
         "category": "media",
-        "description": "CorvinTV (formerly Video Producer): turn a task description into a professional narrated video - storyboard by the native Claude Code engine (the host's signed-in claude CLI, no other LLM), narration by the CorvinOS voice chain (the same as chat: OpenAI, edge-tts, Piper), animated web slides (corvin-labs.com design, 19 templates, incl. board: an imported Penpot design revealed step by step, and bento) whose reveals and focus follow the spoken words, then MP4. Deterministic headless-Chromium rendering with a Pillow fallback. See docs/WEB-SLIDES.md, USER-GUIDE.md.",
+        "description": "CorvinTV (formerly Video Producer): turn a task description into a professional narrated video - storyboard by the native Claude Code engine (the host's signed-in claude CLI, no other LLM), narration by the CorvinOS voice chain (the same as chat: OpenAI, edge-tts, Piper), animated web slides (corvin-labs.com design, 19 templates, incl. board: an imported Penpot design revealed step by step, and bento) whose reveals and focus follow the spoken words, then MP4. Deterministic headless-Chromium rendering with a Pillow fallback. See docs/WEB-SLIDES.md, USER-GUIDE.md. Website tours (template \"website\"): a narrated, smoothly scrolling tour of a web page as MP4 plus a page to put online. See docs/WEBSITE-TOUR.md.",
         "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/media/corvintv/README.md",
         "documentation": "docs/README.md",
         "adr_prefix": "video-producer",
@@ -3423,7 +3425,8 @@
           "video-assembly",
           "video-production",
           "voice-narration",
-          "web-slides"
+          "web-slides",
+          "website-tour"
         ],
         "entry_points": {
           "console_panels": [
@@ -5582,13 +5585,13 @@
         "id": "plugin:buildin-media-corvintv",
         "type": "plugin",
         "name": "CorvinTV",
-        "version": "1.8.0",
+        "version": "1.9.0",
         "author": "CorvinOS Contributors",
         "license": "Apache-2.0",
         "license_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/LICENSE",
         "tier": "buildin",
         "category": "media",
-        "description": "CorvinTV (formerly Video Producer): turn a task description into a professional narrated video - storyboard by the native Claude Code engine (the host's signed-in claude CLI, no other LLM), narration by the CorvinOS voice chain (the same as chat: OpenAI, edge-tts, Piper), animated web slides (corvin-labs.com design, 19 templates, incl. board: an imported Penpot design revealed step by step, and bento) whose reveals and focus follow the spoken words, then MP4. Deterministic headless-Chromium rendering with a Pillow fallback. See docs/WEB-SLIDES.md, USER-GUIDE.md.",
+        "description": "CorvinTV (formerly Video Producer): turn a task description into a professional narrated video - storyboard by the native Claude Code engine (the host's signed-in claude CLI, no other LLM), narration by the CorvinOS voice chain (the same as chat: OpenAI, edge-tts, Piper), animated web slides (corvin-labs.com design, 19 templates, incl. board: an imported Penpot design revealed step by step, and bento) whose reveals and focus follow the spoken words, then MP4. Deterministic headless-Chromium rendering with a Pillow fallback. See docs/WEB-SLIDES.md, USER-GUIDE.md. Website tours (template \"website\"): a narrated, smoothly scrolling tour of a web page as MP4 plus a page to put online. See docs/WEBSITE-TOUR.md.",
         "readme_url": "https://github.com/CorvinLabs/Corvin-Marketplace/blob/main/plugins/buildin/media/corvintv/README.md",
         "documentation": "docs/README.md",
         "adr_prefix": "video-producer",
@@ -5617,7 +5620,8 @@
           "video-assembly",
           "video-production",
           "voice-narration",
-          "web-slides"
+          "web-slides",
+          "website-tour"
         ],
         "entry_points": {
           "console_panels": [

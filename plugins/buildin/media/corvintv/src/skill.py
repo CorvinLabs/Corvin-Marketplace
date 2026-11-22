@@ -436,6 +436,8 @@ async def generate_storyboard_with_llm(
         max_scenes = gsb.GROUNDED_MAX_SCENES
 
     tpl = vt.usable(video_template)  # raises TemplateError for an unknown or unavailable template
+    if tpl.mode != "slides":  # ADR-2336: a template with another mode is its own job (website tour), never a slide storyboard
+        raise vt.TemplateError("the '%s' template is a %s job, not a slide video" % (tpl.id, tpl.mode))
     strategy = didactic_strategy or tpl.didactic_strategy or detect_didactic_strategy(task)
     budget = CHAR_BUDGETS.get(strategy, CHAR_BUDGETS["rich_visual"])
     max_duration_minutes = vt.effective_max_minutes(tpl, max_duration_minutes)  # a template only lowers the ceiling
@@ -2256,6 +2258,12 @@ async def start_video_production(
 
 
 async def _orchestrate_from_config(job_id: str, task: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    if config.get("mode") == "website":  # a narrated tour of a web page + a page to put online (website/produce.py, ADR-2336)
+        try:
+            from .website.produce import produce_website  # noqa: PLC0415
+        except ImportError:
+            from website.produce import produce_website  # noqa: PLC0415
+        return await produce_website(job_id, task, config)
     if config.get("mode") == "cinematic":  # a film of animated acts instead of slides (cinematic/produce.py)
         try:
             from .cinematic.produce import produce_cinematic  # noqa: PLC0415
