@@ -74,3 +74,19 @@ JavaScript timers of the page are frozen (a demo that only moves through `setInt
 their state at load; content that only appears after a click is not shown; pages behind a login cannot be toured. Narration is
 English or German. A tour of an address is unavailable until the workspace has turned on website capture and has an egress
 policy.
+
+## Example: a real tour of a live site
+
+`docs/examples/corvinos-amplifier-tour.json` is the tour (German + English, 11 scenes, 26 sentences) behind the first video made with this
+feature: CorvinOS as an amplifier for Claude Code, filmed from https://corvin-labs.com/ . Print the keys of a page first, then write the tour:
+
+```
+python scripts/website_tour.py --url https://corvin-labs.com/ --allow-host fonts.googleapis.com --allow-host fonts.gstatic.com \
+    --allow-host unpkg.com --print-outline --langs de --out ./tour-out
+python scripts/website_tour.py --url https://corvin-labs.com/ --tour docs/examples/corvinos-amplifier-tour.json --langs de en \
+    --allow-host fonts.googleapis.com --allow-host fonts.gstatic.com --allow-host unpkg.com --out ./tour-out
+```
+
+Measured on that run: 3:12 minutes, camera peak 900 px/s (the cap) and at most 0.8 px change of the step from one frame to the next,
+narration onsets within 0.02 s of the plan, 0 blocked requests. A page that builds itself with a script CDN (this one loads React from
+`unpkg.com`) needs that host in `--allow-host`; without it the page stays empty and the outline step says so ("no sections or headings").

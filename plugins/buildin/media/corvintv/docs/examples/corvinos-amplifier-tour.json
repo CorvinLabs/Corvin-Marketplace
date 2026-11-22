@@ -1,0 +1,234 @@
+{
+ "intro": {
+  "de": [
+   "Willkommen bei CorvinOS.",
+   "Der Verstärker für Claude Code."
+  ],
+  "en": [
+   "Welcome to CorvinOS.",
+   "The amplifier for Claude Code."
+  ]
+ },
+ "outro": {
+  "de": {
+   "line": "Der Verstärker für Claude Code.",
+   "sub": "Claude Code liefert die Intelligenz. CorvinOS liefert das Urteil."
+  },
+  "en": {
+   "line": "The amplifier for Claude Code.",
+   "sub": "Claude Code brings the intelligence. CorvinOS brings the judgement."
+  },
+  "url": "corvin-labs.com"
+ },
+ "scenes": [
+  {
+   "id": "idee",
+   "target": "k1",
+   "view": "top",
+   "sentences": [
+    {
+     "de": "CorvinOS ist ein Verstärker für Claude Code.",
+     "en": "CorvinOS is an amplifier for Claude Code."
+    },
+    {
+     "de": "Claude Code liefert die Intelligenz. CorvinOS liefert das Urteil.",
+     "en": "Claude Code brings the intelligence. CorvinOS brings the judgement."
+    },
+    {
+     "de": "Es ist Open Source unter Apache 2.0, und du betreibst es selbst.",
+     "en": "It is open source under Apache 2.0, and you run it yourself."
+    }
+   ]
+  },
+  {
+   "id": "start",
+   "target": "k2",
+   "view": "top",
+   "sentences": [
+    {
+     "de": "So startest du: Plattform wählen und eine Zeile ausführen. Der Installer bringt Python, Node.js und Claude Code gleich mit.",
+     "en": "This is how you start: pick your platform and run one line. The installer brings Python, Node.js and Claude Code along."
+    }
+   ]
+  },
+  {
+   "id": "kern",
+   "target": "k3",
+   "view": "top",
+   "sentences": [
+    {
+     "de": "Das Modell bleibt, wie es ist. Um es herum entsteht, was ihm fehlt.",
+     "en": "The model stays as it is. Around it grows what it lacks."
+    },
+    {
+     "de": "Deine KI vergisst. CorvinOS nicht: Es erinnert sich an dich, schaut vor jeder Änderung noch einmal hin und behält, was es findet.",
+     "en": "Your AI forgets. CorvinOS doesn't: it remembers you, takes a second look before anything changes, and keeps what it finds."
+    }
+   ]
+  },
+  {
+   "id": "schleife",
+   "target": "k4",
+   "view": "fit",
+   "anchors": [
+    {
+     "key": "k4",
+     "sentence": 1,
+     "offset": -3.0
+    }
+   ],
+   "sentences": [
+    {
+     "de": "Claude Code übernimmt das Denken, brillant für sich allein. CorvinOS ersetzt es nie.",
+     "en": "Claude Code does the thinking, brilliant on its own. CorvinOS never replaces it."
+    },
+    {
+     "de": "Statt Ergebnisse nur durchzureichen, speist CorvinOS sie zurück: Jeder Schritt wird geprüft, bevor er etwas ändert, und jede Lektion wird gespeichert.",
+     "en": "Instead of just passing results through, it feeds them back: every step is checked before it changes anything, and every lesson is saved."
+    }
+   ]
+  },
+  {
+   "id": "wissen",
+   "target": "k6",
+   "view": "fit",
+   "anchors": [
+    {
+     "key": "k6",
+     "sentence": 0,
+     "offset": 0.0
+    }
+   ],
+   "sentences": [
+    {
+     "de": "Das Modell bleibt gleich, deshalb muss dein Wissen nicht von vorn beginnen.",
+     "en": "The model stays the same, so your knowledge doesn't have to start over."
+    },
+    {
+     "de": "Was du ihm beibringst, lebt außerhalb des Modells und wächst weiter, ohne Nachtraining.",
+     "en": "What you teach it lives outside the model and keeps growing, with no retraining."
+    },
+    {
+     "de": "Nach jeder Aufgabe behält CorvinOS, was passiert ist, was sich bewährt hat und was ein Check gefunden hat.",
+     "en": "After every task, CorvinOS keeps what happened, what proved useful and what a check found."
+    }
+   ]
+  },
+  {
+   "id": "routing",
+   "target": "k8",
+   "view": "fit",
+   "anchors": [
+    {
+     "key": "k8",
+     "sentence": 1,
+     "offset": 1.0
+    }
+   ],
+   "sentences": [
+    {
+     "de": "Nicht jede Frage braucht dein größtes Modell.",
+     "en": "Not every question needs your biggest model."
+    },
+    {
+     "de": "CorvinOS entscheidet Turn für Turn, welches Claude-Modell passt: Gespräch an Haiku, Alltagsarbeit an Sonnet, schwieriges Denken und Prüfungen an Opus.",
+     "en": "CorvinOS decides, turn by turn, which Claude model fits: conversation goes to Haiku, everyday work to Sonnet, hard reasoning and reviews to Opus."
+    },
+    {
+     "de": "Willst du lieber selbst wählen, gilt immer deine Wahl.",
+     "en": "If you'd rather choose yourself, your choice always wins."
+    },
+    {
+     "de": "Auf unserer eigenen Installation waren das bis zu 60 Prozent geringere Kosten, als jeden Turn mit Opus 5 zu fahren. Deine Ersparnis hängt von deiner Arbeit ab.",
+     "en": "On our own install, that came to up to 60 percent lower cost than running every turn on Opus 5. Your savings will depend on your work."
+    }
+   ]
+  },
+  {
+   "id": "kontext",
+   "target": "k9",
+   "view": "fit",
+   "anchors": [
+    {
+     "key": "k9",
+     "sentence": 2,
+     "offset": 0.4
+    }
+   ],
+   "sentences": [
+    {
+     "de": "Und vor jedem Turn bereitet CorvinOS den Kontext vor, der passt.",
+     "en": "And before each turn, CorvinOS prepares the context that fits."
+    },
+    {
+     "de": "Was es sich merkt, was die Wissenskarte zeigt, welche Skills zutreffen.",
+     "en": "What it remembers, what the knowledge map shows, which skills apply."
+    },
+    {
+     "de": "Doppeltes wird zusammengeführt, und nur das Relevante geht hinein: ein kurzer Brief statt alles auf einmal.",
+     "en": "Repeats are merged, and only what is relevant goes in: a short brief, instead of everything at once."
+    }
+   ]
+  },
+  {
+   "id": "konsole",
+   "target": "k13",
+   "view": "top",
+   "sentences": [
+    {
+     "de": "Das alles steuerst du aus der Konsole. Der Chat ist kein Demofenster, er ist die Shell: Personas, Engines, Workflows und mehr erreichst du aus einem einzigen Prompt.",
+     "en": "You steer all of it from the console. The chat isn't a demo window, it's the shell: personas, engines, workflows and more, all reachable from one prompt."
+    },
+    {
+     "de": "Jede Messaging-Bridge ist eine vollständige Steuerfläche, auch per Sprache.",
+     "en": "Every messaging bridge is a full control surface, by voice too."
+    }
+   ]
+  },
+  {
+   "id": "urteil",
+   "target": "k14",
+   "view": "top",
+   "sentences": [
+    {
+     "de": "Das Urteil ist eingebaut, nicht angeflanscht: Es gibt keinen Compliance-Modus, den man versehentlich ausschalten könnte.",
+     "en": "The judgement is built in, not bolted on: there is no compliance mode you can accidentally leave off."
+    },
+    {
+     "de": "Jedes Ereignis landet in einer per Hash verketteten Prüfspur, und eine Manipulation macht sie ungültig.",
+     "en": "Every event is added to a hash-chained audit trail, and tampering invalidates it."
+    }
+   ]
+  },
+  {
+   "id": "waechst",
+   "target": "k18",
+   "view": "top",
+   "sentences": [
+    {
+     "de": "CorvinOS wächst in dein Setup hinein: Es lernt, wie du arbeitest, und baut fehlende Fähigkeiten während des Laufs selbst.",
+     "en": "CorvinOS grows into your setup: it learns how you like to work, and builds the capabilities it is missing while it runs."
+    },
+    {
+     "de": "Und der Kern bleibt gesperrt: Eine Erweiterung kann eine Leitplanke hinzufügen, aber nie eine schwächen.",
+     "en": "And the core stays locked: an extension can add a guardrail, never weaken one."
+    }
+   ]
+  },
+  {
+   "id": "ende",
+   "target": "k23",
+   "view": "top",
+   "sentences": [
+    {
+     "de": "Besitze deine Agenten, vom ersten Commit an. Open Source unter Apache 2.0: Markiere es mit einem Stern, forke es, betreibe es selbst.",
+     "en": "Own your agents, from the first commit. Open source under Apache 2.0: star it, fork it, self-host it."
+    },
+    {
+     "de": "Claude Code liefert die Intelligenz. CorvinOS liefert das Urteil. Mehr auf corvin-labs.com.",
+     "en": "Claude Code brings the intelligence. CorvinOS brings the judgement. Find out more at corvin-labs.com."
+    }
+   ]
+  }
+ ]
+}
