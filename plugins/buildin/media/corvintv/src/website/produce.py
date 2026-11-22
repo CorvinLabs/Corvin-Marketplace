@@ -45,6 +45,13 @@ OPENAI_VOICES = frozenset({"alloy", "ash", "coral", "echo", "fable", "nova", "on
 OPENAI_MODELS = frozenset({"tts-1", "tts-1-hd"})
 PROVIDER_NAME = {"openai": "OpenAI", "edge": "Microsoft Edge", "piper": "Piper", "mock": "test"}
 DISCLOSURE = {"en": "Narration voice: AI-generated ({p} text-to-speech)", "de": "Sprecherstimme: KI-generiert ({p} Text-to-Speech)"}
+DISCLOSURE_PLAIN = {"en": "Narration voice: AI-generated", "de": "Sprecherstimme: KI-generiert"}   # when no clip says which provider spoke
+
+
+def disclosure(lang: str, provider: str) -> str:
+    """The end card's line. It names the provider only when every clip says who spoke it (cached clips carry a ``.prov`` sidecar)."""
+    name = PROVIDER_NAME.get(provider)
+    return DISCLOSURE[lang].format(p=name) if name else DISCLOSURE_PLAIN[lang]
 
 
 def _sk():
@@ -214,8 +221,16 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
             mp3, wav = work / "audio" / f"{digest}.mp3", work / "audio" / f"{digest}.wav"
             async with sem:
                 budget.check("narration")
+                prov_file = mp3.with_suffix(".prov")
                 if not mp3.exists() or mp3.stat().st_size < 200:
-                    providers.append(await asyncio.to_thread(sk._synthesize_narration_chain, text, mp3, lg))
+                    name = await asyncio.to_thread(sk._synthesize_narration_chain, text, mp3, lg)
+                    prov_file.write_text(name, encoding="utf-8")
+                    providers.append(name)
+                else:       # a clip of an earlier attempt: its provider is what that attempt recorded, else unknown
+                    try:
+                        providers.append(prov_file.read_text(encoding="utf-8").strip() or "unknown")
+                    except OSError:
+                        providers.append("unknown")
                 if not wav.exists():
                     await asyncio.to_thread(lambda: dl.run_process(
                         ["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3), "-ar", str(au.RATE), "-ac", "1", "-c:a", "pcm_s16le", str(wav)],
@@ -248,12 +263,11 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
                                                        for i, sc in enumerate(tour["scenes"]) for k in range(len(sc["sentences"]))])
         distinct = set(providers)
         provider = distinct.pop() if len(distinct) == 1 else ("mixed" if distinct else "unknown")
-        p_name = PROVIDER_NAME.get(provider, "various")
 
         # the frame model and the frame plan
         model = rd.FrameModel(tour, tl, outline, effects, size)
         intro_texts = {lg: [tour["intro"][lg][0], tour["intro"][lg][1], "", ""] for lg in tour["langs"]}
-        outro_texts = {lg: [tour["outro"][lg]["line"], tour["outro"][lg]["sub"], tour.get("outro_url", ""), DISCLOSURE[lg].format(p=p_name)]
+        outro_texts = {lg: [tour["outro"][lg]["line"], tour["outro"][lg]["sub"], tour.get("outro_url", ""), disclosure(lg, provider)]
                        for lg in tour["langs"]}
         plan: List[Dict[str, Any]] = []
         for f in range(model.frame_count()):
@@ -319,7 +333,7 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
         first_text = tour["scenes"][0]["sentences"][0]["text"][tour["langs"][0]]
         title = outline.get("title") or pl.strip_url(task)[:80] or "Website tour"
         bd.build_site(site, title=title, description=first_text[:200], langs=tour["langs"], videos=videos, chapters=chapters,
-                      transcript=transcript, disclosure={lg: DISCLOSURE[lg].format(p=p_name) for lg in tour["langs"]},
+                      transcript=transcript, disclosure={lg: disclosure(lg, provider) for lg in tour["langs"]},
                       source_url=source.url if source.kind == "url" else "")
         (site / "README.txt").write_text(bd.README, encoding="utf-8")
         bd.write_zip(site, out_root / "website-bundle.zip")

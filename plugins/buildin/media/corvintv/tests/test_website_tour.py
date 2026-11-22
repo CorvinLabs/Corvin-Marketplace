@@ -424,3 +424,11 @@ def test_the_job_budget_grows_with_the_resolution():
     from src.website import produce
     src = inspect.getsource(produce.produce_website)
     assert '"2160p": 4' in src and "job_budget_seconds(max_minutes) * res_factor" in src
+
+
+def test_the_end_card_names_the_voice_provider_only_when_it_is_known():
+    from src.website import produce
+    assert produce.disclosure("en", "openai") == "Narration voice: AI-generated (OpenAI text-to-speech)"
+    assert produce.disclosure("de", "edge") == "Sprecherstimme: KI-generiert (Microsoft Edge Text-to-Speech)"
+    for unknown in ("unknown", "mixed", ""):
+        assert produce.disclosure("en", unknown) == "Narration voice: AI-generated" and "various" not in produce.disclosure("de", unknown)

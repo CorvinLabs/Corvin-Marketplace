@@ -1,5 +1,12 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## 1.10.2 — the end card names the voice provider that really spoke
+
+A tour whose narration clips came from an earlier run (cached by text) could not know which provider had spoken them, so its end card said "various Text-to-Speech".
+
+- **Each narration clip gets a `.prov` sidecar** with the provider that produced it; the AI disclosure on the end card is built from those sidecars (`disclosure()` in `src/website/produce.py`) and names no provider when the clips disagree or are unknown.
+- Tests: `tests/test_website_tour.py` (+1).
+
 ## 1.10.1 — long 4K tours: a budget that grows with the resolution, and a restart that redraws nothing
 
 Found on the first 4K tour (3:15 minutes, 6537 frames at 1.5 frames per second): the job stopped at 88 percent of its frames because the wall-clock budget was the one
