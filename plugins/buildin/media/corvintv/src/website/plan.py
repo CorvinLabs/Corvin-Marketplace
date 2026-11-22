@@ -64,7 +64,7 @@ def validate_tour(doc: Any, keys: Set[str], langs: Sequence[str], page_text: str
     f: List[str] = []
     if not isinstance(doc, dict):
         raise TourError(["the tour must be a JSON object"])
-    unknown = set(doc) - {"intro", "outro", "scenes", "lang", "langs", "note", "intro_style"}
+    unknown = set(doc) - {"intro", "outro", "scenes", "lang", "langs", "note", "intro_style", "animation"}
     if unknown:
         f.append("unknown keys: " + ", ".join(sorted(map(str, unknown))))
     langs = [lg for lg in langs if lg in LANGS]
@@ -73,15 +73,22 @@ def validate_tour(doc: Any, keys: Set[str], langs: Sequence[str], page_text: str
     intro_in, outro_in = doc.get("intro"), doc.get("outro")
     intro: Dict[str, List[str]] = {}
     outro: Dict[str, Dict[str, str]] = {}
+    intro_style = doc.get("intro_style", "page")
+    if intro_style not in ("page", "plain", "header"):
+        f.append("intro_style: page (default: the tour opens on the page itself), plain or header (an opening card)")
+        intro_style = "page"
     if not isinstance(intro_in, dict):
-        f.append("intro: an object with two lines per language is required")
+        if intro_style != "page":
+            f.append("intro: an object with two lines per language is required (intro_style plain/header)")
         intro_in = {}
     if not isinstance(outro_in, dict):
         f.append("outro: an object with a line and a sub line per language is required")
         outro_in = {}
     for lg in langs:
         lines = intro_in.get(lg)
-        if not isinstance(lines, list) or len(lines) != 2:
+        if intro_style == "page":
+            intro[lg] = ["", ""]   # no opening card: the page's own top is the opening
+        elif not isinstance(lines, list) or len(lines) != 2:
             f.append(f"intro.{lg}: exactly two lines")
         else:
             intro[lg] = [_line(x, f"intro.{lg}", f) for x in lines]
@@ -90,10 +97,6 @@ def validate_tour(doc: Any, keys: Set[str], langs: Sequence[str], page_text: str
             f.append(f"outro.{lg}: an object with line and sub")
         else:
             outro[lg] = {"line": _line(o.get("line"), f"outro.{lg}.line", f), "sub": _line(o.get("sub"), f"outro.{lg}.sub", f)}
-    intro_style = doc.get("intro_style", "plain")
-    if intro_style not in ("plain", "header"):
-        f.append("intro_style: plain or header")
-        intro_style = "plain"
     url_line = outro_in.get("url", "")
     if url_line and (not isinstance(url_line, str) or len(url_line) > 120 or re.search(r"[\s<>\"']", url_line)):
         f.append("outro.url: a plain host or address without spaces (at most 120 characters)")
@@ -170,7 +173,29 @@ def validate_tour(doc: Any, keys: Set[str], langs: Sequence[str], page_text: str
         scenes.append({"id": sid, "target": target, "view": view, "sentences": sents, "anchors": anchors})
     if f:
         raise TourError(f)
-    return {"langs": langs, "intro": intro, "outro": outro, "outro_url": url_line, "intro_style": intro_style, "scenes": scenes}
+    animation = doc.get("animation", "required")
+    if animation not in ("required", "off"):
+        f.append('animation: "required" (default: every scene must show a moving, animated part of the page) or "off"')
+        animation = "required"
+    if f:
+        raise TourError(f)
+    return {"langs": langs, "intro": intro, "outro": outro, "outro_url": url_line, "intro_style": intro_style, "animation": animation, "scenes": scenes}
+
+
+def audit_animation(tour: Dict[str, Any], entries: Sequence[Dict[str, Any]]) -> List[str]:
+    """Scenes whose target section has no running CSS/Web animation. A website tour explains through animation, never through text
+    slides: with ``animation: "required"`` (the default) such a tour is refused and the findings name the scenes."""
+    by_key = {e["key"]: e for e in entries}
+    static = [sc["id"] for sc in tour["scenes"] if int(by_key.get(sc["target"], {}).get("animated", 0)) < 1]
+    return static
+
+
+def enforce_animation(tour: Dict[str, Any], entries: Sequence[Dict[str, Any]]) -> List[str]:
+    static = audit_animation(tour, entries)
+    if static and tour.get("animation", "required") == "required":
+        raise TourError([f"scene {sid}: its target section shows no animation; a website tour explains through animated visuals "
+                         f"(animate that part of the page, target another section, or set \"animation\": \"off\" on the tour)" for sid in static])
+    return static
 
 
 def _outline_block(outline: Sequence[Dict[str, Any]]) -> str:

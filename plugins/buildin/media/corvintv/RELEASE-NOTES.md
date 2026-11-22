@@ -1,5 +1,11 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## 1.11.0 — website tours open on the page and explain through animation
+
+- **No opening card by default.** `intro_style: "page"` (the new default) starts the video on the finished page itself, its top with the title; `intro` is no longer required. `"plain"` and `"header"` keep the card.
+- **Animation first.** `animation: "required"` (the default) refuses a tour whose scene targets a section with no running animation (`pl.enforce_animation`); `"off"` allows a static page. The report lists `static_scenes` and `intro_style`.
+- Tests: `tests/test_website_tour.py` (40), `tests/test_website_tour_e2e.py` (7; the new one opens a page tour and refuses a static page, mutation-checked).
+
 ## 1.10.2 — the end card names the voice provider that really spoke
 
 A tour whose narration clips came from an earlier run (cached by text) could not know which provider had spoken them, so its end card said "various Text-to-Speech".

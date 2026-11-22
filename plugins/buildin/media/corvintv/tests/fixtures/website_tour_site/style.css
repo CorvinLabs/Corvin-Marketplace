@@ -7,3 +7,7 @@ section,footer{padding:90px 8vw;min-height:78vh;border-bottom:1px solid #1d2530}
 .dot{position:absolute;top:-8px;left:84px;width:16px;height:16px;border-radius:50%;background:#e9b667}.bar{height:10px;background:#1b2330;border-radius:6px;margin-top:24px;overflow:hidden}
 .fill{display:block;height:100%;width:100%;background:linear-gradient(90deg,#e9b667,#46d19e);transform-origin:left;animation:grow 8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}@keyframes grow{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+
+/* every section carries a slow motion, so a tour of this page explains through animation (the plugin refuses a static scene) */
+@keyframes orbit-drift{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
+header,section,footer{animation:orbit-drift 6s ease-in-out infinite}

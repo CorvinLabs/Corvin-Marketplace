@@ -201,6 +201,10 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
             brief = pl.strip_url(task)[:2000] or "Explain what this page offers, step by step."
             tour = await write_tour(brief, outline, langs, minutes, backend, config.get("storyboard_model"), info)
             backend_label, tour_source = info.get("backend", backend), "model"
+        try:
+            static_scenes = pl.enforce_animation(tour, outline["entries"])
+        except pl.TourError as e:
+            raise ValueError("the tour is not valid: " + str(e)) from None
         report.storyboard_llm = backend_label
         n_scenes = len(tour["scenes"])
         report_texts += [t for s in tour["scenes"] for x in s["sentences"] for t in x["text"].values()]
@@ -348,7 +352,7 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
             "tts_engine": tts_engine, "tts_chain": "corvinos", "tts_provider_used": provider,
             "language": tour["langs"][0], "languages": tour["langs"], "language_files": {lg: p.name for lg, p in outputs.items()},
             "language_sync_diff_ms": round(spread_ms, 1), "site_dir": "site", "bundle": "website-bundle.zip",
-            "camera": cam_report, "effects": effects, "source": source.summary(), "tour_source": tour_source,
+            "camera": cam_report, "static_scenes": static_scenes, "intro_style": tour.get("intro_style"), "effects": effects, "source": source.summary(), "tour_source": tour_source,
             "tour_repaired": info.get("repaired", 0), "layout_drift_px": draw["layout_drift_px"],
             "storyboard_llm": backend_label, "renderers": ["website"],
         }

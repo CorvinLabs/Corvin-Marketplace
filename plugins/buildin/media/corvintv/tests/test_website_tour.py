@@ -382,7 +382,7 @@ def test_the_voice_override_replaces_only_the_voice_slot_and_only_for_its_own_co
 
 def test_the_tour_may_ask_for_a_header_intro_and_nothing_else_than_plain_or_header():
     doc = _tour()
-    assert pl.validate_tour(doc, {"k1", "k2"}, ["en"], "12")["intro_style"] == "plain"
+    assert pl.validate_tour({**doc, "intro_style": "plain"}, {"k1", "k2"}, ["en"], "12")["intro_style"] == "plain"
     assert pl.validate_tour({**doc, "intro_style": "header"}, {"k1", "k2"}, ["en"], "12")["intro_style"] == "header"
     with pytest.raises(pl.TourError, match="intro_style"):
         pl.validate_tour({**doc, "intro_style": "video"}, {"k1", "k2"}, ["en"], "12")
@@ -432,3 +432,28 @@ def test_the_end_card_names_the_voice_provider_only_when_it_is_known():
     assert produce.disclosure("de", "edge") == "Sprecherstimme: KI-generiert (Microsoft Edge Text-to-Speech)"
     for unknown in ("unknown", "mixed", ""):
         assert produce.disclosure("en", unknown) == "Narration voice: AI-generated" and "various" not in produce.disclosure("de", unknown)
+
+
+def test_a_tour_opens_on_the_page_itself_by_default_without_an_opening_card():
+    doc = _tour()
+    doc.pop("intro", None)
+    t = pl.validate_tour(doc, {"k1", "k2"}, ["en"], "12")
+    assert t["intro_style"] == "page" and t["intro"]["en"] == ["", ""]
+    # a card style still needs its two lines
+    with pytest.raises(pl.TourError, match="intro"):
+        pl.validate_tour({**doc, "intro_style": "plain"}, {"k1", "k2"}, ["en"], "12")
+    # no veil at the start: the first frame is the page, not a card
+    assert fx.card_state(0.0, {"end": 0.0, "line2_at": 0.0}, {"start": 50.0})["kind"] is None
+
+
+def test_a_website_tour_must_explain_through_animation_unless_it_says_otherwise():
+    tour = pl.validate_tour(_tour(), {"k1", "k2"}, ["en"], "12")
+    entries = [{"key": "k1", "animated": 3}, {"key": "k2", "animated": 0}]
+    target = tour["scenes"][0]["target"]
+    entries_static = [{"key": k, "animated": 0} for k in ("k1", "k2")]
+    with pytest.raises(pl.TourError, match="no animation"):
+        pl.enforce_animation(tour, entries_static)
+    assert pl.enforce_animation({**tour, "animation": "off"}, entries_static) == [sc["id"] for sc in tour["scenes"]]
+    assert pl.enforce_animation(tour, [{"key": k, "animated": 2} for k in ("k1", "k2")]) == []
+    with pytest.raises(pl.TourError, match="animation"):
+        pl.validate_tour({**_tour(), "animation": "sometimes"}, {"k1", "k2"}, ["en"], "12")

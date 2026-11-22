@@ -65,7 +65,10 @@ class FrameModel:
         self.spots = self._spot_windows()
         s0 = tl["scenes"][0]
         two = s0["sentences"][1]["at_avg"] - 0.3 if len(s0["sentences"]) > 1 else 1.6
-        self.intro = {"end": s0["start"] + s0["dur"], "line2_at": max(1.0, two)}
+        if tour.get("intro_style", "page") == "page":
+            self.intro = {"end": 0.0, "line2_at": 0.0}   # no opening card: the tour opens on the page's own top and title
+        else:
+            self.intro = {"end": s0["start"] + s0["dur"], "line2_at": max(1.0, two)}
         last = tl["scenes"][-1]["sentences"][-1]["at_avg"]
         self.outro = {"start": max(self.intro["end"], last - 0.4)}
 

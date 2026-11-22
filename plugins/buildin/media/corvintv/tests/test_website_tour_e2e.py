@@ -34,6 +34,7 @@ FPS = 24
 def tour():
     s = lambda en, de, **kw: {"en": en, "de": de, **kw}  # noqa: E731
     return {
+        "intro_style": "plain",
         "intro": {"en": ["Welcome to Orbit Notes.", "A short tour of this page."], "de": ["Willkommen bei Orbit Notes.", "Eine kurze Tour durch diese Seite."]},
         "outro": {"en": {"line": "Notes that keep their shape.", "sub": "Download it and write your first note."},
                   "de": {"line": "Notizen, die ihre Form behalten.", "sub": "Lade es herunter und schreibe deine erste Notiz."}, "url": "orbit.example"},
@@ -258,3 +259,28 @@ async def test_resolution_voice_header_intro_and_start_path_reach_the_finished_v
     assert float(strip.std()) > 1.5, f"the page does not show through the intro card (std {strip.std():.2f})"
     band = im[h // 3: 2 * h // 3, w // 4: 3 * w // 4]
     assert float(band.max() - strip.mean()) > 80, "the intro text is not readable over the frosted header"
+
+
+async def test_a_tour_opens_on_the_page_without_a_card_and_a_page_without_animation_is_refused(base, tmp_path):
+    """Default opening = the page itself (its top and title), no opening card; a page whose scenes show nothing animated is refused."""
+    from PIL import Image
+    t = tour()
+    t.pop("intro")
+    t.pop("intro_style")
+    job, out, _ = await run_job(base, tmp_path, "job_w10", website_langs=["en"], tour=t)
+    meta = json.loads((out / "metadata.json").read_text(encoding="utf-8"))["metadata"] if (out / "metadata.json").is_file() else {}
+    saved = json.loads((out / "website" / "tour.json").read_text(encoding="utf-8"))
+    assert saved["intro_style"] == "page"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "0.3", "-i", str(out / "output.mp4"), "-frames:v", "1", str(tmp_path / "first.png")], check=True)
+    im = Image.open(tmp_path / "first.png").convert("L")
+    import numpy as np
+    a = np.asarray(im, dtype=float)
+    # the page's own heading and logo are on screen: the top band is not one flat colour
+    assert float(a[: a.shape[0] // 4].std()) > 8, "the first frame is a flat card, not the page"
+    # a static page: remove the animation from the served copy
+    css = Path(base) / "websites" / "orbit" / "style.css"
+    css.write_text(css.read_text(encoding="utf-8").split("/* every section carries")[0], encoding="utf-8")
+    job2, _, _ = await run_job(base, tmp_path, "job_w11", website_langs=["en"], tour=t, expect="error")
+    assert "no animation" in job2.error_message
+    t["animation"] = "off"
+    await run_job(base, tmp_path, "job_w12", website_langs=["en"], tour=t)

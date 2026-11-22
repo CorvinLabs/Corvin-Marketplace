@@ -1,4 +1,4 @@
-# Website tour (CorvinTV 1.9.0)
+# Website tour (CorvinTV 1.11.0)
 
 A website tour turns a web page into a narrated video **and** a page you can send or put online. The real page is filmed
 while a voice walks the viewer down it: the camera scrolls in one smooth curve, the page's own CSS animations run in time
@@ -44,7 +44,7 @@ Every text that came from the page or the model is escaped. For social previews 
 
 ## The tour
 
-A tour is a JSON document: an intro (two lines per language), scenes, an outro. A scene names ONE target of the page's
+A tour is a JSON document: scenes and an outro (an opening card with two lines per language only when `intro_style` asks for one). A scene names ONE target of the page's
 **outline** (`k1`, `k2`, ... in page order), a view (`top`, `fit` a whole figure, `pan` down a tall section) and one to six
 sentences. A sentence may add a `focus` (another outline key to highlight). `anchors` start a looping figure's animation at a
 sentence. Without `--tour` the native Claude Code engine writes the tour from the outline and your brief; the answer may
@@ -69,7 +69,9 @@ what the validator finds.
 |---|---|
 | `website_resolution` / `--resolution` | `1080p` (default), `1440p`, `2160p` (4K, about 3x slower) |
 | `website_voice` / `--voice`, `website_tts_model` / `--tts-model` | OpenAI voice and model for this tour only (default voice of the chain: `nova`; `onyx` is male) |
-| tour key `intro_style: "header"` | the intro card lies over the page's own header, frosted |
+| tour key `intro_style: "page"` (default since 1.11.0) | no opening card: the video starts on the page itself, its top with the title; `intro` is not needed |
+| tour key `intro_style: "header"` / `"plain"` | an opening card with two lines per language, over the page's frosted header / a flat colour |
+| tour key `animation: "required"` (default since 1.11.0) | every scene's target must show a running animation; a tour with a static scene is refused and the findings name it. `"off"` allows a static page (the report lists `static_scenes`) |
 | `website_path` / `--site-path` | start the tour at a page inside the site folder (a folder is redirected to its slash form) |
 
 ## Voice
@@ -99,3 +101,10 @@ python scripts/website_tour.py --url https://corvin-labs.com/ --tour docs/exampl
 Measured on that run: 3:12 minutes, camera peak 900 px/s (the cap) and at most 0.8 px change of the step from one frame to the next,
 narration onsets within 0.02 s of the plan, 0 blocked requests. A page that builds itself with a script CDN (this one loads React from
 `unpkg.com`) needs that host in `--allow-host`; without it the page stays empty and the outline step says so ("no sections or headings").
+
+
+## Animation first (1.11.0)
+
+A website tour explains through motion, never through text slides. The job refuses a scene whose target section has no running
+CSS/Web animation (`animation: "required"`, the default); build the page's explanations as animated figures (SVG + CSS keyframes) or
+set `"animation": "off"` for a page that really is static. The tour opens on the finished page (its top and title), not on a card.
