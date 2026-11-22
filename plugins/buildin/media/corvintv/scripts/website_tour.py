@@ -46,6 +46,11 @@ def main(argv=None) -> int:
     ap.add_argument("--no-effects", nargs="*", default=[], choices=["spot", "reveal", "zoom", "vignette"], help="switch effects off")
     ap.add_argument("--allow-host", action="append", default=[], metavar="HOST",
                     help="another host a --url page may load from (fonts, a CDN); repeat it; every other host stays blocked")
+    ap.add_argument("--resolution", choices=["1080p", "1440p", "2160p"], default="1080p", help="output size (2160p = 4K, about 3x slower)")
+    ap.add_argument("--voice", choices=["alloy", "ash", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer"],
+                    help="OpenAI voice for this tour only (the chain default is nova); edge-tts and Piper ignore it")
+    ap.add_argument("--tts-model", choices=["tts-1", "tts-1-hd"], help="OpenAI speech model for this tour only")
+    ap.add_argument("--site-path", help="with --site: the page inside the folder to tour, e.g. learn/amplifier/")
     ap.add_argument("--print-outline", action="store_true",
                     help="print the page's outline (the keys k1.. a tour may name) as JSON and exit; nothing is produced")
     ap.add_argument("--out", required=True, help="storage folder for the job")
@@ -55,7 +60,12 @@ def main(argv=None) -> int:
     out = Path(a.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     config = {"storage_base": str(out), "mode": "website", "website_langs": a.langs, "website_minutes": a.minutes, "website_fps": a.fps,
-              "website_effects": {k: False for k in a.no_effects}, "max_duration_minutes": max(a.minutes, 5)}
+              "website_effects": {k: False for k in a.no_effects}, "max_duration_minutes": max(a.minutes, 5),
+              "website_resolution": a.resolution}
+    if a.voice:
+        config["website_voice"] = a.voice
+    if a.tts_model:
+        config["website_tts_model"] = a.tts_model
     if a.site:
         site = Path(a.site).resolve()
         name = "".join(c if c.isalnum() or c in "._-" else "-" for c in site.name)[:60] or "site"
@@ -64,6 +74,8 @@ def main(argv=None) -> int:
             shutil.rmtree(dest)
         shutil.copytree(site, dest, symlinks=False)
         config["website_site"] = name
+        if a.site_path:
+            config["website_path"] = a.site_path
         task = a.task or f"Tour of the site {name}"
     else:
         config["website_url"] = a.url

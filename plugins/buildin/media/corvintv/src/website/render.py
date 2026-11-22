@@ -49,8 +49,11 @@ def target_y(entry: Dict[str, Any], view: str, vh: float, max_y: float) -> float
 class FrameModel:
     """Everything the picture depends on, as functions of the video time ``T`` (seconds)."""
 
-    def __init__(self, tour: Dict[str, Any], tl: Dict[str, Any], outline: Dict[str, Any], effects: Dict[str, bool]):
+    def __init__(self, tour: Dict[str, Any], tl: Dict[str, Any], outline: Dict[str, Any], effects: Dict[str, bool],
+                 size: Tuple[int, int] = (1920, 1080)):
         self.tour, self.tl, self.outline, self.effects = tour, tl, outline, effects
+        self.size = size
+        self.dsf = pg.dsf_for(size[0])
         self.fps = int(tl["fps"])
         self.total = float(tl["total_s"])
         self.by_key = {e["key"]: e for e in outline["entries"]}
@@ -186,14 +189,15 @@ async def draw_frames(source: pg.Source, model: FrameModel, plan: Sequence[Dict[
 
     async def worker() -> None:
         nonlocal done, drift
-        ctx = await state["browser"].new_context(viewport={"width": W, "height": H}, device_scale_factor=pg.DSF)
+        ctx = await state["browser"].new_context(viewport={"width": W, "height": H}, device_scale_factor=model.dsf, bypass_csp=pg.BYPASS_CSP)
         page = await ctx.new_page()
         page.on("pageerror", lambda e: errors.append(str(e)[:200]))
         await source.install(ctx, page)
         await pg.prepare_page(page, source.url)
         accent = await page.evaluate(fx.ACCENT_JS)
         await page.evaluate(fx.SETUP_JS, fx.setup_config(model.outline, model.effects, model.groups(model.outline["selectors"]),
-                                                          model.selectors_for_spots(model.outline["selectors"]), accent))
+                                                          model.selectors_for_spots(model.outline["selectors"]), accent,
+                                                          model.tour.get("intro_style") == "header"))
         h_now = float(await page.evaluate("() => document.documentElement.scrollHeight"))
         local_drift = abs(h_now - page_height) if page_height else 0.0
         cur_texts: Optional[List[str]] = None
@@ -210,11 +214,11 @@ async def draw_frames(source: pg.Source, model: FrameModel, plan: Sequence[Dict[
                     if tx is not None and tx != cur_texts:
                         await page.evaluate("(t) => window.__vt.setTexts(t)", tx)
                         cur_texts = tx
-                    scroll_css, _rest0 = cam.snap(st["y"], pg.DSF)
+                    scroll_css, _rest0 = cam.snap(st["y"], model.dsf)
                     real = await page.evaluate("(s) => window.__vt.frame(s)", {"scroll": scroll_css, "T": st["T"], "spot": st["spot"], "card": st["card"]})
-                    rest = st["y"] * pg.DSF - round(float(real) * pg.DSF)
+                    rest = st["y"] * model.dsf - round(float(real) * model.dsf)
                     shot = await page.screenshot(type="jpeg", quality=95)
-                    pending.append(asyncio.ensure_future(asyncio.to_thread(crop_frame, shot, rest, st["zoom"], str(item["path"]))))
+                    pending.append(asyncio.ensure_future(asyncio.to_thread(crop_frame, shot, rest, st["zoom"], str(item["path"]), model.size, 90 if model.size[0] > 2560 else 92)))
                     if len(pending) >= 6:
                         await asyncio.gather(*pending)
                         pending = []

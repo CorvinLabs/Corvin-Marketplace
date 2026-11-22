@@ -17,7 +17,16 @@ _spec.loader.exec_module(job_main)
 
 
 def _fake(skill) -> None:
-    skill._TTS_CHAIN = (("mock", skill._tts_tier_mock),)
+    def probe_tier(text, out_path, lang):
+        # what the production tier does with the job's voice override: rewrite the voice slot of say.py's argv (logged, then mocked)
+        log = os.environ.get("VP_TTS_VOICE_LOG")
+        if log:
+            argv, env = skill._apply_tts_override(["py", "/x/say.py", "out", "t", lang, "nova"], {})
+            with open(log, "a", encoding="utf-8") as fh:
+                fh.write(f"{argv[-1]}|{env.get('CORVIN_TTS_OPENAI_MODEL', '-')}\n")
+        return skill._tts_tier_mock(text, out_path, lang)
+
+    skill._TTS_CHAIN = (("mock", probe_tier),)
     real = skill._synthesize_narration_chain
 
     def counted(text, out_path, lang):

@@ -41,6 +41,8 @@ logger = logging.getLogger(__name__)
 SPEECH_WORKERS = 4
 ENCODE_DEADLINE_S = 3600.0
 FPS_CHOICES = (24, 30, 60)
+OPENAI_VOICES = frozenset({"alloy", "ash", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer"})
+OPENAI_MODELS = frozenset({"tts-1", "tts-1-hd"})
 PROVIDER_NAME = {"openai": "OpenAI", "edge": "Microsoft Edge", "piper": "Piper", "mock": "test"}
 DISCLOSURE = {"en": "Narration voice: AI-generated ({p} text-to-speech)", "de": "Sprecherstimme: KI-generiert ({p} Text-to-Speech)"}
 
@@ -134,6 +136,7 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
     report_texts: List[str] = [task]
     out_root = storage.videos_dir / job_id
     source: Optional[pg.Source] = None
+    voice_token = None
     try:
         report.begin("setup")
         tts_engine = sk._normalise_tts_engine(tts_engine)
@@ -146,6 +149,17 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
         fps = int(config.get("website_fps", 30))
         if fps not in FPS_CHOICES:
             raise ValueError("website_fps must be 24, 30 or 60")
+        res_name = str(config.get("website_resolution", "1080p"))
+        if res_name not in pg.RESOLUTIONS:
+            raise ValueError("website_resolution must be 1080p, 1440p or 2160p")
+        size = pg.RESOLUTIONS[res_name]
+        voice = config.get("website_voice") or ""
+        tts_model = config.get("website_tts_model") or ""
+        if voice and voice not in OPENAI_VOICES:
+            raise ValueError("website_voice must be an OpenAI voice name: " + ", ".join(sorted(OPENAI_VOICES)))
+        if tts_model and tts_model not in OPENAI_MODELS:
+            raise ValueError("website_tts_model must be tts-1 or tts-1-hd")
+        voice_token = sk.set_tts_override(voice, tts_model)   # the chain's OpenAI tier speaks with this voice/model for THIS job only
         langs = clean_langs(config.get("website_langs"), sk._detect_lang(task))
         minutes = max(1, min(int(config.get("website_minutes", 4)), 15, max_minutes))
         effects = fx.clean_effects(config.get("website_effects"))
@@ -234,7 +248,7 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
         p_name = PROVIDER_NAME.get(provider, "various")
 
         # the frame model and the frame plan
-        model = rd.FrameModel(tour, tl, outline, effects)
+        model = rd.FrameModel(tour, tl, outline, effects, size)
         intro_texts = {lg: [tour["intro"][lg][0], tour["intro"][lg][1], "", ""] for lg in tour["langs"]}
         outro_texts = {lg: [tour["outro"][lg]["line"], tour["outro"][lg]["sub"], tour.get("outro_url", ""), DISCLOSURE[lg].format(p=p_name)]
                        for lg in tour["langs"]}
@@ -311,7 +325,8 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
 
         cam_report = model.report()
         meta = {
-            "mode": "website", "duration_seconds": duration_seconds, "resolution": "1920x1080", "fps": fps,
+            "mode": "website", "duration_seconds": duration_seconds, "resolution": f"{size[0]}x{size[1]}", "fps": fps,
+            "voice": voice or "default", "tts_model": tts_model or "default",
             "file_size_mb": round(video_path.stat().st_size / 1048576, 2), "scenes": n_scenes,
             "tts_engine": tts_engine, "tts_chain": "corvinos", "tts_provider_used": provider,
             "language": tour["langs"][0], "languages": tour["langs"], "language_files": {lg: p.name for lg, p in outputs.items()},
@@ -330,7 +345,7 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
         meta["report"] = rp.REPORT_NAME if sk._write_report(report, out_root, report_texts) else None
         storage.save_video_output(VideoOutput(job_id=job_id, video_path=str(video_path), metadata=meta))
         sk.emit_feedback(job_id=job_id, event_type="video_produced",
-                         metrics={"duration_seconds": duration_seconds, "resolution": "1920x1080", "quality_score": 0.85})
+                         metrics={"duration_seconds": duration_seconds, "resolution": f"{size[0]}x{size[1]}", "quality_score": 0.85})
         job.status = "complete"
         job.completed_at = datetime.now()
         job.video_output_path = str(video_path)
@@ -353,6 +368,8 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
         sk.emit_feedback(job_id=job_id, event_type="orchestration_failed", metrics={"error": msg})
         raise
     finally:
+        if voice_token is not None:
+            sk.reset_tts_override(voice_token)
         if source is not None:
             source.close()
         dl.unregister_job_budget(job_id)

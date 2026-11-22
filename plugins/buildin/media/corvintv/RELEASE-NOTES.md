@@ -1,5 +1,22 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## 1.10.0 — website tours: 4K, a voice per tour, a frosted header intro, any page of a site folder
+
+- **Resolution:** `website_resolution` `1080p` (default), `1440p` or `2160p`. The page is always laid out at 1422 x 800 css px (so the layout never changes);
+  only the device scale factor rises, frames are cropped to exactly the output size. CLI: `--resolution 2160p`. 4K is about three times slower
+  (measured: 1.5 frames per second with six workers, a 3:15 tour takes about 75 minutes).
+- **Voice:** `website_voice` (an OpenAI voice name) and `website_tts_model` (`tts-1` or `tts-1-hd`) change the OpenAI tier of the CorvinOS chain for THIS tour
+  only, through a ContextVar (`skill.set_tts_override`): the operator's voice profile is untouched, concurrent jobs never see each other's choice, edge-tts and
+  Piper ignore it. The chain's own default OpenAI voice is `nova` (female); `onyx` is a male voice. CLI: `--voice onyx --tts-model tts-1-hd`. A test proves the override
+  reaches every speaking thread of a real job process.
+- **Frosted header intro:** a tour may set `"intro_style": "header"`: the intro card lies over the page's own header (the page shows through, blurred) instead of a flat colour.
+- **Any page of a site folder:** `website_path` (CLI `--site-path learn/amplifier/`) starts the tour at a page inside the folder under `websites/<name>`; the local server
+  redirects a folder to its slash form (`/learn/amp` -> `/learn/amp/`) so relative links on the page resolve, and answers HTTP range requests.
+- **Pages with a strict content-security policy:** the recording browser bypasses the page's CSP (it injects a style sheet and overlay elements into a page the operator chose
+  to film; `style-src 'self'` made the load fail). The network stays bounded by the site origin or the capture proxy. The test fixture now carries a strict CSP; without the fix
+  `tests/test_website_tour_e2e.py` fails.
+- Tests: `tests/test_website_tour.py` (39), `tests/test_website_tour_e2e.py` (6, one new for resolution + voice + header intro + start path).
+
 ## 1.9.1 — website tour: readable intro and end cards, and a steadier voice start
 
 Found on the first real tour of corvin-labs.com (2026-11-22):

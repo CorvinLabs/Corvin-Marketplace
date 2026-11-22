@@ -30,13 +30,24 @@ except ImportError:  # standalone use
     import capture as cap  # type: ignore[no-redef]
 
 VIEWPORT = (1422, 800)
-DSF = 1.35                      # 1422 x 800 css px at 1.35 = 1920 x 1080 device px
+DSF = 1.35                      # 1422 x 800 css px at 1.35 = 1920 x 1080 device px (the default resolution)
+# Output resolutions: the browser lays the page out at 1422 x 800 css px in every case (so the layout never changes) and draws it
+# at a higher device scale factor; frames are cropped to exactly this size.
+RESOLUTIONS = {"1080p": (1920, 1080), "1440p": (2560, 1440), "2160p": (3840, 2160)}
+
+
+def dsf_for(width_px: int) -> float:
+    return width_px / VIEWPORT[0]
 SITE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 MAX_SITE_BYTES = 200 * 1024 * 1024
 MAX_SITE_FILES = 20000
 MAX_OUTLINE = 40
 MAX_OUTLINE_TEXT = 12000
 NAV_TIMEOUT_MS = 45000
+# The page's content-security policy protects the page from injections; the recording browser injects its own style sheet and
+# overlay elements into a page the OPERATOR chose to film, so it must not be bound by it (a strict CSP made the load fail:
+# "style-src 'self'" refuses the injected <style>). The network stays bounded by ``Source.install`` (site: origin only; url: the proxy).
+BYPASS_CSP = True
 
 # Chrome's own background traffic off (the capture module's condition 1), same list as ``capture.chrome_command``.
 HARDENING_ARGS = (
@@ -129,7 +140,24 @@ class _Handler(BaseHTTPRequestHandler):
         end = min(int(b), size - 1) if b else size - 1
         return (start, end) if start <= end and start < size else (-1, -1)
 
+    def _redirect_dir(self) -> bool:
+        """``/learn/amp`` for a folder: relative links on that page would resolve one level up, so send the browser to ``/learn/amp/``."""
+        parts = urlsplit(self.path)
+        raw = unquote(parts.path)
+        if raw.endswith("/") or "\x00" in raw or "\\" in raw:
+            return False
+        p = (self.root / raw.lstrip("/")).resolve()
+        if os.path.commonpath([str(self.root), str(p)]) == str(self.root) and p.is_dir() and not p.is_symlink():
+            self.send_response(301)
+            self.send_header("Location", parts.path + "/" + (("?" + parts.query) if parts.query else ""))
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return True
+        return False
+
     def _send(self, head_only: bool) -> None:
+        if self._redirect_dir():
+            return
         p = self._target()
         if p is None:
             self.send_error(404)
@@ -184,12 +212,13 @@ class LocalSite:
         self.server: Optional[ThreadingHTTPServer] = None
         self.port = 0
 
-    def start(self) -> str:
+    def start(self, path: str = "index.html") -> str:
+        """Serve the folder; returns the address of ``path`` (a file or a folder with an index.html inside the site)."""
         handler = type("SiteHandler", (_Handler,), {"root": self.root})
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         self.port = self.server.server_address[1]
         threading.Thread(target=self.server.serve_forever, daemon=True, name="vp-website-site").start()
-        return f"http://127.0.0.1:{self.port}/index.html"
+        return f"http://127.0.0.1:{self.port}/{path.lstrip('/')}"
 
     def stop(self) -> None:
         if self.server is not None:
@@ -264,9 +293,14 @@ def open_source(config: Dict[str, Any], task_url: Optional[str]) -> Source:
     if name:
         root = site_dir(config["storage_base"], str(name))
         check_site_tree(root)
+        sub = str(config.get("website_path") or "").strip().strip("/")
+        if sub and (".." in sub.split("/") or "\\" in sub or not re.fullmatch(r"[A-Za-z0-9_./-]{1,200}", sub)):
+            raise SiteError("the start path may use letters, digits, dot, underscore, hyphen and slash, never ..")
+        if sub and not ((root / sub / "index.html").is_file() or (root / sub).is_file()):
+            raise SiteError("the start path does not name a page of the site folder")
         site = LocalSite(root)
-        url = site.start()
-        return Source("site", url, url.rsplit("/", 1)[0] + "/", site=site)
+        url = site.start(sub or "index.html")
+        return Source("site", url, f"http://127.0.0.1:{site.port}/", site=site)
     raw = config.get("website_url") or task_url
     if not raw:
         raise SiteError("the brief needs the address of the page (https://...) or the name of a site folder")
@@ -384,7 +418,7 @@ async def outline_for(source: Source, *, launch_timeout_s: float = 60.0) -> Dict
             pw = await async_playwright().start()
             browser = await pw.chromium.launch(headless=True, **kw)
         await dl.await_with_deadline(launch(), launch_timeout_s, what="chromium launch", on_expire=lambda *_: dl.kill_marked(marker))
-        ctx = await browser.new_context(viewport={"width": VIEWPORT[0], "height": VIEWPORT[1]}, device_scale_factor=DSF)
+        ctx = await browser.new_context(viewport={"width": VIEWPORT[0], "height": VIEWPORT[1]}, device_scale_factor=DSF, bypass_csp=BYPASS_CSP)
         page = await ctx.new_page()
         await source.install(ctx, page)
         try:

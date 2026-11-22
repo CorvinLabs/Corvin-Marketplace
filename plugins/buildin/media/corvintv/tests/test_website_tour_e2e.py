@@ -224,3 +224,37 @@ async def test_a_loopback_url_or_a_site_with_a_symlink_ends_the_job_without_draw
     job, out, _ = await run_job(base, tmp_path, "job_w6", expect="error", website_langs=["en"], tour=tour())
     assert "symbolic link" in job.error_message
     assert not (out / "output.mp4").exists()
+
+
+async def test_resolution_voice_header_intro_and_start_path_reach_the_finished_video(base, tmp_path):
+    """The options of the 1.10 tours through the real job process: 1440p output, the OpenAI voice and model override reaching
+    every speaking thread, a frosted header intro (the page shows through the card), a start path inside the site folder."""
+    from PIL import Image
+    np = pytest.importorskip("numpy")
+    # the page to tour lives one level down; the folder root has another index.html that must NOT be filmed
+    root = Path(base) / "websites" / "orbit"
+    sub = root / "learn" / "orbit"
+    sub.mkdir(parents=True)
+    for f in ("index.html", "style.css", "logo.svg"):
+        shutil.copy(FIXTURE / f, sub / f)
+    (root / "index.html").write_text("<html><body><h1>WRONG PAGE</h1></body></html>", encoding="utf-8")
+    t = tour()
+    t["intro_style"] = "header"
+    vlog = tmp_path / "voice.log"
+    job, out, log = await run_job(base, tmp_path, "job_w7", website_langs=["en"], tour=t, website_resolution="1440p", website_voice="onyx",
+                                  website_tts_model="tts-1-hd", website_path="learn/orbit/", env={"VP_TTS_VOICE_LOG": str(vlog)})
+    meta = get_storage(base).get_video_output("job_w7").metadata
+    assert meta["resolution"] == "2560x1440" and meta["voice"] == "onyx" and meta["tts_model"] == "tts-1-hd"
+    info = probe(out / "output.mp4", "stream=width,height")
+    assert any(s.get("width") == 2560 and s.get("height") == 1440 for s in info["streams"])
+    assert set(vlog.read_text().split()) == {"onyx|tts-1-hd"} and len(vlog.read_text().split()) == n_sentences(t, ["en"])
+    # the right page was filmed: the outline of Orbit Notes, not the WRONG PAGE one-liner (a scene was found for the footer key k6)
+    assert meta["scenes"] == 4 and "WRONG PAGE" not in (out / "website" / "tour.json").read_text(encoding="utf-8")
+    # header intro: the left strip of the card is not a flat colour (the blurred page shows through); the text is still readable
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "2.0", "-i", str(out / "output.mp4"), "-frames:v", "1", str(tmp_path / "i.png")], check=True)
+    im = np.asarray(Image.open(tmp_path / "i.png").convert("L"), dtype=np.float32)
+    h, w = im.shape
+    strip = im[: h // 3, : w // 6]
+    assert float(strip.std()) > 1.5, f"the page does not show through the intro card (std {strip.std():.2f})"
+    band = im[h // 3: 2 * h // 3, w // 4: 3 * w // 4]
+    assert float(band.max() - strip.mean()) > 80, "the intro text is not readable over the frosted header"

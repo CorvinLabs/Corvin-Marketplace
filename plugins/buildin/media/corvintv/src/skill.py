@@ -1,6 +1,7 @@
 """TaskOrchestrator Skill — LLM Storyboarding + real audio/video assembly."""
 
 import asyncio
+import contextvars
 import copy
 import json
 import logging
@@ -14,7 +15,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 import uuid
 
 # No .env loading here: this module runs inside the host's shared console
@@ -662,6 +663,37 @@ def _to_mp3(src: Path, dst: Path) -> None:
                    deadline_s=_FFMPEG_TIMEOUT_S, check=True, what="ffmpeg narration to mp3")
 
 
+# A job may ask the chain's OpenAI tier for another voice or model (website tours: a male voice, tts-1-hd) WITHOUT touching the
+# operator's voice profile: ``say.py`` takes the voice as its fourth positional argument and the model from CORVIN_TTS_OPENAI_MODEL.
+# The override lives in a ContextVar so concurrent jobs of one process never see each other's choice, and it reaches the
+# ``asyncio.to_thread`` workers that speak (threads started that way copy the context). edge-tts and Piper ignore it.
+_TTS_OVERRIDE: "contextvars.ContextVar[tuple]" = contextvars.ContextVar("vp_tts_override", default=("", ""))
+
+
+def set_tts_override(voice: str, model: str):
+    return _TTS_OVERRIDE.set((voice or "", model or ""))
+
+
+def reset_tts_override(token) -> None:
+    _TTS_OVERRIDE.reset(token)
+
+
+def _apply_tts_override(argv: List[str], env: Dict[str, str]) -> Tuple[List[str], Dict[str, str]]:
+    """``say.py <out> <text> <lang> <voice> [<provider>]``: replace the voice slot (found from the ``say.py`` element) and set the model."""
+    voice, model = _TTS_OVERRIDE.get()
+    if not voice and not model:
+        return argv, env
+    argv, env = list(argv), dict(env)
+    if voice:
+        for i, a in enumerate(argv):
+            if str(a).endswith("say.py") and len(argv) > i + 4:
+                argv[i + 4] = voice
+                break
+    if model:
+        env["CORVIN_TTS_OPENAI_MODEL"] = model
+    return argv, env
+
+
 _TTS_CHAIN_ATTEMPTS = 2
 _TTS_CHAIN_RETRY_PAUSE_S = 1.5
 
@@ -675,6 +707,7 @@ def _tts_native(text: str, out_path: Path, lang: str) -> str:
     raw = out_path.with_name(out_path.stem + ".tts.opus")
     try:
         plan = native.plan_tts(safe, raw, lang)
+        plan.argv, plan.env = _apply_tts_override(plan.argv, plan.env)
     except Exception as e:  # noqa: BLE001 - NativeTTSMissing / a broken host: name it, no fallback voice
         raise NoVoiceAvailable(f"The CorvinOS TTS chain is not available: {_scrub_secrets(e)}") from None
     try:

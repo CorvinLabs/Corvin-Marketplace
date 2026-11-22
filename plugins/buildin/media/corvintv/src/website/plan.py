@@ -64,7 +64,7 @@ def validate_tour(doc: Any, keys: Set[str], langs: Sequence[str], page_text: str
     f: List[str] = []
     if not isinstance(doc, dict):
         raise TourError(["the tour must be a JSON object"])
-    unknown = set(doc) - {"intro", "outro", "scenes", "lang", "langs", "note"}
+    unknown = set(doc) - {"intro", "outro", "scenes", "lang", "langs", "note", "intro_style"}
     if unknown:
         f.append("unknown keys: " + ", ".join(sorted(map(str, unknown))))
     langs = [lg for lg in langs if lg in LANGS]
@@ -90,6 +90,10 @@ def validate_tour(doc: Any, keys: Set[str], langs: Sequence[str], page_text: str
             f.append(f"outro.{lg}: an object with line and sub")
         else:
             outro[lg] = {"line": _line(o.get("line"), f"outro.{lg}.line", f), "sub": _line(o.get("sub"), f"outro.{lg}.sub", f)}
+    intro_style = doc.get("intro_style", "plain")
+    if intro_style not in ("plain", "header"):
+        f.append("intro_style: plain or header")
+        intro_style = "plain"
     url_line = outro_in.get("url", "")
     if url_line and (not isinstance(url_line, str) or len(url_line) > 120 or re.search(r"[\s<>\"']", url_line)):
         f.append("outro.url: a plain host or address without spaces (at most 120 characters)")
@@ -166,7 +170,7 @@ def validate_tour(doc: Any, keys: Set[str], langs: Sequence[str], page_text: str
         scenes.append({"id": sid, "target": target, "view": view, "sentences": sents, "anchors": anchors})
     if f:
         raise TourError(f)
-    return {"langs": langs, "intro": intro, "outro": outro, "outro_url": url_line, "scenes": scenes}
+    return {"langs": langs, "intro": intro, "outro": outro, "outro_url": url_line, "intro_style": intro_style, "scenes": scenes}
 
 
 def _outline_block(outline: Sequence[Dict[str, Any]]) -> str:

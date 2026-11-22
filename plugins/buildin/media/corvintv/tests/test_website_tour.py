@@ -353,3 +353,55 @@ def test_card_text_is_readable_on_the_page_background_even_when_body_has_the_def
     bg, fg = fx.card_colours("rgba(0, 0, 0, 0)", "rgb(0, 0, 0)")  # a transparent body: the dark fallback, readable text
     assert fx.contrast(bg, fg) >= 4.5
     assert fx.contrast("garbage", "rgb(0,0,0)") == 0.0
+
+
+# ── resolution, voice override, header intro, start path ───────────────────────────────────────
+
+def test_resolutions_keep_the_layout_and_scale_the_device_pixels():
+    assert pg.RESOLUTIONS == {"1080p": (1920, 1080), "1440p": (2560, 1440), "2160p": (3840, 2160)}
+    assert pg.dsf_for(1920) == pytest.approx(1.35, abs=0.001) and pg.dsf_for(3840) == pytest.approx(2.7, abs=0.002)
+    assert pg.VIEWPORT == (1422, 800), "the layout viewport never changes with the resolution"
+
+
+def test_the_voice_override_replaces_only_the_voice_slot_and_only_for_its_own_context():
+    from src import skill
+    argv = ["python", "/x/say.py", "/tmp/o.opus", "Hallo Welt", "de", "nova"]
+    assert skill._apply_tts_override(argv, {"A": "1"}) == (argv, {"A": "1"})           # no override: untouched
+    token = skill.set_tts_override("onyx", "tts-1-hd")
+    try:
+        a2, e2 = skill._apply_tts_override(argv, {"A": "1"})
+        assert a2 == ["python", "/x/say.py", "/tmp/o.opus", "Hallo Welt", "de", "onyx"] and e2 == {"A": "1", "CORVIN_TTS_OPENAI_MODEL": "tts-1-hd"}
+        assert argv[-1] == "nova", "the original plan is not mutated"
+        # a pinned provider after the voice slot stays where it is
+        a3, _ = skill._apply_tts_override(argv + ["edge"], {})
+        assert a3[-2:] == ["onyx", "edge"]
+    finally:
+        skill.reset_tts_override(token)
+    assert skill._apply_tts_override(argv, {})[0] == argv
+
+
+def test_the_tour_may_ask_for_a_header_intro_and_nothing_else_than_plain_or_header():
+    doc = _tour()
+    assert pl.validate_tour(doc, {"k1", "k2"}, ["en"], "12")["intro_style"] == "plain"
+    assert pl.validate_tour({**doc, "intro_style": "header"}, {"k1", "k2"}, ["en"], "12")["intro_style"] == "header"
+    with pytest.raises(pl.TourError, match="intro_style"):
+        pl.validate_tour({**doc, "intro_style": "video"}, {"k1", "k2"}, ["en"], "12")
+    cfg = fx.setup_config({"bg": "rgb(11, 14, 19)", "fg": "rgb(233,238,244)", "font": ""}, fx.clean_effects(None), [], {},
+                          {"accent": "rgb(1,2,3)", "accentRgba": "rgba(1,2,3,A)"}, True)
+    assert cfg["introHeader"] is True and cfg["bgRgb"] == [11, 14, 19]
+
+
+def test_a_start_path_must_name_a_page_inside_the_site_folder(served):
+    (served["site"] / "learn" / "amp").mkdir(parents=True)
+    (served["site"] / "learn" / "amp" / "index.html").write_text("<html><body>amp</body></html>", encoding="utf-8")
+    src = pg.open_source({"storage_base": served["base"], "website_site": "orbit", "website_path": "learn/amp/"}, None)
+    try:
+        assert src.url.endswith("/learn/amp") and src.origin.endswith("/")
+        status, headers, _ = _get(src.url)
+        assert status == 301 and headers["Location"] == "/learn/amp/", "a folder without the slash is redirected, so relative links resolve"
+        assert _get(src.url + "/")[0] == 200
+    finally:
+        src.close()
+    for bad in ("../x", "learn/../../x", "nope/", "a b", "learn\\amp"):
+        with pytest.raises(pg.SiteError):
+            pg.open_source({"storage_base": served["base"], "website_site": "orbit", "website_path": bad}, None)

@@ -63,6 +63,15 @@ what the validator finds.
   that continues from scene to scene, `vignette` softens the edges.
 * **Cards.** Intro and end card in the page's own colours. The end card says that the voice is AI-generated.
 
+## Options added in 1.10.0
+
+| Option (config key / CLI flag) | Meaning |
+|---|---|
+| `website_resolution` / `--resolution` | `1080p` (default), `1440p`, `2160p` (4K, about 3x slower) |
+| `website_voice` / `--voice`, `website_tts_model` / `--tts-model` | OpenAI voice and model for this tour only (default voice of the chain: `nova`; `onyx` is male) |
+| tour key `intro_style: "header"` | the intro card lies over the page's own header, frosted |
+| `website_path` / `--site-path` | start the tour at a page inside the site folder (a folder is redirected to its slash form) |
+
 ## Voice
 
 Every sentence is spoken by `skill._synthesize_narration_chain`: the CorvinOS chain, OpenAI first, then edge-tts, then Piper.

@@ -166,7 +166,12 @@ SETUP_JS = r"""
         ',0 0 44px ' + cfg.accentRgba.replace('A', (0.3 * k).toFixed(3));
     } else S.spot.style.display = 'none';
     const c = s.card;
-    if (c && c.kind) { S.card.style.display = 'flex'; S.card.style.opacity = String(c.a); S.l[0].style.opacity = String(c.a1);
+    if (c && c.kind) { S.card.style.display = 'flex';
+      // the intro of a tour with intro_style "header" lies over the page's own header (frosted), not over a flat colour
+      if (cfg.introHeader && c.kind === 'intro') { const k = cfg.bgRgb.join(',');
+        S.card.style.background = 'linear-gradient(180deg,rgba(' + k + ',.50),rgba(' + k + ',.80))';
+        S.card.style.backdropFilter = 'blur(7px) saturate(1.1)'; S.card.style.webkitBackdropFilter = 'blur(7px) saturate(1.1)';
+      } else { S.card.style.background = cfg.bg; S.card.style.backdropFilter = 'none'; S.card.style.webkitBackdropFilter = 'none'; } S.card.style.opacity = String(c.a); S.l[0].style.opacity = String(c.a1);
       S.l[1].style.opacity = String(c.a2); S.l[2].style.opacity = String(c.a3); S.l[3].style.opacity = String(c.kind === 'outro' ? c.a2 : 0); }
     else S.card.style.display = 'none';
     requestAnimationFrame(() => requestAnimationFrame(() => resolve(window.scrollY)));
@@ -182,9 +187,10 @@ ACCENT_JS = r"""
 
 
 def setup_config(outline: Dict[str, Any], effects: Dict[str, bool], groups: List[Dict[str, Any]],
-                 spot_selectors: Dict[str, str], accent: Dict[str, str]) -> Dict[str, Any]:
+                 spot_selectors: Dict[str, str], accent: Dict[str, str], intro_header: bool = False) -> Dict[str, Any]:
     bg, fg = card_colours(outline.get("bg") or "", outline.get("fg") or "")
-    return {"bg": bg, "fg": fg,
+    rgb = _rgba(bg) or (11.0, 14.0, 19.0, 1.0)
+    return {"bg": bg, "fg": fg, "bgRgb": [int(rgb[0]), int(rgb[1]), int(rgb[2])], "introHeader": bool(intro_header),
             "font": (outline.get("font") or "").replace('"', "'"), "accent": accent["accent"], "accentRgba": accent["accentRgba"],
             "vignette": effects["vignette"], "reveal": effects["reveal"], "revealSelector": REVEAL_SELECTOR,
             "groups": groups, "spotSelectors": spot_selectors, "spotMax": SPOT_MAX}
