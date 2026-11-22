@@ -405,3 +405,22 @@ def test_a_start_path_must_name_a_page_inside_the_site_folder(served):
     for bad in ("../x", "learn/../../x", "nope/", "a b", "learn\\amp"):
         with pytest.raises(pg.SiteError):
             pg.open_source({"storage_base": served["base"], "website_site": "orbit", "website_path": bad}, None)
+
+
+def test_a_frame_is_written_atomically_and_an_existing_one_is_not_redrawn(tmp_path):
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (640, 360), (30, 40, 50)).save(buf, "PNG")
+    out = tmp_path / "000001.jpg"
+    assert not rd.frame_done(out)
+    rd.crop_frame(buf.getvalue(), 0.0, 1.0, str(out), size=(640, 360))
+    assert rd.frame_done(out) and not list(tmp_path.glob("*.part")), "no temp file is left behind"
+    (tmp_path / "000002.jpg").write_bytes(b"")          # an empty or tiny file is NOT a finished frame
+    assert not rd.frame_done(tmp_path / "000002.jpg")
+
+
+def test_the_job_budget_grows_with_the_resolution():
+    import inspect
+    from src.website import produce
+    src = inspect.getsource(produce.produce_website)
+    assert '"2160p": 4' in src and "job_budget_seconds(max_minutes) * res_factor" in src

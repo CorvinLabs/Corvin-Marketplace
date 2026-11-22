@@ -1,5 +1,16 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## 1.10.1 — long 4K tours: a budget that grows with the resolution, and a restart that redraws nothing
+
+Found on the first 4K tour (3:15 minutes, 6537 frames at 1.5 frames per second): the job stopped at 88 percent of its frames because the wall-clock budget was the one
+of a 1080p job (24 minutes for an 8-minute limit), although the narration and 5811 frames were done.
+
+- **The budget scales with the resolution** (x1 for 1080p, x2 for 1440p, x4 for 2160p; `src/website/produce.py`).
+- **Frames are written atomically** (a temp file, then `os.replace`), and a restart of a job whose work folder holds finished frames **redraws none of them**
+  (`render.frame_done`); the narration clips are cached by text, so the timeline is identical. To resume a stopped job, start a new job whose `website/` work folder is the old one
+  (the video project `corvintv-website-tour-amplifier/source/resume.py` does exactly that).
+- Tests: `tests/test_website_tour.py` (37). The test count of 1.10.0 below is 35 + 2.
+
 ## 1.10.0 — website tours: 4K, a voice per tour, a frosted header intro, any page of a site folder
 
 - **Resolution:** `website_resolution` `1080p` (default), `1440p` or `2160p`. The page is always laid out at 1422 x 800 css px (so the layout never changes);
@@ -15,7 +26,7 @@
 - **Pages with a strict content-security policy:** the recording browser bypasses the page's CSP (it injects a style sheet and overlay elements into a page the operator chose
   to film; `style-src 'self'` made the load fail). The network stays bounded by the site origin or the capture proxy. The test fixture now carries a strict CSP; without the fix
   `tests/test_website_tour_e2e.py` fails.
-- Tests: `tests/test_website_tour.py` (39), `tests/test_website_tour_e2e.py` (6, one new for resolution + voice + header intro + start path).
+- Tests: `tests/test_website_tour.py` (35), `tests/test_website_tour_e2e.py` (6, one new for resolution + voice + header intro + start path).
 
 ## 1.9.1 — website tour: readable intro and end cards, and a steadier voice start
 

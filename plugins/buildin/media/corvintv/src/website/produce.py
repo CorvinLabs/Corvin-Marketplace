@@ -125,7 +125,10 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
     max_minutes = config.get("max_duration_minutes", 60)
     if not isinstance(max_minutes, int) or not 1 <= max_minutes <= 60:
         raise ValueError("max_duration_minutes must be an integer between 1 and 60")
-    budget = dl.JobBudget(dl.job_budget_seconds(max_minutes))
+    # 1440p draws about twice and 2160p about four times as many pixels per frame: the wall-clock budget grows with them
+    # (a 4K tour of 3 minutes needs over an hour; the flat budget of a 1080p job stopped one at 88 percent of its frames)
+    res_factor = {"1080p": 1, "1440p": 2, "2160p": 4}.get(str(config.get("website_resolution", "1080p")), 1)
+    budget = dl.JobBudget(dl.job_budget_seconds(max_minutes) * res_factor)
     budget_token = dl.set_current_budget(budget)
     dl.register_job_budget(job_id, budget)
     backend = config.get("storyboard_backend") or sk.STORYBOARD_BACKEND

@@ -134,6 +134,14 @@ class FrameModel:
         return m
 
 
+def frame_done(path: Any) -> bool:
+    """A finished frame of an earlier attempt of THIS job (frames are written atomically, so a file that exists is whole)."""
+    try:
+        return os.path.getsize(str(path)) > 1000
+    except OSError:
+        return False
+
+
 def crop_frame(data: bytes, rest_dev: float, zoom: float, out_path: str, size: Tuple[int, int] = (1920, 1080), quality: int = 92) -> None:
     """Sub-pixel position and zoom in ONE resampling: ``rest_dev`` (device px, 0 <= r < 1) is the part of the scroll the
     browser could not do; the crop box is a float box so the picture moves by the exact fraction."""
@@ -149,7 +157,9 @@ def crop_frame(data: bytes, rest_dev: float, zoom: float, out_path: str, size: T
     cx, cy = W / 2.0, top + he / 2.0
     box = (cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2)
     out = im.convert("RGB").resize(size, resample, box=box)
-    out.save(out_path, "JPEG", quality=quality)
+    tmp = str(out_path) + ".part"
+    out.save(tmp, "JPEG", quality=quality)
+    os.replace(tmp, out_path)       # atomic: a killed job never leaves a half-written frame that a restart would trust
 
 
 async def draw_frames(source: pg.Source, model: FrameModel, plan: Sequence[Dict[str, Any]], *, workers: int,
@@ -209,6 +219,12 @@ async def draw_frames(source: pg.Source, model: FrameModel, plan: Sequence[Dict[
                 except asyncio.QueueEmpty:
                     break
                 for item in chunk:
+                    if frame_done(item["path"]):       # a restart of a job whose frames are on disk redraws nothing
+                        async with lock:
+                            done += 1
+                            if on_progress and (done % 48 == 0 or done == len(plan)):
+                                on_progress(done, len(plan))
+                        continue
                     st = model.state(item["f"])
                     tx = item.get("texts")
                     if tx is not None and tx != cur_texts:
