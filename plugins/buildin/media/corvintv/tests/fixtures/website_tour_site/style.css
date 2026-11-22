@@ -1,4 +1,4 @@
-*{box-sizing:border-box}body{margin:0;background:#0f1218;color:#e8edf3;font:18px/1.6 system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:#0f1218;font:18px/1.6 system-ui,sans-serif}header,section,footer{color:#e8edf3}  /* the text colour is NOT on body (common): the intro card must still be readable */
 header{position:sticky;top:0;background:#0f1218cc;padding:20px 8vw;border-bottom:1px solid #26303d}h1{margin:0;font:400 2.2rem Georgia,serif}
 section,footer{padding:90px 8vw;min-height:78vh;border-bottom:1px solid #1d2530}h2{font:400 2.4rem Georgia,serif;margin:0 0 12px}
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px}.card{background:#151b24;border:1px solid #26303d;border-radius:14px;padding:22px;opacity:0;transform:translateY(24px);transition:opacity .6s,transform .6s}

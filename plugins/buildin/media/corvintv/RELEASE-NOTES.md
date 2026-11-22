@@ -1,5 +1,21 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## 1.9.1 — website tour: readable intro and end cards, and a steadier voice start
+
+Found on the first real tour of corvin-labs.com (2026-11-22):
+
+- **Intro and end card text was dark on dark.** The cards took the text colour of `body`, but many pages set their text colour on a
+  wrapper, so `body` still had the browser's default black. The cards now check the contrast against the page's own background
+  (and the background of `html` when `body` is transparent) and use white or near-black when the page's colour would not read
+  (`src/website/effects.py::card_colours`). `tests/fixtures/website_tour_site` now sets its text colour the same way, and
+  `tests/test_website_tour_e2e.py` measures that the intro text is clearly lighter or darker than its background; it fails
+  without the fix.
+- **Voice chain import race.** Four threads imported the host's voice modules at the same moment and one saw a half-initialised
+  module ("the CorvinOS TTS chain is not available"). The first sentence is now spoken alone, which warms the imports up.
+- **Outline lists figures** (`figure` elements with their label or caption) as targets of their own, so a tour can stop at the
+  feedback-loop figure and not only at the section around it. `scripts/website_tour.py --print-outline` prints the keys,
+  `--allow-host` lets a `--url` page load its fonts or script CDN (every other host stays blocked).
+
 ## 1.9.0 — website tours: a narrated, smoothly scrolling video of a web page, and a page to put online
 
 A third job mode, **website**, chosen through the new video template **Website tour** (CONCEPT-0139, ADR-2336). It films the

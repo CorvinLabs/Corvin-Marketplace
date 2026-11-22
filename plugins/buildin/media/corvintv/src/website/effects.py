@@ -13,7 +13,8 @@ uses only ``transform``/``opacity`` or a fixed overlay, and can be switched off:
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Optional, Sequence
+import re
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .camera import Pchip
 
@@ -72,6 +73,47 @@ def card_state(T: float, intro: Dict[str, float], outro: Dict[str, float]) -> Di
         return {"kind": "outro", "a": round(a, 4), "a1": round(a, 4), "a2": round(smooth((T - outro["start"] - 0.3) / 0.5), 4),
                 "a3": round(smooth((T - outro["start"] - 0.6) / 0.5), 4)}
     return {"kind": None, "a": 0.0, "a1": 0.0, "a2": 0.0, "a3": 0.0}
+
+
+def _rgba(css: str) -> Optional[Tuple[float, float, float, float]]:
+    m = re.match(r"^\s*rgba?\(([^)]*)\)\s*$", css or "")
+    if not m:
+        return None
+    p = [x.strip() for x in m.group(1).replace("/", ",").replace(" ", ",").split(",") if x.strip()]
+    try:
+        v = [float(x.rstrip("%")) for x in p[:4]]
+    except ValueError:
+        return None
+    if len(v) < 3:
+        return None
+    return (v[0], v[1], v[2], v[3] if len(v) > 3 else 1.0)
+
+
+def _lum(c: Tuple[float, float, float, float]) -> float:
+    def ch(x: float) -> float:
+        x /= 255.0
+        return x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4
+    return 0.2126 * ch(c[0]) + 0.7152 * ch(c[1]) + 0.0722 * ch(c[2])
+
+
+def contrast(a: str, b: str) -> float:
+    ca, cb = _rgba(a), _rgba(b)
+    if ca is None or cb is None:
+        return 0.0
+    la, lb = sorted((_lum(ca), _lum(cb)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def card_colours(bg: str, fg: str) -> Tuple[str, str]:
+    """``(background, text)`` for the intro/end cards. Many pages set their text colour on a wrapper, not on ``body``, so
+    ``body``'s colour can be the browser default black on a dark page: a text that is not readable on the page's own background
+    (contrast below 4.5) is replaced by white or near-black, whichever reads."""
+    c = _rgba(bg)
+    if c is None or c[3] < 0.5:
+        bg, c = "rgb(11,14,19)", (11.0, 14.0, 19.0, 1.0)
+    if contrast(bg, fg) >= 4.5:
+        return bg, fg
+    return bg, ("rgb(245,247,250)" if _lum(c) < 0.4 else "rgb(17,24,39)")
 
 
 SETUP_JS = r"""
@@ -141,7 +183,8 @@ ACCENT_JS = r"""
 
 def setup_config(outline: Dict[str, Any], effects: Dict[str, bool], groups: List[Dict[str, Any]],
                  spot_selectors: Dict[str, str], accent: Dict[str, str]) -> Dict[str, Any]:
-    return {"bg": outline.get("bg") or "rgb(11,14,19)", "fg": outline.get("fg") or "rgb(233,238,244)",
+    bg, fg = card_colours(outline.get("bg") or "", outline.get("fg") or "")
+    return {"bg": bg, "fg": fg,
             "font": (outline.get("font") or "").replace('"', "'"), "accent": accent["accent"], "accentRgba": accent["accentRgba"],
             "vignette": effects["vignette"], "reveal": effects["reveal"], "revealSelector": REVEAL_SELECTOR,
             "groups": groups, "spotSelectors": spot_selectors, "spotMax": SPOT_MAX}

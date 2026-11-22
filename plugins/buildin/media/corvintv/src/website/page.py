@@ -320,7 +320,8 @@ OUTLINE_JS = r"""
   const cs = getComputedStyle(document.body);
   return { entries: out.slice(0, %(max)d), pageHeight: document.documentElement.scrollHeight, vh: innerHeight, dsf: devicePixelRatio,
            title: (document.title || '').slice(0, 160), lang: document.documentElement.lang || '',
-           bg: cs.backgroundColor, fg: cs.color, font: cs.fontFamily };
+           bg: (/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor) ? getComputedStyle(document.documentElement).backgroundColor : cs.backgroundColor),
+           fg: cs.color, font: cs.fontFamily };
 }
 """ % {"max": MAX_OUTLINE}
 

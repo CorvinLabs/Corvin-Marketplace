@@ -343,3 +343,13 @@ def test_effects_are_pure_functions_of_time_and_can_be_switched_off():
     intro, outro = {"end": 8.0, "line2_at": 3.0}, {"start": 30.0}
     assert fx.card_state(1.0, intro, outro)["kind"] == "intro" and fx.card_state(8.5, intro, outro)["kind"] is None
     assert fx.card_state(31.0, intro, outro)["kind"] == "outro" and fx.card_state(40.0, intro, outro)["a"] == 1.0
+
+
+def test_card_text_is_readable_on_the_page_background_even_when_body_has_the_default_colour():
+    # a page that sets its text colour on a wrapper leaves body at the browser default black: on a dark page that was invisible
+    assert fx.card_colours("rgb(11, 14, 19)", "rgb(0, 0, 0)") == ("rgb(11, 14, 19)", "rgb(245,247,250)")
+    assert fx.card_colours("rgb(250, 250, 250)", "rgb(255, 255, 255)")[1] == "rgb(17,24,39)"
+    assert fx.card_colours("rgb(15, 18, 24)", "rgb(232, 237, 243)") == ("rgb(15, 18, 24)", "rgb(232, 237, 243)")  # readable: kept
+    bg, fg = fx.card_colours("rgba(0, 0, 0, 0)", "rgb(0, 0, 0)")  # a transparent body: the dark fallback, readable text
+    assert fx.contrast(bg, fg) >= 4.5
+    assert fx.contrast("garbage", "rgb(0,0,0)") == 0.0

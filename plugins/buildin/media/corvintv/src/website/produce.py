@@ -208,9 +208,12 @@ async def produce_website(job_id: str, task: str, config: Dict[str, Any]) -> Dic
                                         f"Narration {done_speech}/{len(jobs)}", total_scenes=n_scenes)
                 return (i, k, lg), wav, _wav_seconds(wav)
 
-        futs = [asyncio.ensure_future(speak(*j)) for j in jobs]
+        # The first sentence is spoken ALONE: the CorvinOS chain imports the host's voice modules on first use, and four threads
+        # importing them at once raced (a half-initialised module: "chain is not available"). One call warms the imports up.
+        first_result = await speak(*jobs[0])
+        futs = [asyncio.ensure_future(speak(*j)) for j in jobs[1:]]
         try:
-            results = await asyncio.gather(*futs)
+            results = [first_result] + list(await asyncio.gather(*futs))
         except BaseException:
             for t in futs:
                 t.cancel()

@@ -96,6 +96,17 @@ async def test_a_tour_of_a_real_page_becomes_two_videos_and_a_page_to_put_online
         assert abs(float(info["format"]["duration"]) - tl["total_s"]) < 0.25, name
     assert meta["language_sync_diff_ms"] < 150 and meta["languages"] == ["en", "de"] and meta["mode"] == "website"
 
+    # 1b) the intro card is READABLE: its text is clearly brighter or darker than the card's own background (a card whose text
+    # colour equals its background was shipped once: body had the default black on a dark page)
+    from PIL import Image
+    for name in ("output.mp4", "output.de.mp4"):
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "2.0", "-i", str(out / name), "-frames:v", "1", str(tmp_path / "intro.png")], check=True)
+        im = Image.open(tmp_path / "intro.png").convert("L")
+        w, h = im.size
+        corner = im.getpixel((10, 10))
+        band = [im.getpixel((x, y)) for x in range(w // 4, 3 * w // 4, 6) for y in range(h // 3, 2 * h // 3, 6)]
+        assert max(abs(v - corner) for v in band) > 80, f"{name}: the intro text is not readable on its background"
+
     # 2) ONE voice path: every sentence in every language went through the CorvinOS chain function, nothing else spoke
     assert len(log.read_text().split()) == n_sentences(t, ["en", "de"])
     assert meta["tts_chain"] == "corvinos" and meta["tts_provider_used"] == "mock"
