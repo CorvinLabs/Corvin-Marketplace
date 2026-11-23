@@ -70,7 +70,8 @@ class FrameModel:
         else:
             self.intro = {"end": s0["start"] + s0["dur"], "line2_at": max(1.0, two)}
         last = tl["scenes"][-1]["sentences"][-1]["at_avg"]
-        self.outro = {"start": max(self.intro["end"], last - 0.4)}
+        # outro_style "none": the video ends on the page itself, no end card (and so no veil at the end)
+        self.outro = {"start": float("inf") if tour.get("outro_style", "card") == "none" else max(self.intro["end"], last - 0.4)}
 
     # -- camera --------------------------------------------------------------------------------
     def _camera(self) -> cam.Pchip:

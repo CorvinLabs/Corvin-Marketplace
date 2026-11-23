@@ -267,6 +267,8 @@ async def test_a_tour_opens_on_the_page_without_a_card_and_a_page_without_animat
     t = tour()
     t.pop("intro")
     t.pop("intro_style")
+    t.pop("outro")
+    t["outro_style"] = "none"   # and it ends on the page too: no end card
     job, out, _ = await run_job(base, tmp_path, "job_w10", website_langs=["en"], tour=t)
     meta = json.loads((out / "metadata.json").read_text(encoding="utf-8"))["metadata"] if (out / "metadata.json").is_file() else {}
     saved = json.loads((out / "website" / "tour.json").read_text(encoding="utf-8"))
@@ -277,6 +279,10 @@ async def test_a_tour_opens_on_the_page_without_a_card_and_a_page_without_animat
     a = np.asarray(im, dtype=float)
     # the page's own heading and logo are on screen: the top band is not one flat colour
     assert float(a[: a.shape[0] // 4].std()) > 8, "the first frame is a flat card, not the page"
+    dur = float(probe(out / "output.mp4", "format=duration")["format"]["duration"])
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{dur - 0.4:.2f}", "-i", str(out / "output.mp4"), "-frames:v", "1", str(tmp_path / "last.png")], check=True)
+    b = np.asarray(Image.open(tmp_path / "last.png").convert("L"), dtype=float)
+    assert float(b[: b.shape[0] // 4].std()) > 8, "the last frame is a flat end card, not the page"
     # a static page: remove the animation from the served copy
     css = Path(base) / "websites" / "orbit" / "style.css"
     css.write_text(css.read_text(encoding="utf-8").split("/* every section carries")[0], encoding="utf-8")

@@ -457,3 +457,16 @@ def test_a_website_tour_must_explain_through_animation_unless_it_says_otherwise(
     assert pl.enforce_animation(tour, [{"key": k, "animated": 2} for k in ("k1", "k2")]) == []
     with pytest.raises(pl.TourError, match="animation"):
         pl.validate_tour({**_tour(), "animation": "sometimes"}, {"k1", "k2"}, ["en"], "12")
+
+
+def test_a_tour_can_end_on_the_page_itself_without_an_end_card():
+    doc = _tour()
+    doc.pop("outro", None)
+    with pytest.raises(pl.TourError, match="outro"):
+        pl.validate_tour(doc, {"k1", "k2"}, ["en"], "12")
+    t = pl.validate_tour({**doc, "outro_style": "none"}, {"k1", "k2"}, ["en"], "12")
+    assert t["outro_style"] == "none" and t["outro"]["en"] == {"line": "", "sub": ""}
+    with pytest.raises(pl.TourError, match="outro_style"):
+        pl.validate_tour({**doc, "outro_style": "fade"}, {"k1", "k2"}, ["en"], "12")
+    # no end card at any time: the card layer never turns into an outro
+    assert fx.card_state(10_000.0, {"end": 0.0, "line2_at": 0.0}, {"start": float("inf")})["kind"] is None

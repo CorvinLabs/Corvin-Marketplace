@@ -1,5 +1,10 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## 1.12.0 — a website tour can end on the page itself
+
+- **`outro_style: "none"`** removes the end card: the video ends on the page, `outro` is not required. The default stays `"card"`. Without an end card the AI-voice notice is not on the picture, so the page itself or the upload text must carry it.
+- Tests: `tests/test_website_tour.py` (41).
+
 ## 1.11.0 — website tours open on the page and explain through animation
 
 - **No opening card by default.** `intro_style: "page"` (the new default) starts the video on the finished page itself, its top with the title; `intro` is no longer required. `"plain"` and `"header"` keep the card.

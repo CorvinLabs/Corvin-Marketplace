@@ -1,4 +1,4 @@
-# Website tour (CorvinTV 1.11.0)
+# Website tour (CorvinTV 1.12.0)
 
 A website tour turns a web page into a narrated video **and** a page you can send or put online. The real page is filmed
 while a voice walks the viewer down it: the camera scrolls in one smooth curve, the page's own CSS animations run in time
@@ -71,6 +71,7 @@ what the validator finds.
 | `website_voice` / `--voice`, `website_tts_model` / `--tts-model` | OpenAI voice and model for this tour only (default voice of the chain: `nova`; `onyx` is male) |
 | tour key `intro_style: "page"` (default since 1.11.0) | no opening card: the video starts on the page itself, its top with the title; `intro` is not needed |
 | tour key `intro_style: "header"` / `"plain"` | an opening card with two lines per language, over the page's frosted header / a flat colour |
+| tour key `outro_style: "none"` | no end card: the video ends on the page itself (`outro` not required; default `"card"`) |
 | tour key `animation: "required"` (default since 1.11.0) | every scene's target must show a running animation; a tour with a static scene is refused and the findings name it. `"off"` allows a static page (the report lists `static_scenes`) |
 | `website_path` / `--site-path` | start the tour at a page inside the site folder (a folder is redirected to its slash form) |
 

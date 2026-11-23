@@ -1,6 +1,6 @@
 plugin_id: video_producer
 plugin_type: web_surface
-version: 1.11.0
+version: 1.12.0
 display_name: CorvinTV
 description: "CorvinTV (formerly Video Producer): create narrated MP4s from a task description - storyboard
   written by the native Claude Code engine (the host's signed-in claude CLI; no other LLM, no fallback), narration

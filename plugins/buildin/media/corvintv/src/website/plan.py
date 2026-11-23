@@ -64,7 +64,7 @@ def validate_tour(doc: Any, keys: Set[str], langs: Sequence[str], page_text: str
     f: List[str] = []
     if not isinstance(doc, dict):
         raise TourError(["the tour must be a JSON object"])
-    unknown = set(doc) - {"intro", "outro", "scenes", "lang", "langs", "note", "intro_style", "animation"}
+    unknown = set(doc) - {"intro", "outro", "scenes", "lang", "langs", "note", "intro_style", "animation", "outro_style"}
     if unknown:
         f.append("unknown keys: " + ", ".join(sorted(map(str, unknown))))
     langs = [lg for lg in langs if lg in LANGS]
@@ -81,8 +81,13 @@ def validate_tour(doc: Any, keys: Set[str], langs: Sequence[str], page_text: str
         if intro_style != "page":
             f.append("intro: an object with two lines per language is required (intro_style plain/header)")
         intro_in = {}
+    outro_style = doc.get("outro_style", "card")
+    if outro_style not in ("card", "none"):
+        f.append('outro_style: "card" (default: an end card) or "none" (the video ends on the page itself)')
+        outro_style = "card"
     if not isinstance(outro_in, dict):
-        f.append("outro: an object with a line and a sub line per language is required")
+        if outro_style == "card":
+            f.append("outro: an object with a line and a sub line per language is required")
         outro_in = {}
     for lg in langs:
         lines = intro_in.get(lg)
@@ -93,7 +98,9 @@ def validate_tour(doc: Any, keys: Set[str], langs: Sequence[str], page_text: str
         else:
             intro[lg] = [_line(x, f"intro.{lg}", f) for x in lines]
         o = outro_in.get(lg)
-        if not isinstance(o, dict) or set(o) - {"line", "sub"}:
+        if outro_style == "none":
+            outro[lg] = {"line": "", "sub": ""}
+        elif not isinstance(o, dict) or set(o) - {"line", "sub"}:
             f.append(f"outro.{lg}: an object with line and sub")
         else:
             outro[lg] = {"line": _line(o.get("line"), f"outro.{lg}.line", f), "sub": _line(o.get("sub"), f"outro.{lg}.sub", f)}
@@ -179,7 +186,7 @@ def validate_tour(doc: Any, keys: Set[str], langs: Sequence[str], page_text: str
         animation = "required"
     if f:
         raise TourError(f)
-    return {"langs": langs, "intro": intro, "outro": outro, "outro_url": url_line, "intro_style": intro_style, "animation": animation, "scenes": scenes}
+    return {"langs": langs, "intro": intro, "outro": outro, "outro_url": url_line, "intro_style": intro_style, "outro_style": outro_style, "animation": animation, "scenes": scenes}
 
 
 def audit_animation(tour: Dict[str, Any], entries: Sequence[Dict[str, Any]]) -> List[str]:
