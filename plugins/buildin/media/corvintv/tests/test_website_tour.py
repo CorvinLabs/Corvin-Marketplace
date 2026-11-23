@@ -470,3 +470,12 @@ def test_a_tour_can_end_on_the_page_itself_without_an_end_card():
         pl.validate_tour({**doc, "outro_style": "fade"}, {"k1", "k2"}, ["en"], "12")
     # no end card at any time: the card layer never turns into an outro
     assert fx.card_state(10_000.0, {"end": 0.0, "line2_at": 0.0}, {"start": float("inf")})["kind"] is None
+
+
+def test_a_long_form_scene_may_carry_up_to_twelve_sentences():
+    doc = _tour()
+    doc["scenes"][0]["sentences"] = [{"en": f"Sentence number {i} says one clear thing."} for i in range(12)]
+    pl.validate_tour(doc, {"k1", "k2"}, ["en"], "", check_facts=False)
+    doc["scenes"][0]["sentences"].append({"en": "One more."})
+    with pytest.raises(pl.TourError, match="1 to 12 sentences"):
+        pl.validate_tour(doc, {"k1", "k2"}, ["en"], "", check_facts=False)

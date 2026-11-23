@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 LANGS = ("en", "de")
 MAX_SCENES = 24
-MAX_SENTENCES = 6
+MAX_SENTENCES = 12
 MAX_SENTENCE_CHARS = 220
 MAX_LINE_CHARS = 90
 VIEWS = ("top", "fit", "pan")

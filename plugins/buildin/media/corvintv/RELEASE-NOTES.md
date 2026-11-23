@@ -1,5 +1,9 @@
 # CorvinTV (formerly Video Producer) — Release Notes
 
+## 1.12.1 — long-form website tours
+
+- **A scene may carry up to twelve sentences** (was six), so a section explained in a few minutes of speech stays one scene with its own camera stop. Tests: `tests/test_website_tour.py` (42).
+
 ## 1.12.0 — a website tour can end on the page itself
 
 - **`outro_style: "none"`** removes the end card: the video ends on the page, `outro` is not required. The default stays `"card"`. Without an end card the AI-voice notice is not on the picture, so the page itself or the upload text must carry it.
